@@ -1,0 +1,84 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Teachers
+{% endblock %}
+
+{% block main %}
+    <h1>Teachers</h1>
+    <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
+        <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+            <thead class="text-xs text-gray-700 uppercase dark:text-gray-400">
+                <tr>
+                    <th scope="col" class="px-6 py-3 bg-gray-50 dark:bg-gray-800">
+                        Teacher ID
+                    </th>
+                    <th scope="col" class="px-6 py-3">
+                        Name
+                    </th>
+                    <th scope="col" class="px-6 py-3 bg-gray-50 dark:bg-gray-800">
+                        Age
+                    </th>
+                    <th scope="col" class="px-6 py-3">
+                        Hobbies
+                    </th>
+                    <th scope="col" class="px-6 py-3 bg-gray-50 dark:bg-gray-800">
+                        Motto
+                    </th>
+                    <th scope="col" class="px-6 py-3">
+                        Blood Type
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for teacher in teachers.items %}
+                <tr class="border-b border-gray-200 dark:border-gray-700">
+                    <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap bg-gray-50 dark:text-white dark:bg-gray-800">
+                        {{ teacher.id }}
+                    </th>
+                    <td class="px-6 py-4">
+                        {{ teacher.username }}
+                    </td>
+                    {% if teacher.profile %}
+                        <td class="px-6 py-4 bg-gray-50 dark:bg-gray-800">
+                            {{ teacher.profile.age }}
+                        </td>
+                        <td class="px-6 py-4">
+                            {{ teacher.profile.hobbies }}
+                        </td>
+                        <td class="px-6 py-4 bg-gray-50 dark:bg-gray-800">
+                            {{ teacher.profile.motto }}
+                        </td>
+                        <td class="px-6 py-4">
+                            {{ teacher.profile.blood_type }}
+                        </td>
+                    {% else %}
+                        <td class="px-6 py-4 bg-gray-50 dark:bg-gray-800">
+                            No profile
+                        </td>
+                        <td class="px-6 py-4">
+                            No profile
+                        </td>
+                        <td class="px-6 py-4 bg-gray-50 dark:bg-gray-800">
+                            No profile
+                        </td>
+                        <td class="px-6 py-4">
+                            No profile
+                        </td>
+                    {% endif %}
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <!-- Pagination links -->
+    <div class="mt-4">
+        {% for page_num in teachers.iter_pages() %}
+            {% if teachers.page == page_num %}
+                <a class="inline-block px-4 py-2 text-white bg-blue-500 rounded" href="#">{{ page_num }}</a>
+            {% else %}
+                <a class="inline-block px-4 py-2 text-blue-500 border border-blue-500 rounded hover:bg-blue-500 hover:text-white" href="{{ url_for('get_teachers', page=page_num) }}">{{ page_num }}</a>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% endblock %}

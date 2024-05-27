@@ -1,0 +1,102 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Edit Profile
+{% endblock %}
+
+{% block main %}
+<h2 class="text-2xl font-bold mb-6 text-center py-2 text-blue-500">Edit Your Profile</h2>
+    <form method="POST" enctype="multipart/form-data" class="space-y-6">
+        <div class="form-group flex justify-between items-center mx-auto max-w-2xl">
+            <label for="age" class="w-1/4">Age:</label>
+            <div class="w-2/3">
+                <div id="age-text" class="form-text">{{ profile.age }}</div>
+                <input type="number" id="age-input" name="age" value="{{ profile.age }}" class="form-input hidden w-full custom-input">
+            </div>
+            <a href="#" id="age-edit" class="text-blue-500" onclick="editField('age')">Edit</a>
+            <button type="button" id="age-cancel" class="btn btn-outline bg-beige text-red-500 hidden" onclick="cancelEdit('age')">Cancel</button>
+        </div>
+        <div class="form-group flex justify-between items-center mx-auto max-w-2xl">
+            <label for="hobbies" class="w-1/4">Hobbies:</label>
+            <div class="w-2/3">
+                <div id="hobbies-text" class="form-text">{{ profile.hobbies }}</div>
+                <textarea id="hobbies-input" name="hobbies" class="form-input hidden w-full">{{ profile.hobbies }}</textarea>
+                <div id="hobbies-limit" class="text-sm text-gray-500" style="display: none;">Character limit: 200</div>
+            </div>
+            <a href="#" id="hobbies-edit" class="text-blue-500" onclick="editField('hobbies')">Edit</a>
+            <button type="button" id="hobbies-cancel" class="btn btn-outline bg-beige text-red-500 hidden" onclick="cancelEdit('hobbies')">Cancel</button>
+        </div>
+        <div class="form-group flex justify-between items-center mx-auto max-w-2xl">
+            <label for="motto" class="w-1/4">Motto:</label>
+            <div class="w-2/3">
+                <div id="motto-text" class="form-text">{{ profile.motto }}</div>
+                <textarea id="motto-input" name="motto" class="form-input hidden w-full">{{ profile.motto }}</textarea>
+                <div id="motto-limit" class="text-sm text-gray-500" style="display: none;">Character limit: 200</div>
+            </div>
+            <a href="#" id="motto-edit" class="text-blue-500" onclick="editField('motto')">Edit</a>
+            <button type="button" id="motto-cancel" class="btn btn-outline bg-beige text-red-500 hidden" onclick="cancelEdit('motto')">Cancel</button>
+        </div>
+        <div class="form-group flex justify-between items-center mx-auto max-w-2xl">
+            <label for="blood_type" class="w-1/4">Blood Type:</label>
+            <div class="w-2/3">
+                <div id="blood_type-text" class="form-text">{{ profile.blood_type }}</div>
+                <input type="text" id="blood_type-input" name="blood_type" value="{{ profile.blood_type }}" class="form-input hidden w-full custom-input">
+            </div>
+            <a href="#" id="blood_type-edit" class="text-blue-500" onclick="editField('blood_type')">Edit</a>
+            <button type="button" id="blood_type-cancel" class="btn btn-outline bg-beige text-red-500 hidden" onclick="cancelEdit('blood_type')">Cancel</button>
+        </div>
+        <div class="form-group flex justify-between items-center mx-auto max-w-2xl">
+            <label for="image_file" class="w-1/4">Profile Image:</label>
+            <img id="image_file-text" src="{{ url_for('static', filename='img/teacherImg/' + profile.image_file) }}" class="form-text w-2/3">            
+            <a href="#" id="image_file-edit" class="text-blue-500 mr-2" onclick="editField('image_file')">Edit</a>
+            <input type="file" id="image_file-input" name="image_file" class="form-input hidden w-2/3">
+            <button type="button" id="image_file-cancel" class="btn btn-outline bg-white text-red-500 hidden" onclick="cancelEdit('image_file')">Cancel</button>
+        </div>
+        <div class="form-group mx-auto max-w-2xl text-center">
+            <input type="submit" value="Update Profile" class="btn btn-primary py-2 px-4 bg-blue-500 text-white" id="update-profile-button" style="display: none;">
+        </div>
+    </form>
+    <script>
+        function editField(fieldName) {
+            console.log('editField called with fieldName:', fieldName);
+            document.getElementById(fieldName + '-text').classList.add('hidden');
+            document.getElementById(fieldName + '-cancel').classList.remove('hidden');
+            document.getElementById(fieldName + '-edit').classList.add('hidden');
+            if (fieldName === 'image_file') {
+                document.getElementById(fieldName + '-input').classList.remove('hidden');
+            } else {
+                document.getElementById(fieldName + '-input').value = document.getElementById(fieldName + '-text').innerText;
+                document.getElementById(fieldName + '-input').classList.remove('hidden');
+            }
+            // Show the character limit message for 'hobbies' and 'motto' fields
+            if (fieldName === 'hobbies' || fieldName === 'motto') {
+                var limitElement = document.getElementById(fieldName + '-limit');
+                if (limitElement) { // Check if the element exists
+                    limitElement.style.display = 'block';
+                }
+            }
+            // Show the 'Update Profile' button
+            var updateButton = document.getElementById('update-profile-button');
+            if (updateButton) { // Check if the element exists
+                updateButton.style.display = 'inline-block';
+            }
+            console.log('update-profile-button display after editField:', document.getElementById('update-profile-button') ? document.getElementById('update-profile-button').style.display : 'Element not found');
+        }
+        
+        function cancelEdit(fieldName) {
+            document.getElementById(fieldName + '-text').classList.remove('hidden');
+            document.getElementById(fieldName + '-input').classList.add('hidden');
+            document.getElementById(fieldName + '-cancel').classList.add('hidden');
+            document.getElementById(fieldName + '-edit').classList.remove('hidden');
+            // Hide the character limit message for 'hobbies' and 'motto' fields
+            if (fieldName === 'hobbies' || fieldName === 'motto') {
+                document.getElementById(fieldName + '-limit').style.display = 'none';
+            }
+            // Hide the 'Update Profile' button if no other fields are being edited
+            var editButtons = document.querySelectorAll('.btn-outline:not([style*="display: none"])');
+            if (editButtons.length === 1) { // only the current cancel button is visible
+                document.getElementById('update-profile-button').style.display = 'none';
+            }
+        }
+    </script>
+{% endblock %}
