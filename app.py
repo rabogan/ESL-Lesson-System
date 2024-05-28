@@ -383,8 +383,13 @@ def teacher_dashboard():
     if session['user_type'] != 'teacher':
         return redirect(url_for('home'))  # or wherever you want to redirect non-teachers
 
-    # Render the teacher dashboard page.
-    return render_template('teacher_dashboard.html', profile=current_user.profile)
+    # Fetch the most recent lesson record written by the logged-in teacher
+    most_recent_record = LessonRecord.query.filter_by(teacher_id=session['user_id']).options(
+        joinedload(LessonRecord.student).joinedload(Student.profile)
+    ).order_by(LessonRecord.date.desc()).first()
+
+    # Render the teacher dashboard page
+    return render_template('teacher_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record)
 
 
 @app.route('/teacher/lesson_records')
@@ -395,12 +400,14 @@ def teacher_lesson_records():
         return redirect(url_for('home'))
 
     # Fetch the lesson records written by the logged-in teacher
+    page = request.args.get('page', 1, type=int)
     lesson_records = LessonRecord.query.filter_by(teacher_id=session['user_id']).options(
         joinedload(LessonRecord.student).joinedload(Student.profile)
-    ).order_by(LessonRecord.date.desc()).all()
+    ).order_by(LessonRecord.date.desc()).paginate(page=page, per_page=5)
 
     # Pass the lesson records to the template
     return render_template('teacher_lesson_records.html', lesson_records=lesson_records)
+
 
 
 @app.route('/student/dashboard')
