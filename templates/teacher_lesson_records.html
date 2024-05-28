@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Lesson Records
+{% endblock %}
+
+{% block main %}
+<section class="bg-white dark:bg-gray-900">
+    <div class="grid max-w-screen-xl px-4 py-8 mx-auto lg:gap-8 xl:gap-0 lg:py-16 lg:grid-cols-12">
+        <div class="mr-auto place-self-center lg:col-span-7">
+            <h1 class="max-w-2xl mb-4 text-3xlxl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white">Lesson Records</h1>
+            {% for record in lesson_records %}
+            <div class="card">
+                <p>Date of Update: {{ record.date.strftime('%Y-%m-%d %H:%M') }}</p>
+                <div class="grid grid-cols-3">
+                    <div>
+                        <img src="{{ url_for('static', filename='img/studentImg/' + record.student.profile.image_file) }}" alt="Student's profile picture">
+                        <p>Student: {{ record.student.username }}</p>
+                        <a href="{{ url_for('student_profile', student_id=record.student.id) }}">View Profile</a>
+                    </div>
+                    <div>
+                        <p>Lesson Summary: {{ record.lesson_summary }}</p>
+                    </div>
+                    <div>
+                        <div>New Words: {{ record.new_words }}</div>
+                        <div>New Phrases: {{ record.new_phrases }}</div>
+                        <div>Strengths: {{ record.strengths }}</div>
+                        <div>Area To Improve: {{ record.areas_to_improve }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

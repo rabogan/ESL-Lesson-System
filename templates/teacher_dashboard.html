@@ -15,7 +15,9 @@
             {% endif %}
         </div>
         <div class="hidden lg:mt-0 lg:col-span-5 lg:flex">
-            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="School Logo">
+            <a href="{{ url_for('teacher_lesson_records') }}">
+                <button class="btn btn-primary">View Recent Lesson Records</button>
+            </a>
         </div>     
     </div>
 </section>

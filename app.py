@@ -374,6 +374,23 @@ def teacher_dashboard():
     # Render the teacher dashboard page.
     return render_template('teacher_dashboard.html', profile=current_user.profile)
 
+
+@app.route('/teacher/lesson_records')
+@login_required
+def teacher_lesson_records():
+    # Ensure the current user is a teacher
+    if session['user_type'] != 'teacher':
+        return redirect(url_for('home'))
+
+    # Fetch the lesson records written by the logged-in teacher
+    lesson_records = LessonRecord.query.filter_by(teacher_id=session['user_id']).options(
+        joinedload(LessonRecord.student).joinedload(Student.profile)
+    ).order_by(LessonRecord.date.desc()).all()
+
+    # Pass the lesson records to the template
+    return render_template('teacher_lesson_records.html', lesson_records=lesson_records)
+
+
 @app.route('/student/dashboard')
 def student_dashboard():
     # Your code here
@@ -436,6 +453,64 @@ def edit_student_profile():
 
     # Render the edit profile page.
     return render_template('edit_student_profile.html', profile=current_user.profile)
+
+
+@app.route('/edit_student_profile/<int:student_id>', methods=['GET', 'POST'])
+@login_required
+def edit_student_profile_by_teacher(student_id):
+    if 'user_type' not in session or session['user_type'] != 'teacher':
+        # The user is not logged in or is not a teacher. Redirect them to the login page.
+        return redirect(url_for('login'))
+
+    student = User.query.get_or_404(student_id)
+
+    if student.profile is None:
+        # Create a new StudentProfile for the student
+        profile = StudentProfile(student_id=student.id, image_file='default.jpg')
+        db.session.add(profile)
+        db.session.commit()
+        student.profile = profile
+
+    if request.method == 'POST':
+        # The form has been submitted. Update the student's profile.
+        student.profile.hometown = request.form['hometown']
+        student.profile.goal = request.form['goal']
+        student.profile.hobbies = request.form['hobbies']
+        student.profile.correction_style = request.form['correction_style']
+        student.profile.english_weakness = request.form['english_weakness']
+
+        db.session.commit()
+
+    # Render the edit profile page.
+    return render_template('student_profile.html', profile=student.profile)
+
+
+@app.route('/student_profile/<int:student_id>', methods=['GET', 'POST'])
+@login_required
+def student_profile(student_id):
+    # Ensure the current user is a teacher
+    if session['user_type'] != 'teacher':
+        return redirect(url_for('home'))
+
+    # Fetch the student's profile
+    student = Student.query.get_or_404(student_id)
+
+    if request.method == 'POST':
+        # Handle the POST request here
+        # For example, update the student's profile with the data from the form
+        form = request.form
+        student.profile.hometown = form.get('hometown')
+        student.profile.goal = form.get('goal')
+        student.profile.hobbies = form.get('hobbies')
+        student.profile.correction_style = form.get('correction_style')
+        student.profile.english_weakness = form.get('english_weakness')
+        # Save the changes to the database
+        db.session.commit()
+        # Redirect to the same page to show the updated profile
+        return redirect(url_for('student_profile', student_id=student_id))
+
+    # Pass the student's profile to the template
+    return render_template('student_profile.html', student=student)
 
 
 if __name__ == '__main__':
