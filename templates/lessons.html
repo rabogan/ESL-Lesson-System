@@ -1,0 +1,81 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Lessons
+{% endblock %}
+
+{% block main %}
+    <h1>Lesson Records</h1>
+    <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
+        <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+            <thead class="text-xs text-gray-700 uppercase dark:text-gray-400">
+                <tr>
+                    <th scope="col" class="px-6 py-3 bg-gray-50 dark:bg-gray-800">
+                        #
+                    </th>
+                    <th scope="col" class="px-6 py-3">
+                        Student ID
+                    </th>
+                    <th scope="col" class="px-6 py-3 bg-gray-50 dark:bg-gray-800">
+                        Teacher ID
+                    </th>
+                    <th scope="col" class="px-6 py-3">
+                        Strengths
+                    </th>
+                    <th scope="col" class="px-6 py-3 bg-gray-50 dark:bg-gray-800">
+                        Areas to Improve
+                    </th>
+                    <th scope="col" class="px-6 py-3">
+                        New Words
+                    </th>
+                    <th scope="col" class="px-6 py-3 bg-gray-50 dark:bg-gray-800">
+                        New Phrases
+                    </th>
+                    <th scope="col" class="px-6 py-3">
+                        Lesson Summary
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for lesson in lessons.items %}
+                <tr class="border-b border-gray-200 dark:border-gray-700">
+                    <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap bg-gray-50 dark:text-white dark:bg-gray-800">
+                        {{ loop.index }}
+                    </th>
+                    <td class="px-6 py-4">
+                        {{ lesson.student_id }}
+                    </td>
+                    <td class="px-6 py-4 bg-gray-50 dark:bg-gray-800">
+                        {{ lesson.teacher_id }}
+                    </td>
+                    <td class="px-6 py-4">
+                        {{ lesson.strengths }}
+                    </td>
+                    <td class="px-6 py-4 bg-gray-50 dark:bg-gray-800">
+                        {{ lesson.areas_to_improve }}
+                    </td>
+                    <td class="px-6 py-4">
+                        {{ lesson.new_words }}
+                    </td>
+                    <td class="px-6 py-4 bg-gray-50 dark:bg-gray-800">
+                        {{ lesson.new_phrases }}
+                    </td>
+                    <td class="px-6 py-4">
+                        {{ lesson.lesson_summary }}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <!-- Pagination links -->
+    <div class="mt-4">
+        {% for page_num in lessons.iter_pages() %}
+            {% if lessons.page == page_num %}
+                <a class="btn btn-primary" href="#">{{ page_num }}</a>
+            {% else %}
+                <a class="btn btn-outline-primary" href="{{ url_for('get_lessons', page=page_num) }}">{{ page_num }}</a>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% endblock %}

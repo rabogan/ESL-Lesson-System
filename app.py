@@ -1,10 +1,13 @@
-# For the secret key
 import os
 import secrets
+import json
 from flask import Flask, current_app, session, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import types
+from sqlalchemy.orm import joinedload
 from flask_migrate import Migrate
+from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
@@ -31,6 +34,7 @@ class Student(db.Model, UserMixin):
     email = db.Column(db.String(120), unique=True, nullable=False)
     number_of_lessons = db.Column(db.Integer, default=0)
     profile = db.relationship('StudentProfile', uselist=False, back_populates='student')
+    lesson_records = db.relationship('LessonRecord', back_populates='student')
 
     def __repr__(self):
         return f"Student('{self.username}', '{self.email}', '{self.number_of_lessons}')"
@@ -57,6 +61,7 @@ class Teacher(db.Model, UserMixin):
     password = db.Column(db.String(60), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     profile = db.relationship('TeacherProfile', uselist=False, back_populates='teacher')
+    lesson_records = db.relationship('LessonRecord', back_populates='teacher')
 
     def __repr__(self):
         return f"Teacher('{self.username}', '{self.email}')"
@@ -74,6 +79,43 @@ class TeacherProfile(db.Model):
 
 def __repr__(self):
     return f"TeacherProfile('{self.age}', '{self.hobbies}', '{self.motto}', '{self.blood_type}', '{self.image_file}', '{self.from_location}')"
+
+
+# Since I'm not using ProgreSQL, I need to create a custom type to store JSON data in SQLite
+class JsonEncodedDict(types.TypeDecorator):
+    impl = types.String
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return '{}'
+        else:
+            return json.dumps(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return {}
+        else:
+            return json.loads(value)
+
+
+# LessonRecord model
+class LessonRecord(db.Model):
+    __tablename__ = 'lesson_record'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('student.id'))
+    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'))
+    strengths = db.Column(db.String(1000))
+    areas_to_improve = db.Column(db.String(1000))
+    new_words = db.Column(JsonEncodedDict)
+    new_phrases = db.Column(JsonEncodedDict)
+    lesson_summary = db.Column(db.String(1000))
+    date = db.Column(db.DateTime, default=datetime.utcnow)  # Add this line
+
+    student = db.relationship('Student', back_populates='lesson_records')
+    teacher = db.relationship('Teacher', back_populates='lesson_records')
+
+    def __repr__(self):
+        return f"LessonRecord('{self.strengths}', '{self.areas_to_improve}', '{self.lesson_summary}')"
 
 
 # Ensure database tables are created
@@ -106,6 +148,13 @@ def get_teachers():
     page = request.args.get('page', 1, type=int)
     teachers = Teacher.query.paginate(page=page, per_page=5)
     return render_template("teachers.html", teachers=teachers)
+
+# Temporary Viewing Of 'Lesson Records'
+@app.route("/lessons", methods=["GET"])
+def get_lessons():
+    page = request.args.get('page', 1, type=int)
+    lessons = LessonRecord.query.paginate(page=page, per_page=5)
+    return render_template("lessons.html", lessons=lessons)
 
 @app.route('/portal_choice')
 def portal_choice():
@@ -330,8 +379,30 @@ def student_dashboard():
     # Your code here
     if session['user_type'] != 'student':
         return redirect(url_for('home'))
-    
-    return render_template('student_dashboard.html', profile=current_user.profile)
+
+    # Fetch the most recent lesson record for the logged-in student
+    most_recent_record = LessonRecord.query.filter_by(student_id=session['user_id']).options(
+        joinedload(LessonRecord.teacher).joinedload(Teacher.profile)
+    ).order_by(LessonRecord.date.desc()).first()
+
+    print(most_recent_record.teacher.profile)  # Debugging print statement
+    print(most_recent_record.teacher.profile.image_file)  # Debugging print statement
+
+    # Pass the most recent record and the profile to the template
+    return render_template('student_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record)
+
+
+@app.route('/student/lesson_records')
+def lesson_records():
+    # Fetch all lesson records for the logged-in student
+    page = request.args.get('page', 1, type=int)
+    lesson_records = LessonRecord.query.filter_by(student_id=session['user_id']).options(
+        joinedload(LessonRecord.teacher).joinedload(Teacher.profile)
+    ).order_by(LessonRecord.date.desc()).paginate(page=page, per_page=5)
+
+    # Pass the lesson records to the template
+    return render_template('lesson_records.html', lesson_records=lesson_records)
+
 
 @app.route('/edit_student_profile', methods=['GET', 'POST'])
 @login_required
@@ -365,6 +436,7 @@ def edit_student_profile():
 
     # Render the edit profile page.
     return render_template('edit_student_profile.html', profile=current_user.profile)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

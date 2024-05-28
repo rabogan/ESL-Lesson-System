@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Lesson Records
+{% endblock %}
+
+{% block main %}
+<section class="bg-white dark:bg-gray-900">
+    <div class="grid max-w-screen-xl px-4 py-8 mx-auto lg:gap-8 xl:gap-0 lg:py-16 lg:grid-cols-12">
+        <div class="mr-auto place-self-center lg:col-span-7">
+            <h1 class="max-w-2xl mb-4 text-3xlxl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white">Lesson Records</h1>
+            {% for record in lesson_records.items %}
+            <div class="card">
+                <p>Date of Update: {{ record.date.strftime('%Y-%m-%d %H:%M') }}</p>
+                <div class="grid grid-cols-3">
+                    <div>
+                        <img src="{{ url_for('static', filename='img/teacherImg/' + record.teacher.profile.image_file) }}" alt="Teacher's profile picture">
+                        <p>Teacher: {{ record.teacher.username }}</p>
+                    </div>
+                    <div>
+                        <p>Lesson Summary: {{ record.lesson_summary }}</p>
+                    </div>
+                    <div>
+                        <div>New Words: {{ record.new_words }}</div>
+                        <div>New Phrases: {{ record.new_phrases }}</div>
+                        <div>Strengths: {{ record.strengths }}</div>
+                        <div>Area To Improve: {{ record.areas_to_improve }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            <div class="pagination">
+                {% if lesson_records.has_prev %}
+                    <a href="{{ url_for('lesson_records', page=lesson_records.prev_num) }}">Previous</a>
+                {% endif %}
+                {% if lesson_records.has_next %}
+                    <a href="{{ url_for('lesson_records', page=lesson_records.next_num) }}">Next</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
