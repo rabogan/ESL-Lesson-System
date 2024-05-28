@@ -109,7 +109,7 @@ class LessonRecord(db.Model):
     new_words = db.Column(JsonEncodedDict)
     new_phrases = db.Column(JsonEncodedDict)
     lesson_summary = db.Column(db.String(1000))
-    date = db.Column(db.DateTime, default=datetime.utcnow)  # Add this line
+    date = db.Column(db.DateTime, default=datetime.utcnow)
 
     student = db.relationship('Student', back_populates='lesson_records')
     teacher = db.relationship('Teacher', back_populates='lesson_records')
@@ -117,6 +117,18 @@ class LessonRecord(db.Model):
     def __repr__(self):
         return f"LessonRecord('{self.strengths}', '{self.areas_to_improve}', '{self.lesson_summary}')"
 
+# Example of adding a lesson record (for future use!)
+# new_lesson = LessonRecord(
+#    student_id=1,
+#    teacher_id=2,
+#    strengths="Great pronunciation",
+#    areas_to_improve="Needs to work on grammar",
+#    new_words=["bureaucracy", "food truck", "grief"],
+#    new_phrases=["I suck at English", "My family is ashamed of my idiocy", "Think positive!"],
+#    lesson_summary="Great lesson focusing on shopping phrases."
+#)
+#db.session.add(new_lesson)
+#db.session.commit()
 
 # Ensure database tables are created
 with app.app_context():
@@ -401,9 +413,6 @@ def student_dashboard():
     most_recent_record = LessonRecord.query.filter_by(student_id=session['user_id']).options(
         joinedload(LessonRecord.teacher).joinedload(Teacher.profile)
     ).order_by(LessonRecord.date.desc()).first()
-
-    print(most_recent_record.teacher.profile)  # Debugging print statement
-    print(most_recent_record.teacher.profile.image_file)  # Debugging print statement
 
     # Pass the most recent record and the profile to the template
     return render_template('student_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record)
