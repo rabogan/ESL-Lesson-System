@@ -52,6 +52,9 @@
                                 <li>
                                     <a href="{{ url_for('edit_teacher_profile') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 dark:text-gray-200 dark:hover:text-white">Edit Profile</a>
                                 </li>
+                                <li>
+                                    <a href="{{ url_for('manage_lesson_slots') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 dark:text-gray-200 dark:hover:text-white">Schedule Management</a>
+                                </li>
                                 {% elif session['user_type'] == 'student' %}
                                 <li>
                                     <a href="{{ url_for('student_dashboard') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 dark:text-gray-200 dark:hover:text-white">Student Dashboard</a>

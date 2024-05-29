@@ -369,6 +369,38 @@ def logout():
 
 
 # Teacher Only Routes
+@app.route('/teacher/teacher_dashboard')
+@login_required
+def teacher_dashboard():
+    # Ensure the current user is a teacher
+    if session['user_type'] != 'teacher':
+        return redirect(url_for('index'))  # or wherever you want to redirect non-teachers
+
+    # Fetch the most recent lesson record written by the logged-in teacher
+    most_recent_record = LessonRecord.query.filter_by(teacher_id=session['user_id']).options(
+        joinedload(LessonRecord.student).joinedload(Student.profile)
+    ).order_by(LessonRecord.date.desc()).first()
+
+    # Render the teacher dashboard page
+    return render_template('teacher/teacher_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record)
+
+
+@app.route('/teacher/lesson_records')
+@login_required
+def teacher_lesson_records():
+    if session['user_type'] != 'teacher':
+        return redirect(url_for('home'))
+
+    # Fetch the lesson records written by the logged-in teacher
+    page = request.args.get('page', 1, type=int)
+    lesson_records = LessonRecord.query.filter_by(teacher_id=session['user_id']).options(
+        joinedload(LessonRecord.student).joinedload(Student.profile)
+    ).order_by(LessonRecord.date.desc()).paginate(page=page, per_page=5)
+
+    # Pass the lesson records to the template
+    return render_template('/teacher/teacher_lesson_records.html', lesson_records=lesson_records)
+
+
 @app.route('/teacher/edit_teacher_profile', methods=['GET', 'POST'])
 @login_required
 def edit_teacher_profile():
@@ -389,40 +421,64 @@ def edit_teacher_profile():
     return render_template('teacher/edit_teacher_profile.html', profile=current_user.profile)
 
 
-@app.route('/teacher_dashboard')
+@app.route('/teacher/lesson_slots', methods=['GET', 'POST'])
 @login_required
-def teacher_dashboard():
-    # Ensure the current user is a teacher
-    if session['user_type'] != 'teacher':
-        return redirect(url_for('index'))  # or wherever you want to redirect non-teachers
-
-    # Fetch the most recent lesson record written by the logged-in teacher
-    most_recent_record = LessonRecord.query.filter_by(teacher_id=session['user_id']).options(
-        joinedload(LessonRecord.student).joinedload(Student.profile)
-    ).order_by(LessonRecord.date.desc()).first()
-
-    # Render the teacher dashboard page
-    return render_template('teacher_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record)
+def manage_lesson_slots():
+    if request.method == 'POST':
+        start_time = datetime.strptime(request.form['start_time'], '%Y-%m-%dT%H:%M')
+        end_time = datetime.strptime(request.form['end_time'], '%Y-%m-%dT%H:%M')
+        new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time)
+        db.session.add(new_slot)
+        db.session.commit()
+        flash('New lesson slot created!', 'success')
+    lesson_slots = LessonSlot.query.filter_by(teacher_id=current_user.id).all()
+    return render_template('teacher/lesson_slots.html', lesson_slots=lesson_slots, datetime=datetime, timedelta=timedelta)
 
 
-@app.route('/teacher/lesson_records')
+@app.route('/teacher/update_slot', methods=['POST'])
 @login_required
-def teacher_lesson_records():
-    # Ensure the current user is a teacher
-    if session['user_type'] != 'teacher':
-        return redirect(url_for('home'))
+def update_lesson_slot():
+    data = request.get_json()
+    slot_id = data['slot_id']
+    action = data['action'] 
 
-    # Fetch the lesson records written by the logged-in teacher
-    page = request.args.get('page', 1, type=int)
-    lesson_records = LessonRecord.query.filter_by(teacher_id=session['user_id']).options(
-        joinedload(LessonRecord.student).joinedload(Student.profile)
-    ).order_by(LessonRecord.date.desc()).paginate(page=page, per_page=5)
+    if action == 'open':
+        # Create new slot
+        start_time = datetime.strptime(data['start_time'], '%Y-%m-%d %H:%M:%S')
+        end_time = datetime.strptime(data['end_time'], '%Y-%m-%d %H:%M:%S')
+        new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time, is_booked=False)
+        db.session.add(new_slot)
+        db.session.commit()
+        return jsonify({'status': 'success', 'slot_id': new_slot.id})
+    elif action == 'close':
+        # Delete existing slot
+        slot = LessonSlot.query.get(slot_id)
+        if slot and slot.teacher_id == current_user.id:
+            db.session.delete(slot)
+            db.session.commit()
+            return jsonify({'status': 'success'})
+    
+    return jsonify({'status': 'error'})
 
-    # Pass the lesson records to the template
-    return render_template('teacher_lesson_records.html', lesson_records=lesson_records)
+
+@app.route('/teacher/update_slots', methods=['POST'])
+@login_required
+def update_slots():
+    data = request.get_json()
+    for item in data:
+        if item['action'] == 'open':
+            start_time = datetime.strptime(item['start_time'], '%Y-%m-%d %H:%M:%S')
+            new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=start_time + timedelta(minutes=59))
+            db.session.add(new_slot)
+        elif item['action'] == 'close':
+            slot = LessonSlot.query.get(item['slot_id'])
+            if slot:
+                db.session.delete(slot)
+    db.session.commit()
+    return jsonify({'status': 'success'})
 
 
-
+# Student Only Routes
 @app.route('/student/dashboard')
 def student_dashboard():
     # Your code here
@@ -540,62 +596,6 @@ def student_profile(student_id):
 
     # Pass the student's profile to the template
     return render_template('student_profile.html', student=student)
-
-
-@app.route('/teacher/lesson_slots', methods=['GET', 'POST'])
-@login_required
-def manage_lesson_slots():
-    if request.method == 'POST':
-        start_time = datetime.strptime(request.form['start_time'], '%Y-%m-%dT%H:%M')
-        end_time = datetime.strptime(request.form['end_time'], '%Y-%m-%dT%H:%M')
-        new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time)
-        db.session.add(new_slot)
-        db.session.commit()
-        flash('New lesson slot created!', 'success')
-    lesson_slots = LessonSlot.query.filter_by(teacher_id=current_user.id).all()
-    return render_template('teacher/lesson_slots.html', lesson_slots=lesson_slots, datetime=datetime, timedelta=timedelta)
-
-
-@app.route('/teacher/update_slot', methods=['POST'])
-@login_required
-def update_lesson_slot():
-    data = request.get_json()
-    slot_id = data['slot_id']
-    action = data['action']  # 'open' or 'close'
-
-    if action == 'open':
-        # Create new slot
-        start_time = datetime.strptime(data['start_time'], '%Y-%m-%d %H:%M:%S')
-        end_time = datetime.strptime(data['end_time'], '%Y-%m-%d %H:%M:%S')
-        new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time, is_booked=False)
-        db.session.add(new_slot)
-        db.session.commit()
-        return jsonify({'status': 'success', 'slot_id': new_slot.id})
-    elif action == 'close':
-        # Delete existing slot
-        slot = LessonSlot.query.get(slot_id)
-        if slot and slot.teacher_id == current_user.id:
-            db.session.delete(slot)
-            db.session.commit()
-            return jsonify({'status': 'success'})
-    
-    return jsonify({'status': 'error'})
-
-@app.route('/teacher/update_slots', methods=['POST'])
-@login_required
-def update_slots():
-    data = request.get_json()
-    for item in data:
-        if item['action'] == 'open':
-            start_time = datetime.strptime(item['start_time'], '%Y-%m-%d %H:%M:%S')
-            new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=start_time + timedelta(minutes=59))
-            db.session.add(new_slot)
-        elif item['action'] == 'close':
-            slot = LessonSlot.query.get(item['slot_id'])
-            if slot:
-                db.session.delete(slot)
-    db.session.commit()
-    return jsonify({'status': 'success'})
 
 
 if __name__ == '__main__':
