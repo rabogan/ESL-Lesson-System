@@ -1,13 +1,13 @@
 import os
 import secrets
 import json
-from flask import Flask, current_app, session, render_template, request, redirect, url_for, flash
+from flask import Flask, current_app, session, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import types
 from sqlalchemy.orm import joinedload
 from flask_migrate import Migrate
-from datetime import datetime
+from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
@@ -35,9 +35,11 @@ class Student(db.Model, UserMixin):
     number_of_lessons = db.Column(db.Integer, default=0)
     profile = db.relationship('StudentProfile', uselist=False, back_populates='student')
     lesson_records = db.relationship('LessonRecord', back_populates='student')
+    bookings = db.relationship('Booking', back_populates='student')
 
     def __repr__(self):
         return f"Student('{self.username}', '{self.email}', '{self.number_of_lessons}')"
+
 
 # StudentProfile model
 class StudentProfile(db.Model):
@@ -62,6 +64,7 @@ class Teacher(db.Model, UserMixin):
     email = db.Column(db.String(120), unique=True, nullable=False)
     profile = db.relationship('TeacherProfile', uselist=False, back_populates='teacher')
     lesson_records = db.relationship('LessonRecord', back_populates='teacher')
+    lesson_slots = db.relationship('LessonSlot', back_populates='teacher')  # new line
 
     def __repr__(self):
         return f"Teacher('{self.username}', '{self.email}')"
@@ -129,6 +132,34 @@ class LessonRecord(db.Model):
 #)
 #db.session.add(new_lesson)
 #db.session.commit()
+
+# Representing the time slot that a teacher is available for a lesson
+class LessonSlot(db.Model):
+    __tablename__ = 'lesson_slot'
+    id = db.Column(db.Integer, primary_key=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
+    start_time = db.Column(db.DateTime, nullable=False)
+    end_time = db.Column(db.DateTime, nullable=False)
+    is_booked = db.Column(db.Boolean, default=False)
+    teacher = db.relationship('Teacher', back_populates='lesson_slots')
+    booking = db.relationship('Booking', uselist=False, back_populates='lesson_slot')
+
+    def __repr__(self):
+        return f"LessonSlot('{self.teacher_id}', '{self.start_time}', '{self.end_time}', '{self.is_booked}')"
+
+
+class Booking(db.Model):
+    __tablename__ = 'booking'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
+    lesson_slot_id = db.Column(db.Integer, db.ForeignKey('lesson_slot.id'), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='booked')
+    student = db.relationship('Student', back_populates='bookings')
+    lesson_slot = db.relationship('LessonSlot', back_populates='booking')
+
+    def __repr__(self):
+        return f"Booking('{self.student_id}', '{self.lesson_slot_id}', '{self.status}')"
+
 
 # Ensure database tables are created
 with app.app_context():
@@ -527,6 +558,62 @@ def student_profile(student_id):
 
     # Pass the student's profile to the template
     return render_template('student_profile.html', student=student)
+
+
+@app.route('/teacher/lesson_slots', methods=['GET', 'POST'])
+@login_required
+def manage_lesson_slots():
+    if request.method == 'POST':
+        start_time = datetime.strptime(request.form['start_time'], '%Y-%m-%dT%H:%M')
+        end_time = datetime.strptime(request.form['end_time'], '%Y-%m-%dT%H:%M')
+        new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time)
+        db.session.add(new_slot)
+        db.session.commit()
+        flash('New lesson slot created!', 'success')
+    lesson_slots = LessonSlot.query.filter_by(teacher_id=current_user.id).all()
+    return render_template('teacher/lesson_slots.html', lesson_slots=lesson_slots, datetime=datetime, timedelta=timedelta)
+
+
+@app.route('/teacher/update_slot', methods=['POST'])
+@login_required
+def update_lesson_slot():
+    data = request.get_json()
+    slot_id = data['slot_id']
+    action = data['action']  # 'open' or 'close'
+
+    if action == 'open':
+        # Create new slot
+        start_time = datetime.strptime(data['start_time'], '%Y-%m-%d %H:%M:%S')
+        end_time = datetime.strptime(data['end_time'], '%Y-%m-%d %H:%M:%S')
+        new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time, is_booked=False)
+        db.session.add(new_slot)
+        db.session.commit()
+        return jsonify({'status': 'success', 'slot_id': new_slot.id})
+    elif action == 'close':
+        # Delete existing slot
+        slot = LessonSlot.query.get(slot_id)
+        if slot and slot.teacher_id == current_user.id:
+            db.session.delete(slot)
+            db.session.commit()
+            return jsonify({'status': 'success'})
+    
+    return jsonify({'status': 'error'})
+
+@app.route('/teacher/update_slots', methods=['POST'])
+@login_required
+def update_slots():
+    data = request.get_json()
+    for item in data:
+        if item['action'] == 'open':
+            start_time = datetime.strptime(item['start_time'], '%Y-%m-%d %H:%M:%S')
+            new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=start_time + timedelta(minutes=59))
+            db.session.add(new_slot)
+        elif item['action'] == 'close':
+            slot = LessonSlot.query.get(item['slot_id'])
+            if slot:
+                db.session.delete(slot)
+    db.session.commit()
+    return jsonify({'status': 'success'})
 
 
 if __name__ == '__main__':

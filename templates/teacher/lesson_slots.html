@@ -1,0 +1,134 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Manage Lesson Slots
+{% endblock %}
+
+{% block main %}
+<div class="container mx-auto px-4 bg-white dark:bg-gray-800">
+    <h2 class="text-2xl font-bold my-4 text-center text-gray-900 dark:text-white">Manage Lesson Slots</h2>
+
+    <div class="flex justify-center my-4">
+        <button id="edit-button" class="btn btn-primary mr-2 hidden">Edit</button>
+        <button id="submit-button" class="btn btn-success hidden">Submit</button>
+    </div>
+
+
+    <table id="schedule-grid" class="table-auto w-full border-collapse border border-gray-300">
+        <thead>
+            <tr class="bg-gray-200">
+                <th class="border border-gray-300 p-2">Time</th>
+                {% set most_recent_sunday = datetime.utcnow() - timedelta(days=datetime.utcnow().weekday() + 1) %}
+                {% for i in range(7) %}
+                <th class="border border-gray-300 p-2">{{ (most_recent_sunday + timedelta(days=i)).strftime('%d %b') }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for hour in range(7, 24) %}
+            <tr>
+                <td class="border border-gray-300 p-2 text-center">{{ '%02d:00' % hour }}</td>
+                {% for i in range(7) %}
+                <td data-time="{{ (datetime.utcnow() + timedelta(days=i)).strftime('%Y-%m-%d') }} {{ '%02d:00:00' % hour }}" class="slot border border-gray-300 p-2 text-center cursor-pointer">
+                    {% set slot = lesson_slots | selectattr('start_time', 'equalto', (datetime.utcnow() + timedelta(days=i)).replace(hour=hour, minute=0, second=0, microsecond=0)) | list | first %}
+                    {% if slot %}
+                    <span class="status {% if slot.is_booked %}bg-blue-500 text-white{% else %}bg-beige text-black{% endif %} rounded p-1" data-slot-id="{{ slot.id }}">
+                        {{ 'BOOKED' if slot.is_booked else 'OPEN' }}
+                    </span>
+                    {% if slot.is_booked %}
+                    <div class="text-sm text-gray-700">Student ID: {{ slot.student_id }}</div>
+                    {% endif %}
+                    {% else %}
+                    <span class="status bg-gray-300 text-black rounded p-1" data-slot-id="">AVAILABLE</span>
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    let editMode = false;
+    let startDate = new Date();
+    startDate.setDate(startDate.getDate() - startDate.getDay());
+
+    // Update the table with the lesson slots for the week starting on startDate
+    function updateTable() {
+        // Make a request to the server to get the lesson slots for the week
+        // starting on startDate. The URL and request method will depend on your server setup.
+        fetch('/get_lesson_slots?start_date=' + startDate.toISOString(), {
+            method: 'GET',
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Update the table with the new data
+            // This will depend on the structure of the data returned by the server
+        });
+    }
+
+    document.querySelectorAll('.slot').forEach(function (slot) {
+        slot.addEventListener('click', function () {
+            const statusSpan = slot.querySelector('.status');
+            const slotId = statusSpan.getAttribute('data-slot-id');
+            const startTime = slot.getAttribute('data-time');
+
+            if (statusSpan.classList.contains('bg-blue-500')) {
+                return; // Don't allow any action on booked slots
+            }
+
+            if (!editMode) {
+                // Toggle edit mode
+                document.getElementById('edit-button').classList.toggle('hidden');
+                document.getElementById('submit-button').classList.toggle('hidden');
+                editMode = true;
+            }
+
+            statusSpan.classList.toggle('bg-beige');
+            statusSpan.classList.toggle('bg-gray-300');
+            statusSpan.textContent = statusSpan.classList.contains('bg-beige') ? 'OPEN' : 'AVAILABLE';
+        });
+    });
+
+    document.getElementById('submit-button').addEventListener('click', function () {
+        const updates = [];
+        document.querySelectorAll('.slot').forEach(function (slot) {
+            const statusSpan = slot.querySelector('.status');
+            const slotId = statusSpan.getAttribute('data-slot-id');
+            const startTime = slot.getAttribute('data-time');
+            const isOpen = statusSpan.classList.contains('bg-beige');
+            
+            if (isOpen && !slotId) {
+                updates.push({ action: 'open', start_time: startTime, end_time: startTime.replace('00:00', '59:59') });
+            } else if (!isOpen && slotId) {
+                updates.push({ action: 'close', slot_id: slotId });
+            }
+        });
+
+        fetch('/teacher/update_slots', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updates)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                window.location.reload();
+            } else {
+                alert('An error occurred.');
+            }
+        });
+    });
+
+    document.getElementById('edit-button').addEventListener('click', function () {
+        editMode = false;
+        document.getElementById('edit-button').classList.add('hidden');
+        document.getElementById('submit-button').classList.add('hidden');
+    });
+});
+</script>
+{% endblock %}
