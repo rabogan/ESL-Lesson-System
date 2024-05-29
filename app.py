@@ -179,30 +179,41 @@ def load_user(user_id):
         return None
 
 # Temporary test of 'students'
-@app.route("/students", methods=["GET"])
+@app.route("/test_students", methods=["GET"])
 def get_students():
     page = request.args.get('page', 1, type=int)
     students = Student.query.paginate(page=page, per_page=5)
-    return render_template("students.html", students=students)
+    return render_template("test/students.html", students=students)
 
 # Temporary test of 'teachers'
-@app.route("/teachers", methods=["GET"])
+@app.route("/test_teachers", methods=["GET"])
 def get_teachers():
     page = request.args.get('page', 1, type=int)
     teachers = Teacher.query.paginate(page=page, per_page=5)
-    return render_template("teachers.html", teachers=teachers)
+    return render_template("test/teachers.html", teachers=teachers)
 
 # Temporary Viewing Of 'Lesson Records'
-@app.route("/lessons", methods=["GET"])
+@app.route("/test_lessons", methods=["GET"])
 def get_lessons():
     page = request.args.get('page', 1, type=int)
     lessons = LessonRecord.query.paginate(page=page, per_page=5)
-    return render_template("lessons.html", lessons=lessons)
+    return render_template("test/lessons.html", lessons=lessons)
+
+
+@app.route("/")
+def index():
+    return render_template("display.html")
+
 
 @app.route('/portal_choice')
 def portal_choice():
+    """
+    This is where the user chooses whether to log in/register as a student or teacher.
+    """
     return render_template('portal_choice.html')
 
+
+# Logs out the user and redirects them to the index page.
 @app.route('/logout')
 def logout():
     logout_user()
@@ -211,6 +222,8 @@ def logout():
     flash('You were logged out')
     return redirect(url_for('index'))
 
+
+# Handles student registration
 @app.route("/student/register", methods=["GET", "POST"])
 def student_register():
     if request.method == "POST":
@@ -219,7 +232,7 @@ def student_register():
         password = request.form.get("password")
         confirmation = request.form.get("confirmation")
 
-        # Check the validity of the input
+        # Check input validity
         if not username:
             return render_template("apology.html", top="Error", bottom="Please provide a valid username"), 400
         if not password:
@@ -239,18 +252,19 @@ def student_register():
         db.session.add(new_student)
         db.session.commit()
         
-        # Create a new StudentProfile for the newly registered teacher
+        # Create a new StudentProfile for the newly registered student
         profile = StudentProfile(student_id=new_student.id, image_file='default1.jpg')
         db.session.add(profile)
         db.session.commit()
 
-        # Store the user ID in the session
+        # Store the user_ID/user_type/user_name in the session
         session['user_id'] = new_student.id
         session['user_type'] = 'student'
-        session['user_name'] = new_student.username  # Add this line
+        session['user_name'] = new_student.username 
 
         return redirect(url_for("student_login"))
     return render_template("student_register.html")
+
 
 @app.route("/student/login", methods=["GET", "POST"])
 def student_login():
@@ -274,8 +288,9 @@ def student_login():
         session['user_type'] = 'student'
         session['user_name'] = student.username
 
-        return redirect(url_for("index"))  # Redirect to a main page after login
+        return redirect(url_for("student_dashboard"))
     return render_template("student_login.html")
+
 
 @app.route("/teacher/register", methods=["GET", "POST"])
 def teacher_register():
@@ -285,7 +300,7 @@ def teacher_register():
         password = request.form.get("password")
         confirmation = request.form.get("confirmation")
 
-        # Check the validity of the input
+        # Input valdidity check
         if not username:
             return render_template("apology.html", top="Error", bottom="Please provide a valid username"), 400
         if not password:
@@ -310,13 +325,14 @@ def teacher_register():
         db.session.add(profile)
         db.session.commit()
 
-        # Store the user ID in the session
+        # Store the user_id, user_type and user_name in the session
         session['user_id'] = new_teacher.id
         session['user_type'] = 'teacher'
         session['user_name'] = new_teacher.username
 
         return redirect(url_for("teacher_login"))
     return render_template("teacher_register.html")
+
 
 @app.route("/teacher/login", methods=["GET", "POST"])
 def teacher_login():
@@ -333,25 +349,23 @@ def teacher_login():
         if teacher is None or not check_password_hash(teacher.password, password):
             return render_template("apology.html", top="Error", bottom="Invalid username or password"), 400
 
-        # Log in the user and store their ID and type in the session
+        # Log in the user and store their info in the session
         login_user(teacher)
         session['user_id'] = teacher.id
         session['user_type'] = 'teacher'
         session['user_name'] = teacher.username
 
-        return redirect(url_for("index"))  # Redirect to a main page after login
+        return redirect(url_for("teacher_dashboard"))
     return render_template("teacher_login.html")
 
-@app.route("/")
-def index():
-    return render_template("display.html")
 
-
+# Shows a rogue's gallery of all the teachers in the school
 @app.route('/meetYourTeacher')
 def meet_your_teacher():
     page = request.args.get('page', 1, type=int)
     teachers = Teacher.query.paginate(page=page, per_page=6)
     return render_template('meetYourTeacher.html', teachers=teachers)
+
 
 @app.route('/edit_teacher_profile', methods=['GET', 'POST'])
 @login_required
