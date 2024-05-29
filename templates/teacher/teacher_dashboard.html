@@ -10,14 +10,29 @@
         <h1 class="text-3xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white mb-8">
             Welcome, {{ session['user_name'] }}!
         </h1>
-        {% for lesson in upcoming_lessons %}
-        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
-            <h2 class="text-xl font-bold mb-4">Upcoming Lesson</h2>
-            <p class="text-gray-900 dark:text-gray-100">Student: {{ lesson.student.username }}</p>
-            <p class="text-gray-900 dark:text-gray-100">Date: {{ lesson.date.strftime('%Y-%m-%d %H:%M') }}</p>
-            <a href="{{ url_for('edit_lesson', lesson_id=lesson.id) }}" class="text-blue-500 hover:underline dark:text-blue-400">Edit Lesson</a>
+
+        <!-- Manage Schedule Button -->
+        <div class="mb-8">
+            <a href="{{ url_for('manage_lesson_slots') }}">
+                <button class="w-full bg-blue-500 text-white py-4 px-6 rounded hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-xl font-bold">
+                    Manage Schedule
+                </button>
+            </a>
         </div>
-        {% endfor %}
+
+        <!-- Upcoming Lessons Section -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Upcoming Lessons</h2>
+            {% for lesson in upcoming_lessons %}
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+                <h3 class="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Lesson with {{ lesson.student.username }}</h3>
+                <p class="text-gray-900 dark:text-gray-100">Date: {{ lesson.date.strftime('%Y-%m-%d %H:%M') }}</p>
+                <a href="{{ url_for('edit_lesson', lesson_id=lesson.id) }}" class="text-blue-500 hover:underline dark:text-blue-400">Edit Lesson</a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Most Recent Lesson Record Section -->
         {% if most_recent_record %}
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
             <div class="grid lg:grid-cols-12 gap-8">
@@ -69,8 +84,8 @@
             </a>
         </div>
         {% else %}
-            <!-- Show a message if there are no lesson records -->
-            <p>No lessons taken yet!</p>
+        <!-- Show a message if there are no lesson records -->
+        <p class="text-gray-900 dark:text-gray-100">No lessons taken yet!</p>
         {% endif %}
     </div>
 </section>

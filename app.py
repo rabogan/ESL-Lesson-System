@@ -120,6 +120,7 @@ class LessonRecord(db.Model):
     def __repr__(self):
         return f"LessonRecord('{self.strengths}', '{self.areas_to_improve}', '{self.lesson_summary}')"
 
+
 # Example of adding a lesson record (for future use!)
 # new_lesson = LessonRecord(
 #    student_id=1,
@@ -400,20 +401,20 @@ def teacher_dashboard():
 
     # Fetch the most recent completed lesson record written by the logged-in teacher
     most_recent_record = LessonRecord.query.filter(
-    and_(
-        LessonRecord.teacher_id == session['user_id'],
-        LessonRecord.date <= datetime.utcnow(),
-        LessonRecord.lesson_summary.isnot(None)  # Add this line
-    )
+        and_(
+            LessonRecord.teacher_id == session['user_id'],
+            LessonRecord.date <= datetime.utcnow(),
+            LessonRecord.lesson_summary.isnot(None)
+        )
     ).options(
-    joinedload(LessonRecord.student).joinedload(Student.profile)
+        joinedload(LessonRecord.student).joinedload(Student.profile)
     ).order_by(LessonRecord.date.desc()).first()
-    
+
     # Fetch the upcoming lessons for the logged-in teacher
     upcoming_lessons = LessonRecord.query.filter(
         and_(
             LessonRecord.teacher_id == session['user_id'],
-            LessonRecord.date >= datetime.utcnow()
+            LessonRecord.date >= datetime.utcnow().date()  # Include lessons from today
         )
     ).options(
         joinedload(LessonRecord.student).joinedload(Student.profile)
@@ -421,6 +422,7 @@ def teacher_dashboard():
 
     # Render the teacher dashboard page
     return render_template('teacher/teacher_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record, upcoming_lessons=upcoming_lessons)
+
 
 
 @app.route('/teacher/lesson_records')
@@ -621,6 +623,39 @@ def edit_student_profile_by_teacher(student_id):
         db.session.commit()
 
     return render_template('view_student_profile.html', profile=student.profile)
+
+
+@app.route('/teacher/edit_lesson/<int:lesson_id>', methods=['GET', 'POST'])
+@login_required
+def edit_lesson(lesson_id):
+    """
+    Allow the teacher to edit a lesson record.
+    """
+    if session['user_type'] != 'teacher':
+        return redirect(url_for('index'))
+
+    lesson = LessonRecord.query.get_or_404(lesson_id)
+
+    if request.method == 'POST':
+        lesson.lesson_summary = request.form.get('lesson_summary')
+        lesson.strengths = request.form.get('strengths')
+        lesson.areas_to_improve = request.form.get('areas_to_improve')
+
+        new_words = request.form.get('new_words')
+        new_phrases = request.form.get('new_phrases')
+
+        try:
+            lesson.new_words = json.loads(new_words) if new_words else []
+            lesson.new_phrases = json.loads(new_phrases) if new_phrases else []
+        except json.JSONDecodeError:
+            flash('Invalid input for new words or new phrases. Please try again.', 'danger')
+            return render_template('teacher/edit_lesson.html', lesson=lesson)
+
+        db.session.commit()
+        flash('Lesson updated successfully!', 'success')
+        return redirect(url_for('teacher_dashboard'))
+
+    return render_template('teacher/edit_lesson.html', lesson=lesson)
 
 
 # Student Only Routes

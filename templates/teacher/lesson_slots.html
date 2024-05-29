@@ -98,34 +98,34 @@
     document.addEventListener('DOMContentLoaded', function () {
         let editMode = false;
         let startDate = new Date('{{ start_date.strftime("%Y-%m-%d") }}');
-    
+
         function updateTable() {
             window.location.href = `/teacher/lesson_slots?start_date=${startDate.toISOString().split('T')[0]}`;
         }
     
         function initializeSlots() {
-            document.querySelectorAll('.slot').forEach(function (slot,index) {
+            document.querySelectorAll('.slot').forEach(function (slot) {
                 const statusSpan = slot.querySelector('.status');
                 if (statusSpan) {  // Check that statusSpan is not null
                     const slotId = statusSpan.getAttribute('data-slot-id');
                     const startTime = slot.getAttribute('data-time');
-    
-                if (statusSpan.classList.contains('bg-blue-500') || slot.querySelector('.past-slot')) {
-                    return; // Don't allow any action on booked slots or past slots
-                }
-    
-                if (slotId) {
-                    statusSpan.classList.add('bg-orange-300');
-                    statusSpan.classList.remove('bg-gray-300');
-                    statusSpan.textContent = 'OPEN';
+        
+                    if (statusSpan.classList.contains('bg-blue-500') || slot.classList.contains('past-slot')) {
+                        return; // Don't allow any action on booked slots or past slots
+                    }
+        
+                    if (slotId) {
+                        statusSpan.classList.add('bg-orange-300');
+                        statusSpan.classList.remove('bg-gray-300');
+                        statusSpan.textContent = 'OPEN';
+                    } else {
+                        statusSpan.classList.add('bg-gray-300');
+                        statusSpan.classList.remove('bg-orange-300');
+                        statusSpan.textContent = '';
+                    }
                 } else {
-                    statusSpan.classList.add('bg-gray-300');
-                    statusSpan.classList.remove('bg-orange-300');
-                    statusSpan.textContent = '';
+                    console.log('No status span found for slot');
                 }
-            } else {
-                console.log('No status span found for slot');
-            }
             });
         }
     
@@ -137,7 +137,7 @@
                 const slotId = statusSpan.getAttribute('data-slot-id');
                 const startTime = slot.getAttribute('data-time');
     
-                if (statusSpan.classList.contains('bg-blue-500') || slot.querySelector('.past-slot')) {
+                if (statusSpan.classList.contains('bg-blue-500') || slot.classList.contains('past-slot')) {
                     return; // Don't allow any action on booked slots or past slots
                 }
     
