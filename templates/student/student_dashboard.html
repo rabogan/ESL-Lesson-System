@@ -10,7 +10,20 @@
         <h1 class="text-3xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white mb-8">
             Welcome, {{ session['user_name'] }}!
         </h1>
+        <!-- Add the "Schedule A Lesson" button here -->
+        <<section class="bg-white dark:bg-gray-900 flex items-center justify-center h-screen">
+            <div class="card bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden mb-8">
+                <div class="p-6 text-center">
+                    <h2 class="text-2xl font-bold dark:text-gray-300 mb-4">Ready for your next lesson?</h2>
+                    <p class="text-gray-700 dark:text-gray-300 mb-4">Click the button below to schedule your next lesson.</p>
+                    <a href="{{ url_for('student_book_lesson') }}" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                        Schedule A Lesson
+                    </a>
+                </div>
+            </div>
+        </section>
         {% if most_recent_record %}
+        <h2 class="text-2xl font-bold dark:text-gray-300 mb-4">Your Previous Lesson With {{ most_recent_record.teacher.username }}</h2>
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
             <div class="grid lg:grid-cols-12 gap-8">
                 <div class="lg:col-span-2 flex flex-col items-center">

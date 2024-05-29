@@ -32,6 +32,7 @@ class Student(db.Model, UserMixin):
     password = db.Column(db.String(60), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     number_of_lessons = db.Column(db.Integer, default=0)
+    lessons_purchased = db.Column(db.Integer, default=1)
     profile = db.relationship('StudentProfile', uselist=False, back_populates='student')
     lesson_records = db.relationship('LessonRecord', back_populates='student')
     bookings = db.relationship('Booking', back_populates='student')
@@ -660,6 +661,61 @@ def edit_student_profile():
 
     # Render the edit profile page.
     return render_template('student/edit_student_profile.html', profile=current_user.profile)
+
+
+@app.route('/student/book_lesson', methods=['GET', 'POST'])
+@login_required
+def student_book_lesson():
+    """
+    This route allows students to book a lesson slot with a Teacher.
+    """
+    if request.method == 'POST':
+        lesson_slot_id = request.form.get('lesson_slot')
+        teacher_id = request.form.get('teacher')
+
+        # Fetch the lesson slot
+        lesson_slot = LessonSlot.query.get(lesson_slot_id)
+
+        # Check if the lesson slot exists and is not already booked
+        if not lesson_slot or lesson_slot.is_booked:
+            flash('Lesson slot is not available', 'error')
+            return redirect(url_for('dashboard'))
+
+        # Fetch the current student
+        student = Student.query.get(current_user.id)
+
+        # Check if the student has enough lessons purchased
+        if student.lessons_purchased <= student.number_of_lessons:
+            flash('Not enough lessons purchased', 'error')
+            return redirect(url_for('dashboard'))
+
+        # Create a new booking
+        booking = Booking(student_id=student.id, lesson_slot_id=lesson_slot.id)
+        db.session.add(booking)
+
+        # Update the lesson slot and student
+        lesson_slot.is_booked = True
+        student.number_of_lessons += 1
+
+        # Create a new lesson record
+        lesson_record = LessonRecord(
+            student_id=current_user.id,
+            teacher_id=teacher_id,
+            date=lesson_slot.date
+        )
+        db.session.add(lesson_record)
+
+        # Commit the changes to the database
+        db.session.commit()
+
+        flash('Lesson booked successfully', 'success')
+        return redirect(url_for('dashboard'))
+    else:  # GET request
+        # Fetch all available lesson slots
+        available_lesson_slots = LessonSlot.query.filter_by(is_booked=False).all()
+
+        # Pass the available lesson slots to the template
+        return render_template('student/book_lesson.html', lesson_slots=available_lesson_slots)
 
 
 if __name__ == '__main__':
