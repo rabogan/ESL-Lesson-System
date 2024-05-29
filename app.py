@@ -451,16 +451,6 @@ def edit_teacher_profile():
 @app.route('/teacher/lesson_slots', methods=['GET', 'POST'])
 @login_required
 def manage_lesson_slots():
-    """
-    This route lets a teacher manage lesson slots. 
-
-    On a POST request, a new slot is created from form data and added to the database. 
-
-    Regardless of the request type, all of the teacher's slots are retrieved and displayed 
-    via the 'teacher/lesson_slots.html' template. 
-
-    The datetime and timedelta modules are also passed to the template for displaying the slots.
-    """
     if request.method == 'POST':
         start_time = datetime.strptime(request.form['start_time'], '%Y-%m-%dT%H:%M')
         end_time = datetime.strptime(request.form['end_time'], '%Y-%m-%dT%H:%M')
@@ -468,25 +458,35 @@ def manage_lesson_slots():
         db.session.add(new_slot)
         db.session.commit()
         flash('New lesson slot created!', 'success')
-    lesson_slots = LessonSlot.query.filter_by(teacher_id=current_user.id).all()
-    return render_template('teacher/lesson_slots.html', lesson_slots=lesson_slots, datetime=datetime, timedelta=timedelta)
+
+    # Get the start date of the week to display
+    start_date_str = request.args.get('start_date')
+    if start_date_str:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+    else:
+        start_date = datetime.utcnow() - timedelta(days=datetime.utcnow().weekday())
+
+    end_date = start_date + timedelta(days=6)
+    lesson_slots = LessonSlot.query.filter(
+        LessonSlot.teacher_id == current_user.id,
+        LessonSlot.start_time >= start_date,
+        LessonSlot.start_time <= end_date
+    ).all()
+
+    return render_template('teacher/lesson_slots.html', 
+                           lesson_slots=lesson_slots, 
+                           start_date=start_date,
+                           end_date=end_date,
+                           datetime=datetime, 
+                           timedelta=timedelta)
 
 
 @app.route('/teacher/update_slot', methods=['POST'])
 @login_required
 def update_lesson_slot():
-    """
-    This route lets a teacher update lesson slots.
-
-    On 'open' action, a new slot is created from JSON data and added to the database.
-
-    On 'close' action, an existing slot is deleted if it belongs to the current user.
-
-    The function returns a JSON response with the operation status and, if 'open', the new slot's ID.
-    """
     data = request.get_json()
     slot_id = data['slot_id']
-    action = data['action'] 
+    action = data['action']  # 'open' or 'close'
 
     if action == 'open':
         # Create new slot
@@ -510,30 +510,23 @@ def update_lesson_slot():
 @app.route('/teacher/update_slots', methods=['POST'])
 @login_required
 def update_slots():
-    """
-    This route lets a teacher update multiple lesson slots.
-    The function retrieves JSON data from the request, 
-    each item containing an 'action' and a 'start_time' or 'slot_id'. 
-
-    For 'open' action, a new slot is created with start time from the item and end time an hour later, 
-    and added to the database.
-    For 'close' action, the slot with the given 'slot_id' is deleted from the database if it exists.
-    
-    After processing all items, the function commits changes to the database and returns a 
-    JSON response with the operation status.
-    """
     data = request.get_json()
+    updates = []
     for item in data:
         if item['action'] == 'open':
             start_time = datetime.strptime(item['start_time'], '%Y-%m-%d %H:%M:%S')
-            new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=start_time + timedelta(minutes=59))
+            end_time = start_time + timedelta(minutes=59)
+            new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time)
             db.session.add(new_slot)
+            db.session.commit()
+            updates.append({'action': 'open', 'slot_id': new_slot.id, 'start_time': start_time.strftime('%Y-%m-%d %H:%M:%S')})
         elif item['action'] == 'close':
             slot = LessonSlot.query.get(item['slot_id'])
             if slot:
                 db.session.delete(slot)
-    db.session.commit()
-    return jsonify({'status': 'success'})
+                db.session.commit()
+                updates.append({'action': 'close', 'slot_id': slot.id})
+    return jsonify({'status': 'success', 'updates': updates})
 
 
 @app.route('/student_profile/<int:student_id>', methods=['GET', 'POST'])
