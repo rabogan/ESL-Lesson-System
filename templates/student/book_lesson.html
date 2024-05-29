@@ -5,7 +5,7 @@
 {% endblock %}
 
 {% block main %}
-<div class="container mx-auto px-4 bg-white dark:bg-gray-800">
+<div class="container mx-auto px-4 dark:bg-gray-800">
     <h2 class="text-2xl font-bold my-4 text-center text-gray-900 dark:text-white">Book Lesson</h2>
     
     <div class="flex justify-center my-4 space-x-4">
@@ -14,11 +14,20 @@
     </div>
 
     <table id="schedule-grid" class="table-auto w-full border-collapse border border-gray-300">
-        <!-- Similar table structure as in teacher/lesson_slots.html -->
+        {% for slot in lesson_slots %}
+        <tr>
+            <td>{{ slot.date }}</td>
+            <td>{{ slot.start_time }} - {{ slot.end_time }}</td>
+            <td>{{ slot.teacher.username }}</td>
+            <td>
+                <form method="POST">
+                    <input type="hidden" name="lesson_slot" value="{{ slot.id }}">
+                    <input type="hidden" name="teacher" value="{{ slot.teacher.id }}">
+                    <button type="submit" class="btn btn-primary">Book</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
     </table>
 </div>
-
-<script>
-    // Similar JavaScript code as in teacher/lesson_slots.html, but modified for student's perspective
-</script>
 {% endblock %}

@@ -10,6 +10,14 @@
         <h1 class="text-3xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white mb-8">
             Welcome, {{ session['user_name'] }}!
         </h1>
+        {% for lesson in upcoming_lessons %}
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4">Upcoming Lesson</h2>
+            <p class="text-gray-900 dark:text-gray-100">Student: {{ lesson.student.username }}</p>
+            <p class="text-gray-900 dark:text-gray-100">Date: {{ lesson.date.strftime('%Y-%m-%d %H:%M') }}</p>
+            <a href="{{ url_for('edit_lesson', lesson_id=lesson.id) }}" class="text-blue-500 hover:underline dark:text-blue-400">Edit Lesson</a>
+        </div>
+        {% endfor %}
         {% if most_recent_record %}
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
             <div class="grid lg:grid-cols-12 gap-8">
@@ -19,7 +27,11 @@
                 </div>
                 <div class="lg:col-span-7">
                     <div class="p-6 bg-green-100 dark:bg-green-900 rounded-lg text-gray-900 dark:text-gray-100 mb-4">
-                        <p>{{ most_recent_record.lesson_summary.replace('\n', '<br>')|safe }}</p>
+                        {% if most_recent_record.lesson_summary %}
+                            <p>{{ most_recent_record.lesson_summary.replace('\n', '<br>')|safe }}</p>
+                        {% else %}
+                            <p>No recent lessons.</p>
+                        {% endif %}
                     </div>
                     <small class="text-gray-900 dark:text-gray-100">Updated for {{ most_recent_record.student.username }}: {{ most_recent_record.date.strftime('%Y-%m-%d %H:%M') }}</small>
                 </div>

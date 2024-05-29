@@ -3,7 +3,7 @@ from helpers import save_image_file
 from flask import Flask, session, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import types
+from sqlalchemy import types, and_
 from sqlalchemy.orm import joinedload
 from flask_migrate import Migrate
 from datetime import datetime, timedelta
@@ -398,13 +398,29 @@ def teacher_dashboard():
     if session['user_type'] != 'teacher':
         return redirect(url_for('index'))  # or wherever you want to redirect non-teachers
 
-    # Fetch the most recent lesson record written by the logged-in teacher
-    most_recent_record = LessonRecord.query.filter_by(teacher_id=session['user_id']).options(
-        joinedload(LessonRecord.student).joinedload(Student.profile)
+    # Fetch the most recent completed lesson record written by the logged-in teacher
+    most_recent_record = LessonRecord.query.filter(
+    and_(
+        LessonRecord.teacher_id == session['user_id'],
+        LessonRecord.date <= datetime.utcnow(),
+        LessonRecord.lesson_summary.isnot(None)  # Add this line
+    )
+    ).options(
+    joinedload(LessonRecord.student).joinedload(Student.profile)
     ).order_by(LessonRecord.date.desc()).first()
+    
+    # Fetch the upcoming lessons for the logged-in teacher
+    upcoming_lessons = LessonRecord.query.filter(
+        and_(
+            LessonRecord.teacher_id == session['user_id'],
+            LessonRecord.date >= datetime.utcnow()
+        )
+    ).options(
+        joinedload(LessonRecord.student).joinedload(Student.profile)
+    ).order_by(LessonRecord.date.asc()).all()
 
     # Render the teacher dashboard page
-    return render_template('teacher/teacher_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record)
+    return render_template('teacher/teacher_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record, upcoming_lessons=upcoming_lessons)
 
 
 @app.route('/teacher/lesson_records')
@@ -418,7 +434,12 @@ def teacher_lesson_records():
 
     # Fetch the lesson records written by the logged-in teacher
     page = request.args.get('page', 1, type=int)
-    lesson_records = LessonRecord.query.filter_by(teacher_id=session['user_id']).options(
+    lesson_records = LessonRecord.query.filter(
+        and_(
+            LessonRecord.teacher_id == session['user_id'],
+            LessonRecord.date <= datetime.utcnow()
+        )
+    ).options(
         joinedload(LessonRecord.student).joinedload(Student.profile)
     ).order_by(LessonRecord.date.desc()).paginate(page=page, per_page=5)
 
@@ -613,8 +634,42 @@ def student_dashboard():
         joinedload(LessonRecord.teacher).joinedload(Teacher.profile)
     ).order_by(LessonRecord.date.desc()).first()
 
-    # Pass the most recent record and the profile to the template
-    return render_template('student/student_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record)
+    # Fetch all upcoming lesson records for the logged-in student
+    upcoming_lessons = LessonRecord.query.filter(
+        LessonRecord.student_id==session['user_id'],
+        LessonRecord.date>=datetime.now()
+    ).options(
+        joinedload(LessonRecord.teacher).joinedload(Teacher.profile)
+    ).order_by(LessonRecord.date.asc()).all()
+
+    # Pass the most recent record, the upcoming lessons, and the profile to the template
+    return render_template('student/student_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record, upcoming_lessons=upcoming_lessons)
+
+
+@app.route('/cancel_lesson', methods=['POST'])
+def cancel_lesson():
+    if session['user_type'] != 'student':
+        return redirect(url_for('home'))
+
+    # Get the ID of the lesson to be cancelled from the form data
+    lesson_id = request.form.get('lesson_id')
+
+    # Fetch the lesson record from the database
+    lesson = LessonRecord.query.get(lesson_id)
+
+    # Check if the lesson exists and belongs to the logged-in student
+    if lesson is None or lesson.student_id != session['user_id']:
+        # If not, redirect the user back to the dashboard with an error message
+        flash('Invalid lesson ID', 'error')
+        return redirect(url_for('student_dashboard'))
+
+    # Delete the lesson record from the database
+    db.session.delete(lesson)
+    db.session.commit()
+
+    # Redirect the user back to the dashboard with a success message
+    flash('Lesson cancelled successfully', 'success')
+    return redirect(url_for('student_dashboard'))
 
 
 @app.route('/student/lesson_records')
@@ -679,7 +734,7 @@ def student_book_lesson():
         # Check if the lesson slot exists and is not already booked
         if not lesson_slot or lesson_slot.is_booked:
             flash('Lesson slot is not available', 'error')
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('student_dashboard'))
 
         # Fetch the current student
         student = Student.query.get(current_user.id)
@@ -687,7 +742,7 @@ def student_book_lesson():
         # Check if the student has enough lessons purchased
         if student.lessons_purchased <= student.number_of_lessons:
             flash('Not enough lessons purchased', 'error')
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('student_dashboard'))
 
         # Create a new booking
         booking = Booking(student_id=student.id, lesson_slot_id=lesson_slot.id)
@@ -701,7 +756,7 @@ def student_book_lesson():
         lesson_record = LessonRecord(
             student_id=current_user.id,
             teacher_id=teacher_id,
-            date=lesson_slot.date
+            date=lesson_slot.start_time.date()
         )
         db.session.add(lesson_record)
 
@@ -709,14 +764,14 @@ def student_book_lesson():
         db.session.commit()
 
         flash('Lesson booked successfully', 'success')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('student_dashboard'))
     else:  # GET request
         # Fetch all available lesson slots
         available_lesson_slots = LessonSlot.query.filter_by(is_booked=False).all()
 
         # Pass the available lesson slots to the template
         return render_template('student/book_lesson.html', lesson_slots=available_lesson_slots)
-
+    
 
 if __name__ == '__main__':
     app.run(debug=True)
