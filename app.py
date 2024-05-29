@@ -203,6 +203,9 @@ def get_lessons():
 # Homepage Routes
 @app.route("/")
 def index():
+    """
+    Just the index page of the web app
+    """
     return render_template("display.html")
 
 
@@ -226,6 +229,9 @@ def portal_choice():
 
 @app.route("/student/register", methods=["GET", "POST"])
 def student_register():
+    """
+    Register a new student here
+    """
     if request.method == "POST":
         username = request.form.get("username")
         email = request.form.get("email")
@@ -268,6 +274,9 @@ def student_register():
 
 @app.route("/student/login", methods=["GET", "POST"])
 def student_login():
+    """
+    Allow existing students to log in (or redirect them!)
+    """
     # When the login is successful, add the user type to the session
     if request.method == "POST":
         username = request.form.get("username")
@@ -294,6 +303,9 @@ def student_login():
 
 @app.route("/teacher/register", methods=["GET", "POST"])
 def teacher_register():
+    """
+    Allow new teachers to register for the platform
+    """
     if request.method == "POST":
         username = request.form.get("username")
         email = request.form.get("email")
@@ -336,6 +348,9 @@ def teacher_register():
 
 @app.route("/teacher/login", methods=["GET", "POST"])
 def teacher_login():
+    """
+    Allow existing teachers to log in!
+    """
     if request.method == "POST":
         username = request.form.get("username")
         password = request.form.get("password")
@@ -361,6 +376,9 @@ def teacher_login():
 
 @app.route('/logout')
 def logout():
+    """
+    Log out the user and clear the session
+    """
     logout_user()
     session.pop('user_id', None)
     session.pop('user_type', None)
@@ -372,6 +390,9 @@ def logout():
 @app.route('/teacher/teacher_dashboard')
 @login_required
 def teacher_dashboard():
+    """
+    The main dashboard for teachers (this will show recent lesson records and schedules)
+    """
     # Ensure the current user is a teacher
     if session['user_type'] != 'teacher':
         return redirect(url_for('index'))  # or wherever you want to redirect non-teachers
@@ -388,6 +409,9 @@ def teacher_dashboard():
 @app.route('/teacher/lesson_records')
 @login_required
 def teacher_lesson_records():
+    """
+    Show all the lesson records written by the logged-in teacher
+    """
     if session['user_type'] != 'teacher':
         return redirect(url_for('home'))
 
@@ -404,6 +428,9 @@ def teacher_lesson_records():
 @app.route('/teacher/edit_teacher_profile', methods=['GET', 'POST'])
 @login_required
 def edit_teacher_profile():
+    """
+    Where teachers can edit and update their own profiles
+    """
     if request.method == 'POST':
         # Update teacher profile after form submission
         current_user.profile.age = request.form['age']
@@ -424,6 +451,16 @@ def edit_teacher_profile():
 @app.route('/teacher/lesson_slots', methods=['GET', 'POST'])
 @login_required
 def manage_lesson_slots():
+    """
+    This route lets a teacher manage lesson slots. 
+
+    On a POST request, a new slot is created from form data and added to the database. 
+
+    Regardless of the request type, all of the teacher's slots are retrieved and displayed 
+    via the 'teacher/lesson_slots.html' template. 
+
+    The datetime and timedelta modules are also passed to the template for displaying the slots.
+    """
     if request.method == 'POST':
         start_time = datetime.strptime(request.form['start_time'], '%Y-%m-%dT%H:%M')
         end_time = datetime.strptime(request.form['end_time'], '%Y-%m-%dT%H:%M')
@@ -438,6 +475,15 @@ def manage_lesson_slots():
 @app.route('/teacher/update_slot', methods=['POST'])
 @login_required
 def update_lesson_slot():
+    """
+    This route lets a teacher update lesson slots.
+
+    On 'open' action, a new slot is created from JSON data and added to the database.
+
+    On 'close' action, an existing slot is deleted if it belongs to the current user.
+
+    The function returns a JSON response with the operation status and, if 'open', the new slot's ID.
+    """
     data = request.get_json()
     slot_id = data['slot_id']
     action = data['action'] 
@@ -464,6 +510,18 @@ def update_lesson_slot():
 @app.route('/teacher/update_slots', methods=['POST'])
 @login_required
 def update_slots():
+    """
+    This route lets a teacher update multiple lesson slots.
+    The function retrieves JSON data from the request, 
+    each item containing an 'action' and a 'start_time' or 'slot_id'. 
+
+    For 'open' action, a new slot is created with start time from the item and end time an hour later, 
+    and added to the database.
+    For 'close' action, the slot with the given 'slot_id' is deleted from the database if it exists.
+    
+    After processing all items, the function commits changes to the database and returns a 
+    JSON response with the operation status.
+    """
     data = request.get_json()
     for item in data:
         if item['action'] == 'open':
@@ -478,10 +536,81 @@ def update_slots():
     return jsonify({'status': 'success'})
 
 
+@app.route('/student_profile/<int:student_id>', methods=['GET', 'POST'])
+@login_required
+def student_profile(student_id):
+    """
+    This route lets a teacher view and a student's profile.
+
+    Non-teachers are redirected to the home page.
+
+    On a POST request, the student's profile is updated with form data and saved to the database, 
+    then the updated profile is displayed.
+
+    On a GET request, the student's profile is passed to the 'view_student_profile.html' 
+    template for display.
+    """
+    # Ensure the current user is a teacher
+    if session['user_type'] != 'teacher':
+        return redirect(url_for('home'))
+
+    # Fetch the student's profile
+    student = Student.query.get_or_404(student_id)
+
+    if request.method == 'POST':
+        form = request.form
+        student.profile.hometown = form.get('hometown')
+        student.profile.goal = form.get('goal')
+        student.profile.hobbies = form.get('hobbies')
+        student.profile.correction_style = form.get('correction_style')
+        student.profile.english_weakness = form.get('english_weakness')
+        db.session.commit()
+        # Redirect to the same page to show the updated profile
+        return redirect(url_for('student_profile', student_id=student_id))
+
+    # Pass the student's profile to the template
+    return render_template('view_student_profile.html', student=student)
+
+
+@app.route('/edit_student_profile/<int:student_id>', methods=['GET', 'POST'])
+@login_required
+def edit_student_profile_by_teacher(student_id):
+    """
+    This route lets a teacher edit a student's profile.
+    Non-teachers are redirected to the login page.
+    If the student doesn't have a profile, a new one is created.
+    On a POST request, the student's profile is updated with form data and saved to the database.
+    The 'view_student_profile.html' template is rendered, displaying the student's profile.
+    """
+    if 'user_type' not in session or session['user_type'] != 'teacher':
+        # The student is not logged in or is not a teacher. Redirect them to the login page.
+        return redirect(url_for('login'))
+
+    student = User.query.get_or_404(student_id)
+
+    if student.profile is None:
+        # Create a new StudentProfile for the student
+        profile = StudentProfile(student_id=student.id, image_file='default.jpg')
+        db.session.add(profile)
+        db.session.commit()
+        student.profile = profile
+
+    if request.method == 'POST':
+        # Updates the student's profile.
+        student.profile.hometown = request.form['hometown']
+        student.profile.goal = request.form['goal']
+        student.profile.hobbies = request.form['hobbies']
+        student.profile.correction_style = request.form['correction_style']
+        student.profile.english_weakness = request.form['english_weakness']
+
+        db.session.commit()
+
+    return render_template('view_student_profile.html', profile=student.profile)
+
+
 # Student Only Routes
 @app.route('/student/dashboard')
 def student_dashboard():
-    # Your code here
     if session['user_type'] != 'student':
         return redirect(url_for('home'))
 
@@ -491,11 +620,11 @@ def student_dashboard():
     ).order_by(LessonRecord.date.desc()).first()
 
     # Pass the most recent record and the profile to the template
-    return render_template('student_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record)
+    return render_template('student/student_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record)
 
 
 @app.route('/student/lesson_records')
-def lesson_records():
+def student_lesson_records():
     # Fetch all lesson records for the logged-in student
     page = request.args.get('page', 1, type=int)
     lesson_records = LessonRecord.query.filter_by(student_id=session['user_id']).options(
@@ -503,10 +632,10 @@ def lesson_records():
     ).order_by(LessonRecord.date.desc()).paginate(page=page, per_page=5)
 
     # Pass the lesson records to the template
-    return render_template('lesson_records.html', lesson_records=lesson_records)
+    return render_template('student/lesson_records.html', lesson_records=lesson_records)
 
 
-@app.route('/edit_student_profile', methods=['GET', 'POST'])
+@app.route('/student/edit_student_profile', methods=['GET', 'POST'])
 @login_required
 def edit_student_profile():
     if 'user_type' not in session or session['user_type'] != 'student':
@@ -537,65 +666,7 @@ def edit_student_profile():
         db.session.commit()
 
     # Render the edit profile page.
-    return render_template('edit_student_profile.html', profile=current_user.profile)
-
-
-@app.route('/edit_student_profile/<int:student_id>', methods=['GET', 'POST'])
-@login_required
-def edit_student_profile_by_teacher(student_id):
-    if 'user_type' not in session or session['user_type'] != 'teacher':
-        # The user is not logged in or is not a teacher. Redirect them to the login page.
-        return redirect(url_for('login'))
-
-    student = User.query.get_or_404(student_id)
-
-    if student.profile is None:
-        # Create a new StudentProfile for the student
-        profile = StudentProfile(student_id=student.id, image_file='default.jpg')
-        db.session.add(profile)
-        db.session.commit()
-        student.profile = profile
-
-    if request.method == 'POST':
-        # The form has been submitted. Update the student's profile.
-        student.profile.hometown = request.form['hometown']
-        student.profile.goal = request.form['goal']
-        student.profile.hobbies = request.form['hobbies']
-        student.profile.correction_style = request.form['correction_style']
-        student.profile.english_weakness = request.form['english_weakness']
-
-        db.session.commit()
-
-    # Render the edit profile page.
-    return render_template('student_profile.html', profile=student.profile)
-
-
-@app.route('/student_profile/<int:student_id>', methods=['GET', 'POST'])
-@login_required
-def student_profile(student_id):
-    # Ensure the current user is a teacher
-    if session['user_type'] != 'teacher':
-        return redirect(url_for('home'))
-
-    # Fetch the student's profile
-    student = Student.query.get_or_404(student_id)
-
-    if request.method == 'POST':
-        # Handle the POST request here
-        # For example, update the student's profile with the data from the form
-        form = request.form
-        student.profile.hometown = form.get('hometown')
-        student.profile.goal = form.get('goal')
-        student.profile.hobbies = form.get('hobbies')
-        student.profile.correction_style = form.get('correction_style')
-        student.profile.english_weakness = form.get('english_weakness')
-        # Save the changes to the database
-        db.session.commit()
-        # Redirect to the same page to show the updated profile
-        return redirect(url_for('student_profile', student_id=student_id))
-
-    # Pass the student's profile to the template
-    return render_template('student_profile.html', student=student)
+    return render_template('student/edit_student_profile.html', profile=current_user.profile)
 
 
 if __name__ == '__main__':
