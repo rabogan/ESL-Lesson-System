@@ -1,7 +1,6 @@
-import os
-import secrets
 import json
-from flask import Flask, current_app, session, render_template, request, redirect, url_for, flash, jsonify
+from helpers import save_image_file
+from flask import Flask, session, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import types
@@ -177,22 +176,23 @@ def load_user(user_id):
         return Teacher.query.get(int(user_id))
     else:
         return None
+    
 
-# Temporary test of 'students'
+# Temporary Routes for Testing
 @app.route("/test_students", methods=["GET"])
 def get_students():
     page = request.args.get('page', 1, type=int)
     students = Student.query.paginate(page=page, per_page=5)
     return render_template("test/students.html", students=students)
 
-# Temporary test of 'teachers'
+
 @app.route("/test_teachers", methods=["GET"])
 def get_teachers():
     page = request.args.get('page', 1, type=int)
     teachers = Teacher.query.paginate(page=page, per_page=5)
     return render_template("test/teachers.html", teachers=teachers)
 
-# Temporary Viewing Of 'Lesson Records'
+
 @app.route("/test_lessons", methods=["GET"])
 def get_lessons():
     page = request.args.get('page', 1, type=int)
@@ -200,9 +200,20 @@ def get_lessons():
     return render_template("test/lessons.html", lessons=lessons)
 
 
+# Homepage Routes
 @app.route("/")
 def index():
     return render_template("display.html")
+
+
+@app.route('/meetYourTeacher')
+def meet_your_teacher():
+    """
+    Shows a rogue's gallery of all the teachers in the system.
+    """
+    page = request.args.get('page', 1, type=int)
+    teachers = Teacher.query.paginate(page=page, per_page=6)
+    return render_template('meetYourTeacher.html', teachers=teachers)
 
 
 @app.route('/portal_choice')
@@ -213,17 +224,6 @@ def portal_choice():
     return render_template('portal_choice.html')
 
 
-# Logs out the user and redirects them to the index page.
-@app.route('/logout')
-def logout():
-    logout_user()
-    session.pop('user_id', None)
-    session.pop('user_type', None)
-    flash('You were logged out')
-    return redirect(url_for('index'))
-
-
-# Handles student registration
 @app.route("/student/register", methods=["GET", "POST"])
 def student_register():
     if request.method == "POST":
@@ -359,19 +359,21 @@ def teacher_login():
     return render_template("teacher_login.html")
 
 
-# Shows a rogue's gallery of all the teachers in the school
-@app.route('/meetYourTeacher')
-def meet_your_teacher():
-    page = request.args.get('page', 1, type=int)
-    teachers = Teacher.query.paginate(page=page, per_page=6)
-    return render_template('meetYourTeacher.html', teachers=teachers)
+@app.route('/logout')
+def logout():
+    logout_user()
+    session.pop('user_id', None)
+    session.pop('user_type', None)
+    flash('You were logged out')
+    return redirect(url_for('index'))
 
 
-@app.route('/edit_teacher_profile', methods=['GET', 'POST'])
+# Teacher Only Routes
+@app.route('/teacher/edit_teacher_profile', methods=['GET', 'POST'])
 @login_required
 def edit_teacher_profile():
     if request.method == 'POST':
-        # The form has been submitted. Update the teacher's profile.
+        # Update teacher profile after form submission
         current_user.profile.age = request.form['age']
         current_user.profile.hobbies = request.form['hobbies']
         current_user.profile.motto = request.form['motto']
@@ -380,45 +382,11 @@ def edit_teacher_profile():
         # Handle the image file separately because it's not a simple text field.
         image_file = request.files['image_file']
         if image_file:
-            # Save the image file somewhere and update the profile's image_file field.
-            # This is just a placeholder. You'll need to implement the actual image saving.
             current_user.profile.image_file = save_image_file(image_file)
 
         db.session.commit()
 
-    # Render the edit profile page.
-    return render_template('edit_teacher_profile.html', profile=current_user.profile)
-
-
-# Function to save the image file
-def save_image_file(image_file):
-    # Generate a random hex for the filename to ensure it's unique
-    random_hex = secrets.token_hex(8)
-    _, file_extension = os.path.splitext(image_file.filename)
-    new_filename = random_hex + file_extension
-
-    # Determine the directory based on the user type
-    if session['user_type'] == 'teacher':
-        directory = 'static/img/teacherImg'
-        default_image = 'default.jpg'
-    elif session['user_type'] == 'student':
-        directory = 'static/img/studentImg'
-        default_image = 'default1.png'
-    else:
-        return None  # Or handle this case differently
-
-    # Build the full file path
-    image_path = os.path.join(current_app.root_path, directory, new_filename)
-
-    # Save the file
-    image_file.save(image_path)
-
-    # Delete the old image file, if it exists and is not the default image
-    old_image_path = os.path.join(current_app.root_path, directory, current_user.profile.image_file)
-    if os.path.exists(old_image_path) and current_user.profile.image_file != default_image:
-        os.remove(old_image_path)
-
-    return new_filename
+    return render_template('teacher/edit_teacher_profile.html', profile=current_user.profile)
 
 
 @app.route('/teacher_dashboard')
@@ -426,7 +394,7 @@ def save_image_file(image_file):
 def teacher_dashboard():
     # Ensure the current user is a teacher
     if session['user_type'] != 'teacher':
-        return redirect(url_for('home'))  # or wherever you want to redirect non-teachers
+        return redirect(url_for('index'))  # or wherever you want to redirect non-teachers
 
     # Fetch the most recent lesson record written by the logged-in teacher
     most_recent_record = LessonRecord.query.filter_by(teacher_id=session['user_id']).options(
