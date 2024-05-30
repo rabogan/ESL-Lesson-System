@@ -790,7 +790,7 @@ def student_book_lesson():
         lesson_slot = LessonSlot.query.get(lesson_slot_id)
 
         # Check if the lesson slot exists and is not already booked
-        if not lesson_slot or lesson_slot.is_booked:
+        if not lesson_slot or lesson_slot.is_booked or lesson_slot.start_time < datetime.utcnow():
             flash('Lesson slot is not available', 'error')
             return redirect(url_for('student_dashboard'))
 
@@ -824,12 +824,21 @@ def student_book_lesson():
         flash('Lesson booked successfully', 'success')
         return redirect(url_for('student_dashboard'))
     else:  # GET request
-        # Fetch all available lesson slots
-        available_lesson_slots = LessonSlot.query.filter_by(is_booked=False).all()
+        week_offset = int(request.args.get('week_offset', 0))
+        current_time = datetime.utcnow()
+        start_of_week = current_time + timedelta(days=(week_offset * 7) - current_time.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
+        
+        # Fetch all available lesson slots within the specified week
+        available_lesson_slots = LessonSlot.query.filter(
+            LessonSlot.is_booked == False,
+            LessonSlot.start_time > start_of_week,
+            LessonSlot.start_time <= end_of_week
+        ).all()
 
         # Pass the available lesson slots to the template
-        return render_template('student/book_lesson.html', lesson_slots=available_lesson_slots)
-    
+        return render_template('student/book_lesson.html', lesson_slots=available_lesson_slots, week_offset=week_offset)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

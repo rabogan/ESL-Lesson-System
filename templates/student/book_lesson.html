@@ -7,27 +7,41 @@
 {% block main %}
 <div class="container mx-auto px-4 dark:bg-gray-800">
     <h2 class="text-2xl font-bold my-4 text-center text-gray-900 dark:text-white">Book Lesson</h2>
-    
+
     <div class="flex justify-center my-4 space-x-4">
         <button id="prev-week" class="btn btn-secondary">Previous Week</button>
         <button id="next-week" class="btn btn-secondary">Next Week</button>
     </div>
 
-    <table id="schedule-grid" class="table-auto w-full border-collapse border border-gray-300">
+    <div id="lesson-schedule" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
         {% for slot in lesson_slots %}
-        <tr>
-            <td>{{ slot.date }}</td>
-            <td>{{ slot.start_time }} - {{ slot.end_time }}</td>
-            <td>{{ slot.teacher.username }}</td>
-            <td>
-                <form method="POST">
+            {% set day = slot.start_time.strftime('%A') %}
+            <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ day }}</h3>
+                <p class="text-gray-700 dark:text-gray-300">{{ slot.start_time.strftime('%Y-%m-%d %I:%M %p') }} - {{ slot.end_time.strftime('%I:%M %p') }}</p>
+                <form method="POST" class="mt-2" onsubmit="return confirm('Are you sure you want to book this lesson?');">
                     <input type="hidden" name="lesson_slot" value="{{ slot.id }}">
-                    <input type="hidden" name="teacher" value="{{ slot.teacher.id }}">
-                    <button type="submit" class="btn btn-primary">Book</button>
+                    <select name="teacher" class="form-select mt-1 block w-full">
+                        {% for teacher in slot.teachers %}
+                            <option value="{{ teacher.id }}">{{ teacher.username }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-primary mt-2">Book</button>
                 </form>
-            </td>
-        </tr>
+            </div>
         {% endfor %}
-    </table>
+    </div>
 </div>
+
+<script>
+    document.getElementById('prev-week').addEventListener('click', function() {
+        const currentWeekOffset = parseInt(new URLSearchParams(window.location.search).get('week_offset')) || 0;
+        window.location.href = `{{ url_for('student_book_lesson') }}?week_offset=${currentWeekOffset - 1}`;
+    });
+    
+    document.getElementById('next-week').addEventListener('click', function() {
+        const currentWeekOffset = parseInt(new URLSearchParams(window.location.search).get('week_offset')) || 0;
+        window.location.href = `{{ url_for('student_book_lesson') }}?week_offset=${currentWeekOffset + 1}`;
+    });
+</script>
 {% endblock %}
