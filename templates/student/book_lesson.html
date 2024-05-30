@@ -1,47 +1,77 @@
 {% extends "layout.html" %}
 
 {% block title %}
-    Book Lesson
+    Book a Lesson
 {% endblock %}
 
 {% block main %}
-<div class="container mx-auto px-4 dark:bg-gray-800">
-    <h2 class="text-2xl font-bold my-4 text-center text-gray-900 dark:text-white">Book Lesson</h2>
+<section class="bg-white dark:bg-gray-900">
+    <div class="max-w-screen-xl px-4 py-8 mx-auto lg:py-16">
+        <h1 class="text-3xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white mb-8">
+            Schedule Your Lesson
+        </h1>
 
-    <div class="flex justify-center my-4 space-x-4">
-        <button id="prev-week" class="btn btn-secondary">Previous Week</button>
-        <button id="next-week" class="btn btn-secondary">Next Week</button>
-    </div>
-
-    <div id="lesson-schedule" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
-        {% for slot in lesson_slots %}
-            {% set day = slot.start_time.strftime('%A') %}
-            <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4">
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ day }}</h3>
-                <p class="text-gray-700 dark:text-gray-300">{{ slot.start_time.strftime('%Y-%m-%d %I:%M %p') }} - {{ slot.end_time.strftime('%I:%M %p') }}</p>
-                <form method="POST" class="mt-2" onsubmit="return confirm('Are you sure you want to book this lesson?');">
-                    <input type="hidden" name="lesson_slot" value="{{ slot.id }}">
-                    <select name="teacher" class="form-select mt-1 block w-full">
-                        {% for teacher in slot.teachers %}
+        <div class="overflow-x-auto dark:text-gray-300 mb-8">
+            <form action="{{ url_for('student_book_lesson') }}" method="post">
+                <div class="mb-4">
+                    <label for="teacher" class="block text-lg font-medium text-gray-700 dark:text-gray-300">Select Teacher</label>
+                    <select id="teacher" name="teacher" class="block w-full mt-1" onchange="filterSlots()">
+                        <option value="">Select a teacher</option>
+                        {% for teacher in available_teachers %}
                             <option value="{{ teacher.id }}">{{ teacher.username }}</option>
                         {% endfor %}
                     </select>
-                    <button type="submit" class="btn btn-primary mt-2">Book</button>
-                </form>
-            </div>
-        {% endfor %}
+                </div>
+                <div class="mb-4">
+                    <label for="sort" class="block text-lg font-medium text-gray-700 dark:text-gray-300">Sort By</label>
+                    <select id="sort" name="sort" class="block w-full mt-1" onchange="filterSlots()">
+                        <option value="date">Date</option>
+                        <option value="time">Time</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label for="lesson_slot" class="block text-lg font-medium text-gray-700 dark:text-gray-300">Select Lesson Slot</label>
+                    <select id="lesson_slot" name="lesson_slot" class="block w-full mt-1">
+                        {% for slot in available_slots %}
+                            <option data-teacher-id="{{ slot.teacher.id }}" value="{{ slot.id }}">{{ slot.start_time.strftime('%Y-%m-%d %I:%M %p') }} - {{ slot.end_time.strftime('%I:%M %p') }} with {{ slot.teacher.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex justify-between items-center mb-4">
+                    <a href="{{ url_for('student_book_lesson', week_offset=week_offset - 1) }}" class="bg-gray-500 hover:bg-gray-700 text-white py-2 px-4 rounded">Previous Week</a>
+                    <a href="{{ url_for('student_book_lesson', week_offset=week_offset + 1) }}" class="bg-gray-500 hover:bg-gray-700 text-white py-2 px-4 rounded">Next Week</a>
+                </div>
+                <div>
+                    <input type="submit" value="Book Lesson" class="bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded" onclick="return confirm('Are you sure you want to book this lesson?');">
+                </div>
+            </form>
+        </div>
     </div>
-</div>
+</section>
 
 <script>
-    document.getElementById('prev-week').addEventListener('click', function() {
-        const currentWeekOffset = parseInt(new URLSearchParams(window.location.search).get('week_offset')) || 0;
-        window.location.href = `{{ url_for('student_book_lesson') }}?week_offset=${currentWeekOffset - 1}`;
-    });
-    
-    document.getElementById('next-week').addEventListener('click', function() {
-        const currentWeekOffset = parseInt(new URLSearchParams(window.location.search).get('week_offset')) || 0;
-        window.location.href = `{{ url_for('student_book_lesson') }}?week_offset=${currentWeekOffset + 1}`;
-    });
+    function filterSlots() {
+        const teacherId = document.getElementById('teacher').value;
+        const sortBy = document.getElementById('sort').value;
+        const lessonSlotSelect = document.getElementById('lesson_slot');
+        const options = Array.from(lessonSlotSelect.options);
+
+        options.forEach(option => {
+            option.style.display = (teacherId === '' || option.getAttribute('data-teacher-id') === teacherId) ? '' : 'none';
+        });
+
+        const visibleOptions = options.filter(option => option.style.display === '');
+
+        if (sortBy === 'date') {
+            visibleOptions.sort((a, b) => new Date(a.text.split(' - ')[0]) - new Date(b.text.split(' - ')[0]));
+        } else if (sortBy === 'time') {
+            visibleOptions.sort((a, b) => new Date('1970/01/01 ' + a.text.split(' - ')[0].split(' ')[1] + ' ' + a.text.split(' - ')[0].split(' ')[2]) - new Date('1970/01/01 ' + b.text.split(' - ')[0].split(' ')[1] + ' ' + b.text.split(' - ')[0].split(' ')[2]));
+        }
+
+        lessonSlotSelect.innerHTML = '';
+        visibleOptions.forEach(option => lessonSlotSelect.appendChild(option));
+    }
+
+    window.onload = filterSlots;
 </script>
 {% endblock %}

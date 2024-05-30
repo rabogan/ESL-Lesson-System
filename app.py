@@ -7,7 +7,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import types, and_
 from sqlalchemy.orm import joinedload
 from flask_migrate import Migrate
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
@@ -705,7 +705,7 @@ def student_dashboard():
     # Fetch all upcoming lesson slots for the logged-in student
     upcoming_lessons = LessonSlot.query.join(Booking).filter(
         Booking.student_id == session['user_id'],
-        LessonSlot.start_time >= datetime.now()
+        LessonSlot.start_time >= datetime.utcnow()
     ).options(
         joinedload(LessonSlot.teacher).joinedload(Teacher.profile)
     ).order_by(LessonSlot.start_time.asc()).all()
@@ -716,7 +716,12 @@ def student_dashboard():
         lesson.start_time = lesson.start_time.astimezone(user_timezone)
 
     # Pass the most recent record, the upcoming lessons, and the profile to the template
-    return render_template('student/student_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record, upcoming_lessons=upcoming_lessons)
+    return render_template(
+        'student/student_dashboard.html',
+        profile=current_user.profile,
+        most_recent_record=most_recent_record,
+        upcoming_lessons=upcoming_lessons
+    )
 
 @app.route('/cancel_lesson', methods=['POST'])
 def cancel_lesson():
@@ -793,9 +798,6 @@ def edit_student_profile():
 @app.route('/student/book_lesson', methods=['GET', 'POST'])
 @login_required
 def student_book_lesson():
-    """
-    This route allows students to book a lesson slot with a Teacher.
-    """
     if request.method == 'POST':
         lesson_slot_id = request.form.get('lesson_slot')
         teacher_id = request.form.get('teacher')
@@ -803,8 +805,17 @@ def student_book_lesson():
         # Fetch the lesson slot
         lesson_slot = LessonSlot.query.get(lesson_slot_id)
 
+        # Get current time in UTC timezone
+        current_time = datetime.now(timezone.utc)
+
+        # Convert current time to 'America/Los_Angeles' timezone
+        current_time = current_time.astimezone(timezone(timedelta(hours=-7)))  # Replace -7 with the actual UTC offset
+
+        # Convert lesson_slot.start_time to 'America/Los_Angeles' timezone for comparison
+        lesson_start_time = lesson_slot.start_time.astimezone(timezone(timedelta(hours=-7)))  # Replace -7 with the actual UTC offset
+
         # Check if the lesson slot exists and is not already booked
-        if not lesson_slot or lesson_slot.is_booked or lesson_slot.start_time < datetime.utcnow():
+        if not lesson_slot or lesson_slot.is_booked or lesson_start_time < current_time:
             flash('Lesson slot is not available', 'error')
             return redirect(url_for('student_dashboard'))
 
@@ -815,7 +826,7 @@ def student_book_lesson():
         if student.lessons_purchased <= student.number_of_lessons:
             flash('Not enough lessons purchased', 'error')
             return redirect(url_for('student_dashboard'))
-
+        
         # Create a new booking
         booking = Booking(student_id=student.id, lesson_slot_id=lesson_slot.id)
         db.session.add(booking)
@@ -839,19 +850,32 @@ def student_book_lesson():
         return redirect(url_for('student_dashboard'))
     else:  # GET request
         week_offset = int(request.args.get('week_offset', 0))
-        current_time = datetime.utcnow()
-        start_of_week = current_time + timedelta(days=(week_offset * 7) - current_time.weekday())
-        end_of_week = start_of_week + timedelta(days=6)
-        
-        # Fetch all available lesson slots within the specified week
-        available_lesson_slots = LessonSlot.query.filter(
-            LessonSlot.is_booked == False,
-            LessonSlot.start_time > start_of_week,
-            LessonSlot.start_time <= end_of_week
-        ).all()
+        start_of_week = datetime.now(timezone.utc) + timedelta(weeks=week_offset)
+        end_of_week = start_of_week + timedelta(days=7)
 
-        # Pass the available lesson slots to the template
-        return render_template('student/book_lesson.html', lesson_slots=available_lesson_slots, week_offset=week_offset)
+        # Fetch available lesson slots within the specified week
+        available_slots = LessonSlot.query.filter(
+            LessonSlot.start_time.between(start_of_week, end_of_week),
+            LessonSlot.is_booked == False
+        ).options(
+            joinedload(LessonSlot.teacher).joinedload(Teacher.profile)
+        ).order_by(LessonSlot.start_time.asc()).all()
+
+        # Fetch teachers who have available slots
+        available_teachers = {slot.teacher for slot in available_slots}
+
+        # Convert lesson times to the user's timezone
+        user_timezone = pytz.timezone('America/Los_Angeles')
+        for slot in available_slots:
+            slot.start_time = slot.start_time.astimezone(user_timezone)
+            slot.end_time = slot.end_time.astimezone(user_timezone)
+
+        return render_template(
+            'student/book_lesson.html',
+            available_slots=available_slots,
+            available_teachers=available_teachers,
+            week_offset=week_offset
+        )
 
 
 if __name__ == '__main__':

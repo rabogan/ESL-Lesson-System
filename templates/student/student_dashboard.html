@@ -61,7 +61,7 @@
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
             <div class="grid lg:grid-cols-12 gap-8">
                 <div class="lg:col-span-2 flex flex-col items-center">
-                    <img class="w-24 h-24 rounded-full mb-4" src="{{ url_for('static', filename='img/teacherImg/' + most_recent_record.teacher.profile.image_file) }}" alt="Teacher's profile picture">
+                    <img class="w-24 h-24 rounded-full mb-4" src="{{ url_for('static', filename='img/teacherImg/' + (most_recent_record.teacher.profile.image_file if most_recent_record.teacher.profile else 'default.jpg')) }}" alt="Teacher's profile picture">
                     <p class="text-gray-900 dark:text-gray-100">{{ most_recent_record.teacher.username }}</p>
                 </div>
                 <div class="lg:col-span-7">
