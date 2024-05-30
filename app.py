@@ -448,10 +448,24 @@ def teacher_lesson_records():
     ).order_by(LessonRecord.date.desc()).paginate(page=page, per_page=5)
 
     for record in lesson_records.items:
-        record.date = record.date.astimezone(user_timezone)
+    # Ensure record.date is timezone-aware
+        if record.date.tzinfo is None:
+            record.date = pytz.utc.localize(record.date).astimezone(user_timezone)
+        else:
+            record.date = record.date.astimezone(user_timezone)
+
+    for slot in record.teacher.lesson_slots:
+        if slot.start_time.tzinfo is None:
+            slot.start_time = pytz.utc.localize(slot.start_time).astimezone(user_timezone)
+        else:
+            slot.start_time = slot.start_time.astimezone(user_timezone)
+        
+        if slot.end_time.tzinfo is None:
+            slot.end_time = pytz.utc.localize(slot.end_time).astimezone(user_timezone)
+        else:
+            slot.end_time = slot.end_time.astimezone(user_timezone)
 
     return render_template('/teacher/teacher_lesson_records.html', lesson_records=lesson_records)
-
 
 
 
