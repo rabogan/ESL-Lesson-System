@@ -1,4 +1,5 @@
 import json
+import pytz
 from helpers import save_image_file
 from flask import Flask, session, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
@@ -397,9 +398,8 @@ def teacher_dashboard():
     """
     # Ensure the current user is a teacher
     if session['user_type'] != 'teacher':
-        return redirect(url_for('index'))  # or wherever you want to redirect non-teachers
+        return redirect(url_for('index'))
 
-    # Fetch the most recent completed lesson record written by the logged-in teacher
     most_recent_record = LessonRecord.query.filter(
         and_(
             LessonRecord.teacher_id == session['user_id'],
@@ -410,17 +410,21 @@ def teacher_dashboard():
         joinedload(LessonRecord.student).joinedload(Student.profile)
     ).order_by(LessonRecord.date.desc()).first()
 
-    # Fetch the upcoming lessons for the logged-in teacher
     upcoming_lessons = LessonRecord.query.filter(
         and_(
             LessonRecord.teacher_id == session['user_id'],
-            LessonRecord.date >= datetime.utcnow().date()  # Include lessons from today
+            LessonRecord.date >= datetime.utcnow().date()
         )
     ).options(
         joinedload(LessonRecord.student).joinedload(Student.profile)
     ).order_by(LessonRecord.date.asc()).all()
 
-    # Render the teacher dashboard page
+    user_timezone = pytz.timezone('America/Los_Angeles')  # Replace with the teacher's actual timezone
+    if most_recent_record:
+        most_recent_record.date = most_recent_record.date.astimezone(user_timezone)
+    for lesson in upcoming_lessons:
+        lesson.date = lesson.date.astimezone(user_timezone)
+
     return render_template('teacher/teacher_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record, upcoming_lessons=upcoming_lessons)
 
 
@@ -428,13 +432,10 @@ def teacher_dashboard():
 @app.route('/teacher/lesson_records')
 @login_required
 def teacher_lesson_records():
-    """
-    Show all the lesson records written by the logged-in teacher
-    """
     if session['user_type'] != 'teacher':
         return redirect(url_for('home'))
 
-    # Fetch the lesson records written by the logged-in teacher
+    user_timezone = pytz.timezone('America/Los_Angeles')  # Replace with the teacher's actual timezone
     page = request.args.get('page', 1, type=int)
     lesson_records = LessonRecord.query.filter(
         and_(
@@ -443,10 +444,12 @@ def teacher_lesson_records():
         )
     ).options(
         joinedload(LessonRecord.student).joinedload(Student.profile),
-        joinedload(LessonRecord.teacher).joinedload(Teacher.lesson_slots)  # Ensure LessonSlot is loaded
+        joinedload(LessonRecord.teacher).joinedload(Teacher.lesson_slots)
     ).order_by(LessonRecord.date.desc()).paginate(page=page, per_page=5)
 
-    # Pass the lesson records to the template
+    for record in lesson_records.items:
+        record.date = record.date.astimezone(user_timezone)
+
     return render_template('/teacher/teacher_lesson_records.html', lesson_records=lesson_records)
 
 
@@ -478,15 +481,18 @@ def edit_teacher_profile():
 @app.route('/teacher/lesson_slots', methods=['GET', 'POST'])
 @login_required
 def manage_lesson_slots():
+    user_timezone = pytz.timezone('America/Los_Angeles')  # Replace with the teacher's actual timezone!
+
     if request.method == 'POST':
-        start_time = datetime.strptime(request.form['start_time'], '%Y-%m-%dT%H:%M')
-        end_time = datetime.strptime(request.form['end_time'], '%Y-%m-%dT%H:%M')
+        local_start_time = datetime.strptime(request.form['start_time'], '%Y-%m-%dT%H:%M')
+        start_time = user_timezone.localize(local_start_time).astimezone(pytz.UTC)
+        local_end_time = datetime.strptime(request.form['end_time'], '%Y-%m-%dT%H:%M')
+        end_time = user_timezone.localize(local_end_time).astimezone(pytz.UTC)
         new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time)
         db.session.add(new_slot)
         db.session.commit()
         flash('New lesson slot created!', 'success')
 
-    # Get the start date of the week to display
     start_date_str = request.args.get('start_date')
     if start_date_str:
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
@@ -508,30 +514,33 @@ def manage_lesson_slots():
                            timedelta=timedelta)
 
 
+
 @app.route('/teacher/update_slot', methods=['POST'])
 @login_required
 def update_lesson_slot():
     data = request.get_json()
     slot_id = data['slot_id']
     action = data['action']  # 'open' or 'close'
+    user_timezone = pytz.timezone('America/Los_Angeles')  # Replace with the teacher's actual timezone
 
     if action == 'open':
-        # Create new slot
-        start_time = datetime.strptime(data['start_time'], '%Y-%m-%d %H:%M:%S')
-        end_time = datetime.strptime(data['end_time'], '%Y-%m-%d %H:%M:%S')
+        local_start_time = datetime.strptime(data['start_time'], '%Y-%m-%d %H:%M:%S')
+        start_time = user_timezone.localize(local_start_time).astimezone(pytz.UTC)
+        local_end_time = datetime.strptime(data['end_time'], '%Y-%m-%d %H:%M:%S')
+        end_time = user_timezone.localize(local_end_time).astimezone(pytz.UTC)
         new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time, is_booked=False)
         db.session.add(new_slot)
         db.session.commit()
         return jsonify({'status': 'success', 'slot_id': new_slot.id})
     elif action == 'close':
-        # Delete existing slot
         slot = LessonSlot.query.get(slot_id)
         if slot and slot.teacher_id == current_user.id:
             db.session.delete(slot)
             db.session.commit()
             return jsonify({'status': 'success'})
-    
+
     return jsonify({'status': 'error'})
+
 
 
 @app.route('/teacher/update_slots', methods=['POST'])
@@ -539,9 +548,12 @@ def update_lesson_slot():
 def update_slots():
     data = request.get_json()
     updates = []
+    user_timezone = pytz.timezone('America/Los_Angeles')  # Replace with the teacher's actual timezone
+
     for item in data:
         if item['action'] == 'open':
-            start_time = datetime.strptime(item['start_time'], '%Y-%m-%d %H:%M:%S')
+            local_start_time = datetime.strptime(item['start_time'], '%Y-%m-%d %H:%M:%S')
+            start_time = user_timezone.localize(local_start_time).astimezone(pytz.UTC)
             end_time = start_time + timedelta(minutes=59)
             new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time)
             db.session.add(new_slot)
@@ -554,6 +566,7 @@ def update_slots():
                 db.session.commit()
                 updates.append({'action': 'close', 'slot_id': slot.id})
     return jsonify({'status': 'success', 'updates': updates})
+
 
 
 @app.route('/student_profile/<int:student_id>', methods=['GET', 'POST'])
@@ -654,7 +667,7 @@ def edit_lesson(lesson_id):
             flash('Invalid input for new words or new phrases. Please try again.', 'danger')
             return render_template('teacher/edit_lesson.html', lesson=lesson)
 
-        # Update the lesson date to the current time
+        # Update the lesson date to the current UTC time
         lesson.date = datetime.utcnow()
 
         db.session.commit()
@@ -675,17 +688,21 @@ def student_dashboard():
         joinedload(LessonRecord.teacher).joinedload(Teacher.profile)
     ).order_by(LessonRecord.date.desc()).first()
 
-    # Fetch all upcoming lesson records for the logged-in student
-    upcoming_lessons = LessonRecord.query.filter(
-        LessonRecord.student_id==session['user_id'],
-        LessonRecord.date>=datetime.now()
+    # Fetch all upcoming lesson slots for the logged-in student
+    upcoming_lessons = LessonSlot.query.join(Booking).filter(
+        Booking.student_id == session['user_id'],
+        LessonSlot.start_time >= datetime.now()
     ).options(
-        joinedload(LessonRecord.teacher).joinedload(Teacher.profile)
-    ).order_by(LessonRecord.date.asc()).all()
+        joinedload(LessonSlot.teacher).joinedload(Teacher.profile)
+    ).order_by(LessonSlot.start_time.asc()).all()
+
+    # Convert lesson times to the user's timezone
+    user_timezone = pytz.timezone('America/Los_Angeles')
+    for lesson in upcoming_lessons:
+        lesson.start_time = lesson.start_time.astimezone(user_timezone)
 
     # Pass the most recent record, the upcoming lessons, and the profile to the template
     return render_template('student/student_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record, upcoming_lessons=upcoming_lessons)
-
 
 @app.route('/cancel_lesson', methods=['POST'])
 def cancel_lesson():
