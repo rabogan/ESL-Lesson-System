@@ -1189,6 +1189,10 @@ input:checked + .toggle-bg {
   margin-top: 0.25rem;
 }
 
+.mt-16 {
+  margin-top: 4rem;
+}
+
 .mt-2 {
   margin-top: 0.5rem;
 }
@@ -1530,10 +1534,6 @@ input:checked + .toggle-bg {
   border-color: rgb(243 244 246 / var(--tw-divide-opacity));
 }
 
-.place-self-start {
-  place-self: start;
-}
-
 .place-self-center {
   place-self: center;
 }
@@ -1716,19 +1716,9 @@ input:checked + .toggle-bg {
   background-color: rgb(4 108 78 / var(--tw-bg-opacity));
 }
 
-.bg-indigo-100 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(229 237 255 / var(--tw-bg-opacity));
-}
-
 .bg-orange-300 {
   --tw-bg-opacity: 1;
   background-color: rgb(253 186 140 / var(--tw-bg-opacity));
-}
-
-.bg-purple-400 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(172 148 250 / var(--tw-bg-opacity));
 }
 
 .bg-red-500 {
@@ -1750,6 +1740,11 @@ input:checked + .toggle-bg {
      object-fit: contain;
 }
 
+.object-cover {
+  -o-object-fit: cover;
+     object-fit: cover;
+}
+
 .p-1 {
   padding: 0.25rem;
 }
@@ -1768,6 +1763,10 @@ input:checked + .toggle-bg {
 
 .p-6 {
   padding: 1.5rem;
+}
+
+.p-8 {
+  padding: 2rem;
 }
 
 .px-2 {
@@ -2431,8 +2430,16 @@ input:checked + .toggle-bg {
     display: none;
   }
 
+  .md\:h-32 {
+    height: 8rem;
+  }
+
   .md\:h-screen {
     height: 100vh;
+  }
+
+  .md\:w-32 {
+    width: 8rem;
   }
 
   .md\:w-auto {
@@ -2580,11 +2587,6 @@ input:checked + .toggle-bg {
   .lg\:py-16 {
     padding-top: 4rem;
     padding-bottom: 4rem;
-  }
-
-  .lg\:py-8 {
-    padding-top: 2rem;
-    padding-bottom: 2rem;
   }
 
   .lg\:text-xl {
