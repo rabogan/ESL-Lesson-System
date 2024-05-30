@@ -1201,6 +1201,10 @@ input:checked + .toggle-bg {
   margin-top: 1.5rem;
 }
 
+.mt-auto {
+  margin-top: auto;
+}
+
 .block {
   display: block;
 }
@@ -1712,9 +1716,19 @@ input:checked + .toggle-bg {
   background-color: rgb(4 108 78 / var(--tw-bg-opacity));
 }
 
+.bg-indigo-100 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(229 237 255 / var(--tw-bg-opacity));
+}
+
 .bg-orange-300 {
   --tw-bg-opacity: 1;
   background-color: rgb(253 186 140 / var(--tw-bg-opacity));
+}
+
+.bg-purple-400 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(172 148 250 / var(--tw-bg-opacity));
 }
 
 .bg-red-500 {
@@ -2370,8 +2384,8 @@ input:checked + .toggle-bg {
     border-radius: 0.5rem;
   }
 
-  .sm\:p-6 {
-    padding: 1.5rem;
+  .sm\:p-4 {
+    padding: 1rem;
   }
 
   .sm\:p-8 {
@@ -2393,6 +2407,10 @@ input:checked + .toggle-bg {
     order: 2;
   }
 
+  .md\:order-3 {
+    order: 3;
+  }
+
   .md\:me-0 {
     margin-inline-end: 0px;
   }
@@ -2403,6 +2421,10 @@ input:checked + .toggle-bg {
 
   .md\:flex {
     display: flex;
+  }
+
+  .md\:inline-flex {
+    display: inline-flex;
   }
 
   .md\:hidden {
@@ -2489,9 +2511,9 @@ input:checked + .toggle-bg {
     color: rgb(26 86 219 / var(--tw-text-opacity));
   }
 
-  .md\:dark\:bg-gray-900:is(.dark *) {
+  .md\:dark\:bg-gray-800:is(.dark *) {
     --tw-bg-opacity: 1;
-    background-color: rgb(17 24 39 / var(--tw-bg-opacity));
+    background-color: rgb(31 41 55 / var(--tw-bg-opacity));
   }
 
   .md\:dark\:text-blue-500:is(.dark *) {
@@ -2580,8 +2602,8 @@ input:checked + .toggle-bg {
     padding: 0px;
   }
 
-  .xl\:p-8 {
-    padding: 2rem;
+  .xl\:p-6 {
+    padding: 1.5rem;
   }
 
   .xl\:text-6xl {
