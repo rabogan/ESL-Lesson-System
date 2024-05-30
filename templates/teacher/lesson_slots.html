@@ -36,18 +36,18 @@
             <tr>
                 <td class="border border-gray-300 dark:text-white p-2 text-center">{{ '%02d:00' % hour }}</td>
                 {% for i in range(7) %}
-                {% set slot = lesson_slots | selectattr('start_time', 'equalto', (start_date + timedelta(days=i, hours=hour, minutes=0, seconds=0, microseconds=0))) | list | first %}
+                {% set slot = lesson_slots | selectattr('start_time', 'equalto', (start_date + timedelta(days=i, hours=hour))) | list | first %}
                 <td data-time="{{ (start_date + timedelta(days=i)).strftime('%Y-%m-%d') }} {{ '%02d:00:00' % hour }}" 
                     class="slot border border-gray-300 dark:border-gray-700 p-2 text-center cursor-pointer {% if slot and slot.start_time < datetime.utcnow() %}past-slot{% endif %}">
                     {% if slot %}
                         {% if slot.start_time < datetime.utcnow() %}
                             {% if slot.is_booked %}
-                                <span class="status bg-purple-500 text-white rounded p-1" data-slot-id="{{ slot.id }}">Complete</span>
+                                <span class="status bg-blue-500 text-white rounded p-1" data-slot-id="{{ slot.id }}">Complete</span>
                             {% else %}
-                                <span class="status bg-beige text-black rounded p-1" data-slot-id="{{ slot.id }}"></span>
+                                <span class="status bg-gray-300 dark:bg-gray-600 text-black rounded p-1" data-slot-id="{{ slot.id }}"></span>
                             {% endif %}
                         {% else %}
-                            <span class="status {% if slot.is_booked %}bg-green-500 text-white{% else %}bg-orange-300 text-black{% endif %} rounded p-1" data-slot-id="{{ slot.id }}">
+                            <span class="status {% if slot.is_booked %}bg-blue-500 text-white{% else %}bg-orange-300 text-black{% endif %} rounded p-1" data-slot-id="{{ slot.id }}">
                                 {{ 'BOOKED' if slot.is_booked else 'OPEN' }}
                             </span>
                             {% if slot.is_booked %}
@@ -68,52 +68,28 @@
 </div>
 
 <script>
-    window.addEventListener('DOMContentLoaded', (event) => {
-        console.log('DOM fully loaded and parsed');
-        document.querySelectorAll('.slot').forEach(function (slot, index) {
-            console.log('Processing slot', index);
-            const statusSpan = slot.querySelector('.status');
-            if (statusSpan) {
-                console.log('Found status span for slot', index);
-                const slotId = statusSpan.getAttribute('data-slot-id');
-                console.log('Slot ID for slot', index, 'is', slotId);
-                if (slotId) {
-                    console.log('Slot', index, 'is open');
-                    statusSpan.classList.add('bg-orange-300');
-                    statusSpan.classList.remove('bg-gray-300');
-                    statusSpan.textContent = 'OPEN';
-                } else {
-                    console.log('Slot', index, 'is closed');
-                    statusSpan.classList.add('bg-gray-300');
-                    statusSpan.classList.remove('bg-orange-300');
-                    statusSpan.textContent = '';
-                }
-            } else {
-                console.log('No status span found for slot', index);
-            }
-        });
-    });
-</script>
-<script>
     document.addEventListener('DOMContentLoaded', function () {
+        console.log('DOM fully loaded and parsed');
         let editMode = false;
         let startDate = new Date('{{ start_date.strftime("%Y-%m-%d") }}');
 
         function updateTable() {
+            console.log('Updating table with new start date:', startDate);
             window.location.href = `/teacher/lesson_slots?start_date=${startDate.toISOString().split('T')[0]}`;
         }
-    
+
         function initializeSlots() {
+            console.log('Initializing slots...');
             document.querySelectorAll('.slot').forEach(function (slot) {
                 const statusSpan = slot.querySelector('.status');
-                if (statusSpan) {  // Check that statusSpan is not null
+                console.log('Processing slot:', slot);
+                if (statusSpan) {
                     const slotId = statusSpan.getAttribute('data-slot-id');
                     const startTime = slot.getAttribute('data-time');
-        
+                    console.log('Slot ID:', slotId, 'Start Time:', startTime);
                     if (statusSpan.classList.contains('bg-blue-500') || slot.classList.contains('past-slot')) {
-                        return; // Don't allow any action on booked slots or past slots
+                        return;
                     }
-        
                     if (slotId) {
                         statusSpan.classList.add('bg-orange-300');
                         statusSpan.classList.remove('bg-gray-300');
@@ -123,32 +99,30 @@
                         statusSpan.classList.remove('bg-orange-300');
                         statusSpan.textContent = '';
                     }
-                } else {
-                    console.log('No status span found for slot');
                 }
             });
         }
-    
+
         document.querySelectorAll('.slot').forEach(function (slot) {
             slot.addEventListener('click', function () {
+                console.log('Slot clicked:', slot);
                 if (!editMode) return;
-    
+
                 const statusSpan = slot.querySelector('.status');
                 const slotId = statusSpan.getAttribute('data-slot-id');
                 const startTime = slot.getAttribute('data-time');
-    
+
                 if (statusSpan.classList.contains('bg-blue-500') || slot.classList.contains('past-slot')) {
-                    return; // Don't allow any action on booked slots or past slots
+                    return;
                 }
-    
+
                 statusSpan.classList.toggle('bg-orange-300');
                 statusSpan.classList.toggle('bg-gray-300');
                 statusSpan.textContent = statusSpan.classList.contains('bg-orange-300') ? 'OPEN' : '';
             });
         });
-    
+
         document.getElementById('submit-button').addEventListener('click', function () {
-            console.log('Submit button clicked');
             const updates = [];
             document.querySelectorAll('.slot').forEach(function (slot) {
                 const statusSpan = slot.querySelector('.status');
@@ -156,7 +130,6 @@
                     const slotId = statusSpan.getAttribute('data-slot-id');
                     const startTime = slot.getAttribute('data-time');
                     const isOpen = statusSpan.classList.contains('bg-orange-300');
-                
                     if (isOpen && !slotId) {
                         updates.push({ action: 'open', start_time: startTime, end_time: startTime.replace('00:00:00', '00:59:59') });
                     } else if (!isOpen && slotId) {
@@ -164,7 +137,7 @@
                     }
                 }
             });
-    
+            console.log('Updates to be sent:', updates);
             fetch('/teacher/update_slots', {
                 method: 'POST',
                 headers: {
@@ -174,6 +147,7 @@
             })
             .then(response => response.json())
             .then(data => {
+                console.log('Server response:', data);
                 if (data.status === 'success') {
                     data.updates.forEach(update => {
                         if (update.action === 'open') {
@@ -200,34 +174,41 @@
                 }
             });
         });
-    
+
         document.getElementById('edit-button').addEventListener('click', function () {
+            console.log('Edit mode enabled');
             editMode = true;
             document.getElementById('edit-button').classList.add('hidden');
             document.getElementById('submit-button').classList.remove('hidden');
             document.getElementById('cancel-button').classList.remove('hidden');
             initializeSlots();
         });
-    
+
         document.getElementById('cancel-button').addEventListener('click', function () {
+            console.log('Edit mode cancelled');
             editMode = false;
             document.getElementById('edit-button').classList.remove('hidden');
             document.getElementById('submit-button').classList.add('hidden');
             document.getElementById('cancel-button').classList.add('hidden');
-            updateTable();  // Refresh the table to discard changes
-            initializeSlots();
+            updateTable();
         });
-    
+
+
+        // Navigate to the previous week
         document.getElementById('prev-week').addEventListener('click', function () {
+            console.log('Previous week clicked');
             startDate.setDate(startDate.getDate() - 7);
             updateTable();
         });
-    
+
+        // Navigate to the next week
         document.getElementById('next-week').addEventListener('click', function () {
+            console.log('Next week clicked');
             startDate.setDate(startDate.getDate() + 7);
             updateTable();
         });
-    
+
+        // Initialize the table immediately on page load
         initializeSlots();
     });
 </script>

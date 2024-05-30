@@ -8,6 +8,7 @@
         <title>B-Grade English</title>
         <link href="/static/favicon.ico" rel="icon">
         <link rel="stylesheet" href="{{url_for('static',filename='dist/css/output.css')}}">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     </head>
 
     <body class="bg-white dark:bg-gray-800">
@@ -181,7 +182,7 @@
                     }
                 }
         
-                if (currentTheme === 'dark' || (!currentTheme && prefersDarkScheme)) {
+                if (currentTheme !== 'light' && (currentTheme === 'dark' || prefersDarkScheme)) {
                     document.documentElement.classList.add('dark');
                     updateThemeIcons(true);
                 } else {

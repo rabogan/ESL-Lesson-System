@@ -442,11 +442,14 @@ def teacher_lesson_records():
             LessonRecord.date <= datetime.utcnow()
         )
     ).options(
-        joinedload(LessonRecord.student).joinedload(Student.profile)
+        joinedload(LessonRecord.student).joinedload(Student.profile),
+        joinedload(LessonRecord.teacher).joinedload(Teacher.lesson_slots)  # Ensure LessonSlot is loaded
     ).order_by(LessonRecord.date.desc()).paginate(page=page, per_page=5)
 
     # Pass the lesson records to the template
     return render_template('/teacher/teacher_lesson_records.html', lesson_records=lesson_records)
+
+
 
 
 @app.route('/teacher/edit_teacher_profile', methods=['GET', 'POST'])
@@ -650,6 +653,9 @@ def edit_lesson(lesson_id):
         except json.JSONDecodeError:
             flash('Invalid input for new words or new phrases. Please try again.', 'danger')
             return render_template('teacher/edit_lesson.html', lesson=lesson)
+
+        # Update the lesson date to the current time
+        lesson.date = datetime.utcnow()
 
         db.session.commit()
         flash('Lesson updated successfully!', 'success')

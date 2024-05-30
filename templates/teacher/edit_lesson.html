@@ -10,7 +10,7 @@
         <h1 class="text-3xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white mb-8">
             Edit Lesson for {{ lesson.student.username }}
         </h1>
-        <form method="POST">
+        <form method="POST" id="edit-lesson-form">
             <div class="mb-4">
                 <label for="lesson_summary" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Lesson Summary</label>
                 <textarea id="lesson_summary" name="lesson_summary" rows="4" class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-100">{{ lesson.lesson_summary }}</textarea>
@@ -96,19 +96,21 @@
             }
         });
     
-        // Add this code to prevent form submission when 'Enter' is pressed while 'newWordInput' or 'newPhraseInput' is not empty
-        const form = document.querySelector('form');
-        form.addEventListener('submit', (event) => {
-        if (newWordInput.value.trim() !== '' || newPhraseInput.value.trim() !== '') {
-            event.preventDefault();
+        // Prevent form submission when Enter is pressed in newWordInput or newPhraseInput
+        document.getElementById('edit-lesson-form').addEventListener('keydown', (event) => {
+            if ((event.target === newWordInput || event.target === newPhraseInput) && event.key === 'Enter') {
+                event.preventDefault();
+            }
+        });
+
+        // Prevent form submission when hitting Enter key in any input
+        document.getElementById('edit-lesson-form').addEventListener('submit', (event) => {
+            if (newWordInput.value.trim() !== '' || newPhraseInput.value.trim() !== '') {
+                event.preventDefault();
             } else {
                 updateHiddenFields();
             }
         });
-    
-        // Initialize hidden fields with empty JSON arrays if they are empty
-        if (!hiddenNewWords.value) hiddenNewWords.value = '[]';
-        if (!hiddenNewPhrases.value) hiddenNewPhrases.value = '[]';
     
         updateHiddenFields();
     });
