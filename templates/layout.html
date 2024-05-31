@@ -251,7 +251,17 @@
             
                 calendar.render();
             });
-            
+
+            document.addEventListener('DOMContentLoaded', function() {
+                var elements = document.querySelectorAll('.lesson-time');
+                elements.forEach(function(element) {
+                    var utcTime = element.getAttribute('data-utc-time');
+                    var localTime = new Date(utcTime);
+                    element.innerText = localTime.toLocaleString(); // Converts to local timezone
+                });
+            });
+            {# <!-- Example of a timestamp to convert --> #}
+            {# //<div data-utc-time="{{ lesson.start_time.isoformat() }}" class="lesson-time"></div> #}
         </script>          
     </body>
 </html>

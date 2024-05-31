@@ -9,6 +9,9 @@ from sqlalchemy.orm import joinedload
 from flask_migrate import Migrate
 from datetime import datetime, timedelta, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_wtf import FlaskForm, CSRFProtect
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, HiddenField
+from wtforms.validators import DataRequired, Length, Email, EqualTo
 
 app = Flask(__name__)
 app.secret_key = 'coolie_killer_huimin_himitsunakotogawaruidesune'
@@ -16,6 +19,14 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['DEBUG'] = True
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+csrf = CSRFProtect(app)
+csrf.init_app(app)
+
+class LoginForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
+    password = PasswordField('Password', validators=[DataRequired()])
+    remember = BooleanField('Remember Me')
+    submit = SubmitField('Login')
 
 # Flask-Login initialization
 login_manager = LoginManager()
@@ -34,6 +45,7 @@ class Student(db.Model, UserMixin):
     email = db.Column(db.String(120), unique=True, nullable=False)
     number_of_lessons = db.Column(db.Integer, default=0)
     lessons_purchased = db.Column(db.Integer, default=1)
+    timezone = db.Column(db.String(50), default='America/Los_Angeles')
     profile = db.relationship('StudentProfile', uselist=False, back_populates='student')
     lesson_records = db.relationship('LessonRecord', back_populates='student')
     bookings = db.relationship('Booking', back_populates='student')
@@ -42,7 +54,6 @@ class Student(db.Model, UserMixin):
         return f"Student('{self.username}', '{self.email}', '{self.number_of_lessons}')"
 
 
-# StudentProfile model
 class StudentProfile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     hometown = db.Column(db.String(500))
@@ -63,9 +74,10 @@ class Teacher(db.Model, UserMixin):
     username = db.Column(db.String(20), unique=True, nullable=False)
     password = db.Column(db.String(60), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
+    timezone = db.Column(db.String(50), default='America/Los_Angeles')
     profile = db.relationship('TeacherProfile', uselist=False, back_populates='teacher')
     lesson_records = db.relationship('LessonRecord', back_populates='teacher')
-    lesson_slots = db.relationship('LessonSlot', back_populates='teacher')  # new line
+    lesson_slots = db.relationship('LessonSlot', back_populates='teacher')
 
     def __repr__(self):
         return f"Teacher('{self.username}', '{self.email}')"
@@ -152,6 +164,7 @@ class Booking(db.Model):
 
 # Ensure database tables are created
 with app.app_context():
+    # Ensure database tables are created
     db.create_all()
     print("Tables created")
         
@@ -161,9 +174,9 @@ with app.app_context():
 def load_user(user_id):
     user_type = session.get('user_type')
     if user_type == 'student':
-        return Student.query.get(int(user_id))
+        return db.session.get(Student, int(user_id))
     elif user_type == 'teacher':
-        return Teacher.query.get(int(user_id))
+        return db.session.get(Teacher, int(user_id))
     else:
         return None
 
@@ -658,9 +671,10 @@ def edit_lesson(lesson_id):
 
 # Student Only Routes
 @app.route('/student/dashboard')
+@login_required
 def student_dashboard():
     if session['user_type'] != 'student':
-        return redirect(url_for('home'))
+        return redirect(url_for('index'))
 
     # Fetch the most recent lesson record for the logged-in student
     most_recent_record = LessonRecord.query.filter_by(student_id=session['user_id']).options(
@@ -670,13 +684,19 @@ def student_dashboard():
     # Fetch all upcoming lesson slots for the logged-in student
     upcoming_lessons = LessonSlot.query.join(Booking).filter(
         Booking.student_id == session['user_id'],
-        LessonSlot.start_time >= datetime.utcnow()
+        LessonSlot.start_time >= datetime.now(timezone.utc)
     ).options(
         joinedload(LessonSlot.teacher).joinedload(Teacher.profile)
     ).order_by(LessonSlot.start_time.asc()).all()
 
     # Convert lesson times to the user's timezone
-    user_timezone = pytz.timezone('America/Los_Angeles')
+    student = Student.query.get(session['user_id'])
+    user_timezone = pytz.timezone(student.timezone) if student.timezone else pytz.timezone('America/Los_Angeles')
+    try:
+        user_timezone = pytz.timezone(student.timezone)
+    except pytz.UnknownTimeZoneError:
+        user_timezone = pytz.timezone('America/Los_Angeles')
+
     for lesson in upcoming_lessons:
         lesson.start_time = lesson.start_time.astimezone(user_timezone)
 
@@ -688,29 +708,39 @@ def student_dashboard():
         upcoming_lessons=upcoming_lessons
     )
 
+
+class CancelLessonForm(FlaskForm):
+    lesson_id = HiddenField('Lesson ID', validators=[DataRequired()])
+
 @app.route('/cancel_lesson', methods=['POST'])
+@login_required
 def cancel_lesson():
     if session['user_type'] != 'student':
         return redirect(url_for('home'))
 
-    # Get the ID of the lesson to be cancelled from the form data
-    lesson_id = request.form.get('lesson_id')
+    form = CancelLessonForm()
+    
+    if form.validate_on_submit():
+        lesson_id = form.lesson_id.data
 
-    # Fetch the lesson record from the database
-    lesson = LessonRecord.query.get(lesson_id)
+        # Fetch the lesson record from the database
+        lesson = LessonRecord.query.get(lesson_id)
 
-    # Check if the lesson exists and belongs to the logged-in student
-    if lesson is None or lesson.student_id != session['user_id']:
-        # If not, redirect the user back to the dashboard with an error message
-        flash('Invalid lesson ID', 'error')
+        # Check if the lesson exists and belongs to the logged-in student
+        if lesson is None or lesson.student_id != session['user_id']:
+            # If not, redirect the user back to the dashboard with an error message
+            flash('Invalid lesson ID', 'error')
+            return redirect(url_for('student_dashboard'))
+
+        # Delete the lesson record from the database
+        db.session.delete(lesson)
+        db.session.commit()
+
+        # Redirect the user back to the dashboard with a success message
+        flash('Lesson cancelled successfully', 'success')
         return redirect(url_for('student_dashboard'))
-
-    # Delete the lesson record from the database
-    db.session.delete(lesson)
-    db.session.commit()
-
-    # Redirect the user back to the dashboard with a success message
-    flash('Lesson cancelled successfully', 'success')
+    
+    flash('Form submission error. Please try again.', 'error')
     return redirect(url_for('student_dashboard'))
 
 
