@@ -122,19 +122,6 @@ class LessonRecord(db.Model):
         return f"LessonRecord('{self.strengths}', '{self.areas_to_improve}', '{self.lesson_summary}')"
 
 
-# Example of adding a lesson record (for future use!)
-# new_lesson = LessonRecord(
-#    student_id=1,
-#    teacher_id=2,
-#    strengths="Great pronunciation",
-#    areas_to_improve="Needs to work on grammar",
-#    new_words=["bureaucracy", "food truck", "grief"],
-#    new_phrases=["I suck at English", "My family is ashamed of my idiocy", "Think positive!"],
-#    lesson_summary="Great lesson focusing on shopping phrases."
-#)
-#db.session.add(new_lesson)
-#db.session.commit()
-
 # Representing the time slot that a teacher is available for a lesson
 class LessonSlot(db.Model):
     __tablename__ = 'lesson_slot'
@@ -179,28 +166,6 @@ def load_user(user_id):
         return Teacher.query.get(int(user_id))
     else:
         return None
-    
-
-# Temporary Routes for Testing
-@app.route("/test_students", methods=["GET"])
-def get_students():
-    page = request.args.get('page', 1, type=int)
-    students = Student.query.paginate(page=page, per_page=5)
-    return render_template("test/students.html", students=students)
-
-
-@app.route("/test_teachers", methods=["GET"])
-def get_teachers():
-    page = request.args.get('page', 1, type=int)
-    teachers = Teacher.query.paginate(page=page, per_page=5)
-    return render_template("test/teachers.html", teachers=teachers)
-
-
-@app.route("/test_lessons", methods=["GET"])
-def get_lessons():
-    page = request.args.get('page', 1, type=int)
-    lessons = LessonRecord.query.paginate(page=page, per_page=5)
-    return render_template("test/lessons.html", lessons=lessons)
 
 
 # Homepage Routes
@@ -828,7 +793,7 @@ def student_book_lesson():
             return redirect(url_for('student_dashboard'))
         
         # Create a new booking
-        booking = Booking(student_id=student.id, lesson_slot_id=lesson_slot.id)
+        booking = Booking(student_id=student.id, lesson_slot_id=lesson_slot.id, teacher_id=teacher_id)
         db.session.add(booking)
 
         # Update the lesson slot and student
