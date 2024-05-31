@@ -5,88 +5,86 @@
 {% endblock %}
 
 {% block main %}
-<div class="container mx-auto px-4 bg-white dark:bg-gray-800">
-    <h2 class="text-2xl font-bold my-4 text-center text-gray-900 dark:text-white">Manage Lesson Slots</h2>
-    
-    <div class="flex justify-center my-4 space-x-4">
-        <button id="prev-week" class="btn btn-secondary">Previous Week</button>
-        <button id="next-week" class="btn btn-secondary">Next Week</button>
-    </div>
+<section class="bg-white dark:bg-gray-900">
+    <div class="max-w-screen-xl px-4 py-8 mx-auto lg:py-16">
+        <h1 class="text-3xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white mb-8 text-center">
+            Manage Lesson Slots
+        </h1>
+        
+        <div class="flex dark:text-white justify-center my-4 space-x-4">
+            <button id="prev-week" class="btn btn-secondary">Previous Week</button>
+            <button id="next-week" class="btn btn-secondary">Next Week</button>
+        </div>
+        
+        <div class="flex dark:text-white justify-center my-4">
+            <button id="edit-button" class="btn btn-primary">Edit Slots</button>
+        </div>
+        
+        <div class="flex justify-center dark:text-white my-4 space-x-4">
+            <button id="submit-button" class="btn btn-success hidden">Submit Changes</button>
+            <button id="cancel-button" class="btn btn-danger hidden">Cancel</button>
+        </div>
 
-    <div class="flex justify-center my-4">
-        <button id="edit-button" class="btn btn-primary">Edit Slots</button>
-    </div>
-
-    <div class="flex justify-center my-4 space-x-4">
-        <button id="submit-button" class="btn btn-success hidden">Submit Changes</button>
-        <button id="cancel-button" class="btn btn-danger hidden">Cancel</button>
-    </div>
-
-    <table id="schedule-grid" class="table-auto w-full border-collapse border border-gray-300">
-        <thead>
-            <tr class="bg-gray-200 dark:bg-gray-700">
-                <th class="border border-gray-300 p-2 dark:text-white">Time</th>
-                {% for i in range(7) %}
-                <th class="border border-gray-300 p-2 dark:text-white">{{ (start_date + timedelta(days=i)).strftime('%d %b') }}</th>
-                {% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for hour in range(7, 24) %}
-            <tr>
-                <td class="border border-gray-300 dark:text-white p-2 text-center">{{ '%02d:00' % hour }}</td>
-                {% for i in range(7) %}
-                {% set slot = lesson_slots | selectattr('start_time', 'equalto', (start_date + timedelta(days=i, hours=hour))) | list | first %}
-                <td data-time="{{ (start_date + timedelta(days=i)).strftime('%Y-%m-%d') }} {{ '%02d:00:00' % hour }}" 
-                    class="slot border border-gray-300 dark:border-gray-700 p-2 text-center cursor-pointer {% if slot and slot.start_time < datetime.utcnow() %}past-slot{% endif %}">
-                    {% if slot %}
-                        {% if slot.start_time < datetime.utcnow() %}
-                            {% if slot.is_booked %}
-                                <span class="status bg-blue-500 text-white rounded p-1" data-slot-id="{{ slot.id }}">Complete</span>
+        <table id="schedule-grid" class="table-auto w-full border-collapse border border-gray-300 dark:border-gray-700 mt-8">
+            <thead>
+                <tr class="bg-gray-200 dark:bg-gray-700">
+                    <th class="border border-gray-300 dark:border-gray-600 p-2 dark:text-gray-100">Time</th>
+                    {% for i in range(7) %}
+                    <th class="border border-gray-300 dark:border-gray-600 p-2 dark:text-gray-100">{{ (start_date + timedelta(days=i)).strftime('%d %b') }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for hour in range(7, 24) %}
+                <tr>
+                    <td class="border border-gray-300 dark:border-gray-600 dark:text-gray-100 p-2 text-center">{{ '%02d:00' % hour }}</td>
+                    {% for i in range(7) %}
+                    {% set slot = lesson_slots | selectattr('start_time', 'equalto', (start_date + timedelta(days=i, hours=hour))) | list | first %}
+                    <td data-time="{{ (start_date + timedelta(days=i)).strftime('%Y-%m-%d') }} {{ '%02d:00:00' % hour }}" 
+                        class="slot border border-gray-300 dark:border-gray-600 p-2 text-center cursor-pointer {% if slot and slot.start_time < datetime.utcnow() %}past-slot{% endif %}">
+                        {% if slot %}
+                            {% if slot.start_time < datetime.utcnow() %}
+                                {% if slot.is_booked %}
+                                    <span class="status bg-blue-500 text-white rounded p-1" data-slot-id="{{ slot.id }}">Complete</span>
+                                {% else %}
+                                    <span class="status bg-gray-300 dark:bg-gray-600 text-black dark:text-gray-100 rounded p-1" data-slot-id="{{ slot.id }}"></span>
+                                {% endif %}
                             {% else %}
-                                <span class="status bg-gray-300 dark:bg-gray-600 text-black rounded p-1" data-slot-id="{{ slot.id }}"></span>
+                                <span class="status {% if slot.is_booked %}bg-blue-500 text-white{% else %}bg-orange-300 text-black{% endif %} rounded p-1" data-slot-id="{{ slot.id }}">
+                                    {{ 'BOOKED' if slot.is_booked else 'OPEN' }}
+                                </span>
+                                {% if slot.is_booked %}
+                                    <div class="text-sm text-gray-700 dark:text-gray-400">Student ID: {{ slot.student_id }}</div>
+                                {% endif %}
                             {% endif %}
                         {% else %}
-                            <span class="status {% if slot.is_booked %}bg-blue-500 text-white{% else %}bg-orange-300 text-black{% endif %} rounded p-1" data-slot-id="{{ slot.id }}">
-                                {{ 'BOOKED' if slot.is_booked else 'OPEN' }}
-                            </span>
-                            {% if slot.is_booked %}
-                                <div class="text-sm text-gray-700 dark:text-gray-400">Student ID: {{ slot.student_id }}</div>
+                            {% if (start_date + timedelta(days=i, hours=hour)) > datetime.utcnow() %}
+                                <span class="status bg-gray-300 dark:bg-gray-600 text-black dark:text-gray-100 rounded p-1"></span>
                             {% endif %}
                         {% endif %}
-                    {% else %}
-                        {% if (start_date + timedelta(days=i, hours=hour)) > datetime.utcnow() %}
-                            <span class="status bg-gray-300 dark:bg-gray-600 text-black rounded p-1"></span>
-                        {% endif %}
-                    {% endif %}
-                </td>
+                    </td>
+                    {% endfor %}
+                </tr>
                 {% endfor %}
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+            </tbody>
+        </table>
+    </div>
+</section>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        console.log('DOM fully loaded and parsed');
         let editMode = false;
         let startDate = new Date('{{ start_date.strftime("%Y-%m-%d") }}');
 
         function updateTable() {
-            console.log('Updating table with new start date:', startDate);
             window.location.href = `/teacher/lesson_slots?start_date=${startDate.toISOString().split('T')[0]}`;
         }
 
         function initializeSlots() {
-            console.log('Initializing slots...');
             document.querySelectorAll('.slot').forEach(function (slot) {
                 const statusSpan = slot.querySelector('.status');
-                console.log('Processing slot:', slot);
                 if (statusSpan) {
                     const slotId = statusSpan.getAttribute('data-slot-id');
-                    const startTime = slot.getAttribute('data-time');
-                    console.log('Slot ID:', slotId, 'Start Time:', startTime);
                     if (statusSpan.classList.contains('bg-blue-500') || slot.classList.contains('past-slot')) {
                         return;
                     }
@@ -105,12 +103,10 @@
 
         document.querySelectorAll('.slot').forEach(function (slot) {
             slot.addEventListener('click', function () {
-                console.log('Slot clicked:', slot);
                 if (!editMode) return;
 
                 const statusSpan = slot.querySelector('.status');
                 const slotId = statusSpan.getAttribute('data-slot-id');
-                const startTime = slot.getAttribute('data-time');
 
                 if (statusSpan.classList.contains('bg-blue-500') || slot.classList.contains('past-slot')) {
                     return;
@@ -128,16 +124,15 @@
                 const statusSpan = slot.querySelector('.status');
                 if (statusSpan) {
                     const slotId = statusSpan.getAttribute('data-slot-id');
-                    const startTime = slot.getAttribute('data-time');
+                    const startTime = new Date(slot.getAttribute('data-time')).toISOString();
                     const isOpen = statusSpan.classList.contains('bg-orange-300');
                     if (isOpen && !slotId) {
-                        updates.push({ action: 'open', start_time: startTime, end_time: startTime.replace('00:00:00', '00:59:59') });
+                        updates.push({ action: 'open', start_time: startTime, end_time: new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString() });
                     } else if (!isOpen && slotId) {
                         updates.push({ action: 'close', slot_id: slotId });
                     }
                 }
             });
-            console.log('Updates to be sent:', updates);
             fetch('/teacher/update_slots', {
                 method: 'POST',
                 headers: {
@@ -147,7 +142,6 @@
             })
             .then(response => response.json())
             .then(data => {
-                console.log('Server response:', data);
                 if (data.status === 'success') {
                     data.updates.forEach(update => {
                         if (update.action === 'open') {
@@ -176,7 +170,6 @@
         });
 
         document.getElementById('edit-button').addEventListener('click', function () {
-            console.log('Edit mode enabled');
             editMode = true;
             document.getElementById('edit-button').classList.add('hidden');
             document.getElementById('submit-button').classList.remove('hidden');
@@ -185,7 +178,6 @@
         });
 
         document.getElementById('cancel-button').addEventListener('click', function () {
-            console.log('Edit mode cancelled');
             editMode = false;
             document.getElementById('edit-button').classList.remove('hidden');
             document.getElementById('submit-button').classList.add('hidden');
@@ -193,22 +185,16 @@
             updateTable();
         });
 
-
-        // Navigate to the previous week
         document.getElementById('prev-week').addEventListener('click', function () {
-            console.log('Previous week clicked');
             startDate.setDate(startDate.getDate() - 7);
             updateTable();
         });
 
-        // Navigate to the next week
         document.getElementById('next-week').addEventListener('click', function () {
-            console.log('Next week clicked');
             startDate.setDate(startDate.getDate() + 7);
             updateTable();
         });
 
-        // Initialize the table immediately on page load
         initializeSlots();
     });
 </script>
