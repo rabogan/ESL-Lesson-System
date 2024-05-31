@@ -31,11 +31,13 @@ class RegistrationForm(FlaskForm):
     confirmation = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Register')
 
+
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
     password = PasswordField('Password', validators=[DataRequired()])
     remember = BooleanField('Remember Me')
     submit = SubmitField('Login')
+
 
 class EditTeacherProfileForm(FlaskForm):
     age = IntegerField('Age', validators=[Optional(), NumberRange(min=0)])
@@ -44,7 +46,16 @@ class EditTeacherProfileForm(FlaskForm):
     blood_type = StringField('Blood Type', validators=[Optional(), Length(max=5)])
     image_file = FileField('Profile Image', validators=[Optional(), FileAllowed(['jpg', 'png'])])
     submit = SubmitField('Update Profile')
-
+    
+    
+class StudentProfileForm(FlaskForm):
+    hometown = StringField('Hometown', validators=[Optional(), Length(max=500)])
+    goal = StringField('Goal', validators=[Optional(), Length(max=1000)])
+    hobbies = StringField('Hobbies', validators=[Optional(), Length(max=1000)])
+    correction_style = StringField('Correction Style', validators=[Optional(), Length(max=1000)])
+    english_weakness = StringField('English Weakness', validators=[Optional(), Length(max=1000)])
+    image_file = FileField('Profile Image', validators=[Optional(), FileAllowed(['jpg', 'png'])])
+    submit = SubmitField('Update Profile')
 
 # Flask-Login initialization
 login_manager = LoginManager()
@@ -231,26 +242,18 @@ def student_register():
     """
     Register a new student here
     """
-    if request.method == "POST":
-        username = request.form.get("username")
-        email = request.form.get("email")
-        password = request.form.get("password")
-        confirmation = request.form.get("confirmation")
-
-        # Check input validity
-        if not username:
-            return render_template("apology.html", top="Error", bottom="Please provide a valid username"), 400
-        if not password:
-            return render_template("apology.html", top="Error", bottom="Please provide a password"), 400
-        if not confirmation:
-            return render_template("apology.html", top="Error", bottom="Confirmation not provided"), 400
-        if password != confirmation:
-            return render_template("apology.html", top="Error", bottom="Password and confirmation must match!"), 400
+    form = RegistrationForm()
+    
+    if form.validate_on_submit():
+        username = form.username.data
+        email = form.email.data
+        password = form.password.data
 
         # Check if the username already exists
         existing_student = Student.query.filter_by(username=username).first()
-        if existing_student is not None:
-            return render_template("apology.html", top="Error", bottom="Username already exists"), 400
+        if existing_student:
+            form.username.errors.append("Username already exists")
+            return render_template("student_register.html", form=form), 400
 
         hashed_password = generate_password_hash(password)
         new_student = Student(username=username, email=email, password=hashed_password)
@@ -268,7 +271,9 @@ def student_register():
         session['user_name'] = new_student.username 
 
         return redirect(url_for("student_login"))
-    return render_template("student_register.html")
+    
+    return render_template("student_register.html", form=form)
+
 
 
 @app.route("/student/login", methods=["GET", "POST"])
@@ -276,10 +281,11 @@ def student_login():
     """
     Allow existing students to log in (or redirect them!)
     """
-    # When the login is successful, add the user type to the session
-    if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
+    form = LoginForm()
+    if form.validate_on_submit():
+        username = form.username.data
+        password = form.password.data
+        remember = form.remember.data
 
         # Check the validity of the input
         if not username or not password:
@@ -291,13 +297,15 @@ def student_login():
             return render_template("apology.html", top="Error", bottom="Invalid username or password"), 400
 
         # Log in the user and store their ID and type in the session
-        login_user(student)
+        login_user(student, remember=remember)
         session['user_id'] = student.id
         session['user_type'] = 'student'
         session['user_name'] = student.username
 
         return redirect(url_for("student_dashboard"))
-    return render_template("student_login.html")
+    return render_template("student_login.html", form=form)
+
+
 
 
 @app.route("/teacher/register", methods=["GET", "POST"])
@@ -626,37 +634,34 @@ def student_profile(student_id):
 @app.route('/edit_student_profile/<int:student_id>', methods=['GET', 'POST'])
 @login_required
 def edit_student_profile_by_teacher(student_id):
-    """
-    This route lets a teacher edit a student's profile.
-    Non-teachers are redirected to the login page.
-    If the student doesn't have a profile, a new one is created.
-    On a POST request, the student's profile is updated with form data and saved to the database.
-    The 'view_student_profile.html' template is rendered, displaying the student's profile.
-    """
     if 'user_type' not in session or session['user_type'] != 'teacher':
-        # The student is not logged in or is not a teacher. Redirect them to the login page.
         return redirect(url_for('login'))
 
-    student = User.query.get_or_404(student_id)
+    student = Student.query.get_or_404(student_id)
 
     if student.profile is None:
-        # Create a new StudentProfile for the student
         profile = StudentProfile(student_id=student.id, image_file='default.jpg')
         db.session.add(profile)
         db.session.commit()
         student.profile = profile
 
-    if request.method == 'POST':
-        # Updates the student's profile.
-        student.profile.hometown = request.form['hometown']
-        student.profile.goal = request.form['goal']
-        student.profile.hobbies = request.form['hobbies']
-        student.profile.correction_style = request.form['correction_style']
-        student.profile.english_weakness = request.form['english_weakness']
+    form = StudentProfileForm(obj=student.profile)
+    if form.validate_on_submit():
+        student.profile.hometown = form.hometown.data
+        student.profile.goal = form.goal.data
+        student.profile.hobbies = form.hobbies.data
+        student.profile.correction_style = form.correction_style.data
+        student.profile.english_weakness = form.english_weakness.data
+
+        if form.image_file.data:
+            student.profile.image_file = save_image_file(form.image_file.data)
 
         db.session.commit()
+        flash('Student profile has been updated!', 'success')
+        return redirect(url_for('view_student_profile', student_id=student.id))
 
-    return render_template('view_student_profile.html', profile=student.profile)
+    return render_template('view_student_profile.html', form=form, profile=student.profile)
+
 
 
 @app.route('/teacher/edit_lesson/<int:lesson_id>', methods=['GET', 'POST'])
@@ -786,34 +791,30 @@ def student_lesson_records():
 @login_required
 def edit_student_profile():
     if 'user_type' not in session or session['user_type'] != 'student':
-        # The user is not logged in or is not a student. Redirect them to the login page.
         return redirect(url_for('login'))
     
     if current_user.profile is None:
-        # Create a new StudentProfile for the current_user
         profile = StudentProfile(student_id=current_user.id, image_file='default.jpg')
         db.session.add(profile)
         db.session.commit()
         current_user.profile = profile
     
-    if request.method == 'POST':
-        # The form has been submitted. Update the student's profile.
-        current_user.profile.hometown = request.form['hometown']
-        current_user.profile.goal = request.form['goal']
-        current_user.profile.hobbies = request.form['hobbies']
-        current_user.profile.correction_style = request.form['correction_style']
-        current_user.profile.english_weakness = request.form['english_weakness']
-        
-        # Handle the image file separately because it's not a simple text field.
-        image_file = request.files['image_file']
-        if image_file:
-            # Save the image file somewhere and update the profile's image_file field.
-            current_user.profile.image_file = save_image_file(image_file)
+    form = StudentProfileForm(obj=current_user.profile)
+    if form.validate_on_submit():
+        current_user.profile.hometown = form.hometown.data
+        current_user.profile.goal = form.goal.data
+        current_user.profile.hobbies = form.hobbies.data
+        current_user.profile.correction_style = form.correction_style.data
+        current_user.profile.english_weakness = form.english_weakness.data
+
+        if form.image_file.data:
+            current_user.profile.image_file = save_image_file(form.image_file.data)
 
         db.session.commit()
+        flash('Your profile has been updated!', 'success')
+        return redirect(url_for('student_dashboard'))
 
-    # Render the edit profile page.
-    return render_template('student/edit_student_profile.html', profile=current_user.profile)
+    return render_template('student/edit_student_profile.html', form=form, profile=current_user.profile)
 
 
 @app.route('/student/book_lesson', methods=['GET', 'POST'])

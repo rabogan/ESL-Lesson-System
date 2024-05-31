@@ -9,55 +9,73 @@
     <div class="max-w-screen-lg mx-auto px-4">
         <h1 class="text-3xl md:text-5xl font-extrabold text-center text-gray-900 dark:text-gray-100 mb-8">Edit Your Profile</h1>
         <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            {{ form.hidden_tag() }}
             <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 max-w-2xl mx-auto">
                 <div class="flex items-center justify-between mb-4">
-                    <label for="hometown" class="w-1/4 text-gray-900 dark:text-gray-100">Hometown:</label>
+                    {{ form.hometown.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="hometown-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.hometown }}</div>
-                        <input type="text" id="hometown-input" name="hometown" value="{{ profile.hometown }}" class="form-input hidden w-full custom-input">
+                        {{ form.hometown(class="form-input hidden w-full custom-input") }}
+                        {% if form.hometown.errors %}
+                            <span class="text-red-500 text-sm">{{ form.hometown.errors[0] }}</span>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
-                    <label for="goal" class="w-1/4 text-gray-900 dark:text-gray-100">Goal:</label>
+                    {{ form.goal.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="goal-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.goal }}</div>
-                        <textarea id="goal-input" name="goal" class="form-input hidden w-full custom-input" maxlength="1000">{{ profile.goal }}</textarea>
-                        <div id="goal-limit" class="text-sm text-gray-500" style="display: none;">Character limit: 1000</div>
+                        {{ form.goal(class="form-input hidden w-full custom-input") }}
+                        {% if form.goal.errors %}
+                            <span class="text-red-500 text-sm">{{ form.goal.errors[0] }}</span>
+                        {% endif %}
+                        <div id="goal-limit" class="text-sm text-gray-500">Character limit: 1000</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
-                    <label for="hobbies" class="w-1/4 text-gray-900 dark:text-gray-100">Hobbies:</label>
+                    {{ form.hobbies.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="hobbies-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.hobbies }}</div>
-                        <textarea id="hobbies-input" name="hobbies" class="form-input hidden w-full custom-input" maxlength="1000">{{ profile.hobbies }}</textarea>
-                        <div id="hobbies-limit" class="text-sm text-gray-500" style="display: none;">Character limit: 1000</div>
+                        {{ form.hobbies(class="form-input hidden w-full custom-input") }}
+                        {% if form.hobbies.errors %}
+                            <span class="text-red-500 text-sm">{{ form.hobbies.errors[0] }}</span>
+                        {% endif %}
+                        <div id="hobbies-limit" class="text-sm text-gray-500">Character limit: 1000</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
-                    <label for="correction_style" class="w-1/4 text-gray-900 dark:text-gray-100">Correction Style:</label>
+                    {{ form.correction_style.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="correction_style-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.correction_style }}</div>
-                        <textarea id="correction_style-input" name="correction_style" class="form-input hidden w-full custom-input" maxlength="1000">{{ profile.correction_style }}</textarea>
-                        <div id="correction_style-limit" class="text-sm text-gray-500" style="display: none;">Character limit: 1000</div>
+                        {{ form.correction_style(class="form-input hidden w-full custom-input") }}
+                        {% if form.correction_style.errors %}
+                            <span class="text-red-500 text-sm">{{ form.correction_style.errors[0] }}</span>
+                        {% endif %}
+                        <div id="correction_style-limit" class="text-sm text-gray-500">Character limit: 1000</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
-                    <label for="english_weakness" class="w-1/4 text-gray-900 dark:text-gray-100">English Weakness:</label>
+                    {{ form.english_weakness.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="english_weakness-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.english_weakness }}</div>
-                        <textarea id="english_weakness-input" name="english_weakness" class="form-input hidden w-full custom-input" maxlength="1000">{{ profile.english_weakness }}</textarea>
-                        <div id="english_weakness-limit" class="text-sm text-gray-500" style="display: none;">Character limit: 1000</div>
+                        {{ form.english_weakness(class="form-input hidden w-full custom-input") }}
+                        {% if form.english_weakness.errors %}
+                            <span class="text-red-500 text-sm">{{ form.english_weakness.errors[0] }}</span>
+                        {% endif %}
+                        <div id="english_weakness-limit" class="text-sm text-gray-500">Character limit: 1000</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
-                    <label for="image_file" class="w-1/4 text-gray-900 dark:text-gray-100">Profile Image:</label>
-                    <img id="image_file-text" src="{{ url_for('static', filename='img/studentImg/' + profile.image_file) }}" class="form-text w-2/3">
-                    <input type="file" id="image_file-input" name="image_file" class="form-input hidden w-2/3">
+                    {{ form.image_file.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
+                    <div class="w-2/3">
+                        <img id="image_file-text" src="{{ url_for('static', filename='img/studentImg/' + profile.image_file) }}" class="form-text w-2/3">
+                        {{ form.image_file(class="form-input hidden w-2/3") }}
+                    </div>
                 </div>
                 <div class="text-center">
                     <button type="button" id="edit-button" class="btn btn-primary py-2 px-4 bg-blue-500 text-white rounded-lg" onclick="editAllFields()">Edit</button>
                     <button type="button" id="cancel-button" class="btn btn-outline bg-red-500 text-white hidden py-2 px-4 rounded-lg" onclick="cancelEditAllFields()">Cancel</button>
-                    <input type="submit" value="Update Profile" class="btn btn-primary py-2 px-4 bg-blue-500 text-white hidden rounded-lg" id="update-profile-button">
+                    {{ form.submit(class="btn btn-primary py-2 px-4 bg-blue-500 text-white hidden rounded-lg", id="update-profile-button") }}
                 </div>
             </div>
         </form>
@@ -69,12 +87,11 @@
         const fields = ['hometown', 'goal', 'hobbies', 'correction_style', 'english_weakness', 'image_file'];
         fields.forEach(field => {
             document.getElementById(`${field}-text`).classList.add('hidden');
-            document.getElementById(`${field}-input`).classList.remove('hidden');
+            document.querySelector(`[name=${field}]`).classList.remove('hidden');
         });
         document.getElementById('edit-button').classList.add('hidden');
         document.getElementById('cancel-button').classList.remove('hidden');
         document.getElementById('update-profile-button').classList.remove('hidden');
-        // Show the character limit message for fields
         ['goal', 'hobbies', 'correction_style', 'english_weakness'].forEach(field => {
             document.getElementById(`${field}-limit`).style.display = 'block';
         });
@@ -84,12 +101,11 @@
         const fields = ['hometown', 'goal', 'hobbies', 'correction_style', 'english_weakness', 'image_file'];
         fields.forEach(field => {
             document.getElementById(`${field}-text`).classList.remove('hidden');
-            document.getElementById(`${field}-input`).classList.add('hidden');
+            document.querySelector(`[name=${field}]`).classList.add('hidden');
         });
         document.getElementById('edit-button').classList.remove('hidden');
         document.getElementById('cancel-button').classList.add('hidden');
         document.getElementById('update-profile-button').classList.add('hidden');
-        // Hide the character limit message for fields
         ['goal', 'hobbies', 'correction_style', 'english_weakness'].forEach(field => {
             document.getElementById(`${field}-limit`).style.display = 'none';
         });
