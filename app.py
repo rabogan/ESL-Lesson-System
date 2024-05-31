@@ -10,8 +10,9 @@ from flask_migrate import Migrate
 from datetime import datetime, timedelta, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_wtf import FlaskForm, CSRFProtect
-from wtforms import StringField, PasswordField, SubmitField, BooleanField, HiddenField
-from wtforms.validators import DataRequired, Length, Email, EqualTo
+from flask_wtf.file import FileAllowed
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, HiddenField, IntegerField, FileField
+from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional, NumberRange
 
 app = Flask(__name__)
 app.secret_key = 'coolie_killer_huimin_himitsunakotogawaruidesune'
@@ -22,11 +23,28 @@ migrate = Migrate(app, db)
 csrf = CSRFProtect(app)
 csrf.init_app(app)
 
+
+class RegistrationForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    confirmation = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
+    submit = SubmitField('Register')
+
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
     password = PasswordField('Password', validators=[DataRequired()])
     remember = BooleanField('Remember Me')
     submit = SubmitField('Login')
+
+class EditTeacherProfileForm(FlaskForm):
+    age = IntegerField('Age', validators=[Optional(), NumberRange(min=0)])
+    hobbies = StringField('Hobbies', validators=[Optional(), Length(max=500)])
+    motto = StringField('Motto', validators=[Optional(), Length(max=500)])
+    blood_type = StringField('Blood Type', validators=[Optional(), Length(max=5)])
+    image_file = FileField('Profile Image', validators=[Optional(), FileAllowed(['jpg', 'png'])])
+    submit = SubmitField('Update Profile')
+
 
 # Flask-Login initialization
 login_manager = LoginManager()
@@ -287,11 +305,12 @@ def teacher_register():
     """
     Allow new teachers to register for the platform
     """
-    if request.method == "POST":
-        username = request.form.get("username")
-        email = request.form.get("email")
-        password = request.form.get("password")
-        confirmation = request.form.get("confirmation")
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        username = form.username.data
+        email = form.email.data
+        password = form.password.data
+        confirmation = form.confirmation.data
 
         # Input valdidity check
         if not username:
@@ -312,7 +331,7 @@ def teacher_register():
         new_teacher = Teacher(username=username, email=email, password=hashed_password)
         db.session.add(new_teacher)
         db.session.commit()
-        
+
         # Create a new TeacherProfile for the newly registered teacher
         profile = TeacherProfile(teacher_id=new_teacher.id, image_file='default.jpg')
         db.session.add(profile)
@@ -324,7 +343,7 @@ def teacher_register():
         session['user_name'] = new_teacher.username
 
         return redirect(url_for("teacher_login"))
-    return render_template("teacher_register.html")
+    return render_template("teacher_register.html", form=form)
 
 
 @app.route("/teacher/login", methods=["GET", "POST"])
@@ -332,9 +351,11 @@ def teacher_login():
     """
     Allow existing teachers to log in!
     """
-    if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
+    form = LoginForm()
+    if form.validate_on_submit():
+        username = form.username.data
+        password = form.password.data
+        remember = form.remember.data
 
         # Check the validity of the input
         if not username or not password:
@@ -346,13 +367,13 @@ def teacher_login():
             return render_template("apology.html", top="Error", bottom="Invalid username or password"), 400
 
         # Log in the user and store their info in the session
-        login_user(teacher)
+        login_user(teacher, remember=remember)
         session['user_id'] = teacher.id
         session['user_type'] = 'teacher'
         session['user_name'] = teacher.username
 
         return redirect(url_for("teacher_dashboard"))
-    return render_template("teacher_login.html")
+    return render_template("teacher_login.html", form=form)
 
 
 @app.route('/logout')
@@ -375,36 +396,40 @@ def teacher_dashboard():
     The main dashboard for teachers (this will show recent lesson records and schedules)
     """
     # Ensure the current user is a teacher
-    if session['user_type'] != 'teacher':
+    if session.get('user_type') != 'teacher':
         return redirect(url_for('index'))
 
+    # Fetch the most recent lesson record for the logged-in teacher
     most_recent_record = LessonRecord.query.filter(
         and_(
             LessonRecord.teacher_id == session['user_id'],
-            LessonRecord.date <= datetime.utcnow(),
+            LessonRecord.date <= datetime.now(timezone.utc),
             LessonRecord.lesson_summary.isnot(None)
         )
     ).options(
         joinedload(LessonRecord.student).joinedload(Student.profile)
     ).order_by(LessonRecord.date.desc()).first()
 
-    upcoming_lessons = LessonRecord.query.filter(
+    # Fetch all upcoming lesson slots for the logged-in teacher
+    upcoming_lessons = LessonSlot.query.filter(
         and_(
-            LessonRecord.teacher_id == session['user_id'],
-            LessonRecord.date >= datetime.utcnow().date()
+            LessonSlot.teacher_id == session['user_id'],
+            LessonSlot.start_time >= datetime.now(timezone.utc),
+            LessonSlot.is_booked == True
         )
     ).options(
-        joinedload(LessonRecord.student).joinedload(Student.profile)
-    ).order_by(LessonRecord.date.asc()).all()
+        joinedload(LessonSlot.booking).joinedload(Booking.student).joinedload(Student.profile)
+    ).order_by(LessonSlot.start_time.asc()).all()
 
-    user_timezone = pytz.timezone('America/Los_Angeles')  # Replace with the teacher's actual timezone
+    # Convert lesson times to the teacher's timezone
+    teacher = Teacher.query.get(session['user_id'])
+    user_timezone = pytz.timezone(teacher.timezone)
     if most_recent_record:
         most_recent_record.date = most_recent_record.date.astimezone(user_timezone)
     for lesson in upcoming_lessons:
-        lesson.date = lesson.date.astimezone(user_timezone)
+        lesson.start_time = lesson.start_time.astimezone(user_timezone)
 
     return render_template('teacher/teacher_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record, upcoming_lessons=upcoming_lessons)
-
 
 
 @app.route('/teacher/lesson_records')
@@ -446,28 +471,29 @@ def teacher_lesson_records():
     return render_template('/teacher/teacher_lesson_records.html', lesson_records=lesson_records)
 
 
-
 @app.route('/teacher/edit_teacher_profile', methods=['GET', 'POST'])
 @login_required
 def edit_teacher_profile():
     """
     Where teachers can edit and update their own profiles
     """
-    if request.method == 'POST':
-        # Update teacher profile after form submission
-        current_user.profile.age = request.form['age']
-        current_user.profile.hobbies = request.form['hobbies']
-        current_user.profile.motto = request.form['motto']
-        current_user.profile.blood_type = request.form['blood_type']
+    form = EditTeacherProfileForm(obj=current_user.profile)
+
+    if form.validate_on_submit():
+        current_user.profile.age = form.age.data
+        current_user.profile.hobbies = form.hobbies.data
+        current_user.profile.motto = form.motto.data
+        current_user.profile.blood_type = form.blood_type.data
 
         # Handle the image file separately because it's not a simple text field.
-        image_file = request.files['image_file']
-        if image_file:
-            current_user.profile.image_file = save_image_file(image_file)
+        if form.image_file.data:
+            current_user.profile.image_file = save_image_file(form.image_file.data)
 
         db.session.commit()
+        flash('Your profile has been updated!', 'success')
+        return redirect(url_for('teacher_dashboard'))
 
-    return render_template('teacher/edit_teacher_profile.html', profile=current_user.profile)
+    return render_template('teacher/edit_teacher_profile.html', form=form, profile=current_user.profile)
 
 
 @app.route('/teacher/lesson_slots', methods=['GET', 'POST'])

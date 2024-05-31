@@ -9,46 +9,61 @@
     <div class="max-w-screen-lg mx-auto px-4">
         <h1 class="text-3xl md:text-5xl font-extrabold text-center text-gray-900 dark:text-gray-100 mb-8">Edit Your Profile</h1>
         <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            {{ form.hidden_tag() }}
             <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 max-w-2xl mx-auto">
                 <div class="flex items-center justify-between mb-4">
-                    <label for="age" class="w-1/4 text-gray-900 dark:text-gray-100">Age:</label>
+                    {{ form.age.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="age-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.age }}</div>
-                        <input type="number" id="age-input" name="age" value="{{ profile.age }}" class="form-input hidden w-full custom-input">
+                        {{ form.age(class="form-input hidden w-full custom-input") }}
+                        {% if form.age.errors %}
+                            <span class="text-red-500 text-sm">{{ form.age.errors[0] }}</span>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
-                    <label for="hobbies" class="w-1/4 text-gray-900 dark:text-gray-100">Hobbies:</label>
+                    {{ form.hobbies.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="hobbies-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.hobbies }}</div>
-                        <textarea id="hobbies-input" name="hobbies" class="form-input hidden w-full custom-input">{{ profile.hobbies }}</textarea>
+                        {{ form.hobbies(class="form-input hidden w-full custom-input") }}
+                        {% if form.hobbies.errors %}
+                            <span class="text-red-500 text-sm">{{ form.hobbies.errors[0] }}</span>
+                        {% endif %}
                         <div id="hobbies-limit" class="text-sm text-gray-500" style="display: none;">Character limit: 200</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
-                    <label for="motto" class="w-1/4 text-gray-900 dark:text-gray-100">Motto:</label>
+                    {{ form.motto.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="motto-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.motto }}</div>
-                        <textarea id="motto-input" name="motto" class="form-input hidden w-full custom-input">{{ profile.motto }}</textarea>
+                        {{ form.motto(class="form-input hidden w-full custom-input") }}
+                        {% if form.motto.errors %}
+                            <span class="text-red-500 text-sm">{{ form.motto.errors[0] }}</span>
+                        {% endif %}
                         <div id="motto-limit" class="text-sm text-gray-500" style="display: none;">Character limit: 200</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
-                    <label for="blood_type" class="w-1/4 text-gray-900 dark:text-gray-100">Blood Type:</label>
+                    {{ form.blood_type.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="blood_type-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.blood_type }}</div>
-                        <input type="text" id="blood_type-input" name="blood_type" value="{{ profile.blood_type }}" class="form-input hidden w-full custom-input">
+                        {{ form.blood_type(class="form-input hidden w-full custom-input") }}
+                        {% if form.blood_type.errors %}
+                            <span class="text-red-500 text-sm">{{ form.blood_type.errors[0] }}</span>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
-                    <label for="image_file" class="w-1/4 text-gray-900 dark:text-gray-100">Profile Image:</label>
-                    <img id="image_file-text" src="{{ url_for('static', filename='img/teacherImg/' + profile.image_file) }}" class="form-text w-2/3">
-                    <input type="file" id="image_file-input" name="image_file" class="form-input hidden w-2/3">
+                    {{ form.image_file.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
+                    <div class="w-2/3">
+                        <img id="image_file-text" src="{{ url_for('static', filename='img/teacherImg/' + profile.image_file) }}" class="form-text w-2/3">
+                        {{ form.image_file(class="form-input hidden w-2/3") }}
+                    </div>
                 </div>
                 <div class="text-center">
                     <button type="button" id="edit-button" class="btn btn-primary py-2 px-4 bg-blue-500 text-white rounded-lg" onclick="editAllFields()">Edit</button>
                     <button type="button" id="cancel-button" class="btn btn-outline bg-red-500 text-white hidden py-2 px-4 rounded-lg" onclick="cancelEditAllFields()">Cancel</button>
-                    <input type="submit" value="Update Profile" class="btn btn-primary py-2 px-4 bg-blue-500 text-white hidden rounded-lg" id="update-profile-button">
+                    {{ form.submit(class="btn btn-primary py-2 px-4 bg-blue-500 text-white hidden rounded-lg", id="update-profile-button") }}
                 </div>
             </div>
         </form>
@@ -60,7 +75,7 @@
         const fields = ['age', 'hobbies', 'motto', 'blood_type', 'image_file'];
         fields.forEach(field => {
             document.getElementById(`${field}-text`).classList.add('hidden');
-            document.getElementById(`${field}-input`).classList.remove('hidden');
+            document.querySelector(`[name=${field}]`).classList.remove('hidden');
         });
         document.getElementById('edit-button').classList.add('hidden');
         document.getElementById('cancel-button').classList.remove('hidden');
@@ -75,7 +90,7 @@
         const fields = ['age', 'hobbies', 'motto', 'blood_type', 'image_file'];
         fields.forEach(field => {
             document.getElementById(`${field}-text`).classList.remove('hidden');
-            document.getElementById(`${field}-input`).classList.add('hidden');
+            document.querySelector(`[name=${field}]`).classList.add('hidden');
         });
         document.getElementById('edit-button').classList.remove('hidden');
         document.getElementById('cancel-button').classList.add('hidden');
