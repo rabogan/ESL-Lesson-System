@@ -3,7 +3,6 @@ import secrets
 from flask import current_app, session
 from flask_login import current_user
 
-# Function to save the image file
 def save_image_file(image_file):
     # Generate a random hex for the filename to ensure it's unique
     random_hex = secrets.token_hex(8)

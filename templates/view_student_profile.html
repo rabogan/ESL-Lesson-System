@@ -12,73 +12,72 @@
             {{ form.hidden_tag() }}
             <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
                 <div class="flex items-center space-x-4">
-                    <img class="w-20 h-20 rounded-full" src="{{ url_for('static', filename='img/studentImg/' + profile.image_file) }}" alt="Student's profile picture">
+                    <img class="w-20 h-20 rounded-full" src="{{ url_for('static', filename='img/studentImg/' + student.profile.image_file) }}" alt="Student's profile picture">
                     <div>
                         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ student.username }}</h2>
                     </div>
                 </div>
                 <div class="mt-6 space-y-4">
                     <!-- Hometown field -->
-                    <div class="form-group">
-                        <h3 class="font-semibold text-gray-600 dark:text-gray-300">Hometown:</h3>
-                        {{ form.hometown(class="form-input w-full") }}
-                        {% if form.hometown.errors %}
-                            <span class="text-red-500 text-sm">{{ form.hometown.errors[0] }}</span>
-                        {% endif %}
+                    <div class="flex items-center justify-between mb-4">
+                        {{ form.hometown.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
+                        <div class="w-2/3">
+                            <div id="hometown-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.hometown }}</div>
+                            {{ form.hometown(class="form-input hidden w-full custom-input") }}
+                            {% if form.hometown.errors %}
+                                <span class="text-red-500 text-sm">{{ form.hometown.errors[0] }}</span>
+                            {% endif %}
+                        </div>
                     </div>
-
                     <!-- Goal field -->
-                    <div class="form-group">
-                        <h3 class="font-semibold text-gray-600 dark:text-gray-300">Goal:</h3>
-                        {{ form.goal(class="form-input w-full") }}
-                        {% if form.goal.errors %}
-                            <span class="text-red-500 text-sm">{{ form.goal.errors[0] }}</span>
-                        {% endif %}
-                        <div id="goal-limit" class="text-sm text-gray-500">Character limit: 1000</div>
+                    <div class="flex items-center justify-between mb-4">
+                        {{ form.goal.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
+                        <div class="w-2/3">
+                            <div id="goal-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.goal }}</div>
+                            {{ form.goal(class="form-input hidden w-full custom-input") }}
+                            {% if form.goal.errors %}
+                                <span class="text-red-500 text-sm">{{ form.goal.errors[0] }}</span>
+                            {% endif %}
+                        </div>
                     </div>
-
                     <!-- Hobbies field -->
-                    <div class="form-group">
-                        <h3 class="font-semibold text-gray-600 dark:text-gray-300">Hobbies:</h3>
-                        {{ form.hobbies(class="form-input w-full") }}
-                        {% if form.hobbies.errors %}
-                            <span class="text-red-500 text-sm">{{ form.hobbies.errors[0] }}</span>
-                        {% endif %}
-                        <div id="hobbies-limit" class="text-sm text-gray-500">Character limit: 1000</div>
+                    <div class="flex items-center justify-between mb-4">
+                        {{ form.hobbies.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
+                        <div class="w-2/3">
+                            <div id="hobbies-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.hobbies }}</div>
+                            {{ form.hobbies(class="form-input hidden w-full custom-input") }}
+                            {% if form.hobbies.errors %}
+                                <span class="text-red-500 text-sm">{{ form.hobbies.errors[0] }}</span>
+                            {% endif %}
+                        </div>
                     </div>
-
                     <!-- Correction Style field -->
-                    <div class="form-group">
-                        <h3 class="font-semibold text-gray-600 dark:text-gray-300">Correction Style:</h3>
-                        {{ form.correction_style(class="form-input w-full") }}
-                        {% if form.correction_style.errors %}
-                            <span class="text-red-500 text-sm">{{ form.correction_style.errors[0] }}</span>
-                        {% endif %}
-                        <div id="correction_style-limit" class="text-sm text-gray-500">Character limit: 1000</div>
+                    <div class="flex items-center justify-between mb-4">
+                        {{ form.correction_style.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
+                        <div class="w-2/3">
+                            <div id="correction_style-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.correction_style }}</div>
+                            {{ form.correction_style(class="form-input hidden w-full custom-input") }}
+                            {% if form.correction_style.errors %}
+                                <span class="text-red-500 text-sm">{{ form.correction_style.errors[0] }}</span>
+                            {% endif %}
+                        </div>
                     </div>
-
                     <!-- English Weakness field -->
-                    <div class="form-group">
-                        <h3 class="font-semibold text-gray-600 dark:text-gray-300">English Weakness:</h3>
-                        {{ form.english_weakness(class="form-input w-full") }}
-                        {% if form.english_weakness.errors %}
-                            <span class="text-red-500 text-sm">{{ form.english_weakness.errors[0] }}</span>
-                        {% endif %}
-                        <div id="english_weakness-limit" class="text-sm text-gray-500">Character limit: 1000</div>
-                    </div>
-
-                    <!-- Image File field -->
-                    <div class="form-group">
-                        <h3 class="font-semibold text-gray-600 dark:text-gray-300">Profile Image:</h3>
-                        <img id="image_file-text" src="{{ url_for('static', filename='img/studentImg/' + profile.image_file) }}" class="form-text w-2/3">
-                        {{ form.image_file(class="form-input hidden w-2/3") }}
+                    <div class="flex items-center justify-between mb-4">
+                        {{ form.english_weakness.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
+                        <div class="w-2/3">
+                            <div id="english_weakness-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.english_weakness }}</div>
+                            {{ form.english_weakness(class="form-input hidden w-full custom-input") }}
+                            {% if form.english_weakness.errors %}
+                                <span class="text-red-500 text-sm">{{ form.english_weakness.errors[0] }}</span>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
-
-                <div class="form-group text-center mt-6">
-                    <button type="button" id="edit" class="text-blue-500 hover:underline dark:text-blue-400" onclick="editAllFields()">Edit</button>
-                    <button type="button" id="cancel" class="btn btn-outline bg-red-500 text-white mt-4 hidden" onclick="cancelEditAllFields()">Cancel</button>
-                    {{ form.submit(class="btn btn-primary py-2 px-4 bg-blue-500 text-white mt-4 hidden", id="update-profile-button") }}
+                <div class="text-center">
+                    <button type="button" id="edit-button" class="btn btn-primary py-2 px-4 bg-blue-500 text-white rounded-lg" onclick="editAllFields()">Edit</button>
+                    <button type="button" id="cancel-button" class="btn btn-outline bg-red-500 text-white hidden py-2 px-4 rounded-lg" onclick="cancelEditAllFields()">Cancel</button>
+                    {{ form.submit(class="btn btn-primary py-2 px-4 bg-blue-500 text-white hidden rounded-lg", id="update-profile-button") }}
                 </div>
             </div>
         </form>
@@ -87,33 +86,25 @@
 
 <script>
     function editAllFields() {
-        const fields = ['hometown', 'goal', 'hobbies', 'correction_style', 'english_weakness', 'image_file'];
+        const fields = ['hometown', 'goal', 'hobbies', 'correction_style', 'english_weakness'];
         fields.forEach(field => {
             document.getElementById(`${field}-text`).classList.add('hidden');
             document.querySelector(`[name=${field}]`).classList.remove('hidden');
         });
-        document.getElementById('edit').classList.add('hidden');
-        document.getElementById('cancel').classList.remove('hidden');
+        document.getElementById('edit-button').classList.add('hidden');
+        document.getElementById('cancel-button').classList.remove('hidden');
         document.getElementById('update-profile-button').classList.remove('hidden');
-        // Show the character limit message for fields
-        ['goal', 'hobbies', 'correction_style', 'english_weakness'].forEach(field => {
-            document.getElementById(`${field}-limit`).style.display = 'block';
-        });
     }
 
     function cancelEditAllFields() {
-        const fields = ['hometown', 'goal', 'hobbies', 'correction_style', 'english_weakness', 'image_file'];
+        const fields = ['hometown', 'goal', 'hobbies', 'correction_style', 'english_weakness'];
         fields.forEach(field => {
             document.getElementById(`${field}-text`).classList.remove('hidden');
             document.querySelector(`[name=${field}]`).classList.add('hidden');
         });
-        document.getElementById('edit').classList.remove('hidden');
-        document.getElementById('cancel').classList.add('hidden');
+        document.getElementById('edit-button').classList.remove('hidden');
+        document.getElementById('cancel-button').classList.add('hidden');
         document.getElementById('update-profile-button').classList.add('hidden');
-        // Hide the character limit message for fields
-        ['goal', 'hobbies', 'correction_style', 'english_weakness'].forEach(field => {
-            document.getElementById(`${field}-limit`).style.display = 'none';
-        });
     }
 </script>
 {% endblock %}

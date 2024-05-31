@@ -56,6 +56,16 @@ class StudentProfileForm(FlaskForm):
     english_weakness = StringField('English Weakness', validators=[Optional(), Length(max=1000)])
     image_file = FileField('Profile Image', validators=[Optional(), FileAllowed(['jpg', 'png'])])
     submit = SubmitField('Update Profile')
+    
+
+class TeacherEditsStudentForm(FlaskForm):
+    hometown = StringField('Hometown', validators=[Optional(), Length(max=500)])
+    goal = StringField('Goal', validators=[Optional(), Length(max=1000)])
+    hobbies = StringField('Hobbies', validators=[Optional(), Length(max=1000)])
+    correction_style = StringField('Correction Style', validators=[Optional(), Length(max=1000)])
+    english_weakness = StringField('English Weakness', validators=[Optional(), Length(max=1000)])
+    submit = SubmitField('Update Profile')
+
 
 # Flask-Login initialization
 login_manager = LoginManager()
@@ -594,19 +604,15 @@ def update_slots():
     return jsonify({'status': 'success', 'updates': updates})
 
 
-
 @app.route('/student_profile/<int:student_id>', methods=['GET', 'POST'])
 @login_required
 def student_profile(student_id):
     """
-    This route lets a teacher view and a student's profile.
-
+    This route lets a teacher view and edit a student's profile.
     Non-teachers are redirected to the home page.
-
-    On a POST request, the student's profile is updated with form data and saved to the database, 
+    On a POST request, the student's profile is updated with form data and saved to the database,
     then the updated profile is displayed.
-
-    On a GET request, the student's profile is passed to the 'view_student_profile.html' 
+    On a GET request, the student's profile is passed to the 'view_student_profile.html'
     template for display.
     """
     # Ensure the current user is a teacher
@@ -616,36 +622,8 @@ def student_profile(student_id):
     # Fetch the student's profile
     student = Student.query.get_or_404(student_id)
 
-    if request.method == 'POST':
-        form = request.form
-        student.profile.hometown = form.get('hometown')
-        student.profile.goal = form.get('goal')
-        student.profile.hobbies = form.get('hobbies')
-        student.profile.correction_style = form.get('correction_style')
-        student.profile.english_weakness = form.get('english_weakness')
-        db.session.commit()
-        # Redirect to the same page to show the updated profile
-        return redirect(url_for('student_profile', student_id=student_id))
+    form = TeacherEditsStudentForm(obj=student.profile)
 
-    # Pass the student's profile to the template
-    return render_template('view_student_profile.html', student=student)
-
-
-@app.route('/edit_student_profile/<int:student_id>', methods=['GET', 'POST'])
-@login_required
-def edit_student_profile_by_teacher(student_id):
-    if 'user_type' not in session or session['user_type'] != 'teacher':
-        return redirect(url_for('login'))
-
-    student = Student.query.get_or_404(student_id)
-
-    if student.profile is None:
-        profile = StudentProfile(student_id=student.id, image_file='default.jpg')
-        db.session.add(profile)
-        db.session.commit()
-        student.profile = profile
-
-    form = StudentProfileForm(obj=student.profile)
     if form.validate_on_submit():
         student.profile.hometown = form.hometown.data
         student.profile.goal = form.goal.data
@@ -653,14 +631,12 @@ def edit_student_profile_by_teacher(student_id):
         student.profile.correction_style = form.correction_style.data
         student.profile.english_weakness = form.english_weakness.data
 
-        if form.image_file.data:
-            student.profile.image_file = save_image_file(form.image_file.data)
-
         db.session.commit()
         flash('Student profile has been updated!', 'success')
-        return redirect(url_for('view_student_profile', student_id=student.id))
+        return redirect(url_for('student_profile', student_id=student.id))
 
-    return render_template('view_student_profile.html', form=form, profile=student.profile)
+    # Pass the student's profile to the template
+    return render_template('view_student_profile.html', form=form, student=student)
 
 
 
@@ -794,7 +770,7 @@ def edit_student_profile():
         return redirect(url_for('login'))
     
     if current_user.profile is None:
-        profile = StudentProfile(student_id=current_user.id, image_file='default.jpg')
+        profile = StudentProfile(student_id=current_user.id, image_file='default1.png')
         db.session.add(profile)
         db.session.commit()
         current_user.profile = profile
