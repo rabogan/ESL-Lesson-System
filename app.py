@@ -752,14 +752,16 @@ def cancel_lesson():
 
 
 @app.route('/student/lesson_records')
+@login_required
 def student_lesson_records():
+    if session.get('user_type') != 'student':
+        return redirect(url_for('index'))
     # Fetch all lesson records for the logged-in student
     page = request.args.get('page', 1, type=int)
     lesson_records = LessonRecord.query.filter_by(student_id=session['user_id']).options(
         joinedload(LessonRecord.teacher).joinedload(Teacher.profile)
     ).order_by(LessonRecord.date.desc()).paginate(page=page, per_page=5)
 
-    # Pass the lesson records to the template
     return render_template('student/lesson_records.html', lesson_records=lesson_records)
 
 
