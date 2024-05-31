@@ -21,16 +21,36 @@
         </div>
 
         <!-- Upcoming Lessons Section -->
-        <div class="mb-8">
-            <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Upcoming Lessons</h2>
+<div class="mb-8">
+    <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Upcoming Lessons</h2>
+    {% if upcoming_lessons %}
+    <table class="min-w-full bg-white dark:bg-gray-800">
+        <thead>
+            <tr>
+                <th class="py-2 px-4 border-b border-gray-200 dark:border-gray-700 text-left text-sm leading-4 font-medium text-gray-900 dark:text-gray-100">Student</th>
+                <th class="py-2 px-4 border-b border-gray-200 dark:border-gray-700 text-left text-sm leading-4 font-medium text-gray-900 dark:text-gray-100">Date</th>
+                <th class="py-2 px-4 border-b border-gray-200 dark:border-gray-700 text-left text-sm leading-4 font-medium text-gray-900 dark:text-gray-100">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
             {% for lesson in upcoming_lessons %}
-            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
-                <h3 class="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Lesson with {{ lesson.student.username }}</h3>
-                <p class="text-gray-900 dark:text-gray-100">Date: {{ lesson.start_time.strftime('%Y-%m-%d %H:%M') }}</p>
-                <a href="{{ url_for('edit_lesson', lesson_id=lesson.id) }}" class="text-blue-500 hover:underline dark:text-blue-400">Edit Lesson</a>
-            </div>
+            {% if lesson.booking %}
+            <tr>
+                <td class="py-2 px-4 border-b border-gray-200 dark:border-gray-700">{{ lesson.booking.student.username }}</td>
+                <td class="py-2 px-4 border-b border-gray-200 dark:border-gray-700">{{ lesson.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td class="py-2 px-4 border-b border-gray-200 dark:border-gray-700">
+                    <a href="{{ url_for('edit_lesson', lesson_id=lesson.booking.lesson_record_id) }}" class="text-blue-500 hover:underline dark:text-blue-400">Edit Lesson</a>
+                </td>
+            </tr>
+            {% endif %}
             {% endfor %}
-        </div>
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-gray-900 dark:text-gray-100">No upcoming lessons.</p>
+    {% endif %}
+</div>
+
 
         <!-- Most Recent Lesson Record Section -->
         {% if most_recent_record %}

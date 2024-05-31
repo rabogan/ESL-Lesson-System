@@ -11,17 +11,18 @@
             Edit Lesson for {{ lesson.student.username }}
         </h1>
         <form method="POST" id="edit-lesson-form">
+            {{ form.hidden_tag() }}
             <div class="mb-4">
-                <label for="lesson_summary" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Lesson Summary</label>
-                <textarea id="lesson_summary" name="lesson_summary" rows="4" class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-100">{{ lesson.lesson_summary }}</textarea>
+                {{ form.lesson_summary.label(class="block text-sm font-medium text-gray-700 dark:text-gray-300") }}
+                {{ form.lesson_summary(class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-100") }}
             </div>
             <div class="mb-4">
-                <label for="strengths" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Strengths</label>
-                <textarea id="strengths" name="strengths" rows="2" class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-100">{{ lesson.strengths }}</textarea>
+                {{ form.strengths.label(class="block text-sm font-medium text-gray-700 dark:text-gray-300") }}
+                {{ form.strengths(class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-100") }}
             </div>
             <div class="mb-4">
-                <label for="areas_to_improve" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Areas to Improve</label>
-                <textarea id="areas_to_improve" name="areas_to_improve" rows="2" class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-100">{{ lesson.areas_to_improve }}</textarea>
+                {{ form.areas_to_improve.label(class="block text-sm font-medium text-gray-700 dark:text-gray-300") }}
+                {{ form.areas_to_improve(class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-100") }}
             </div>
             <div class="mb-4">
                 <label for="new_word" class="block text-sm font-medium text-gray-700 dark:text-gray-300">New Words</label>
@@ -41,10 +42,10 @@
                     {% endfor %}
                 </div>
             </div>
-            <input type="hidden" name="new_words" id="hidden_new_words">
-            <input type="hidden" name="new_phrases" id="hidden_new_phrases">
+            {{ form.new_words(class="hidden") }}
+            {{ form.new_phrases(class="hidden") }}
             <div>
-                <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500">Update Lesson</button>
+                {{ form.submit(class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500") }}
             </div>
         </form>
     </div>
@@ -54,12 +55,12 @@
     document.addEventListener('DOMContentLoaded', (event) => {
         const newWordInput = document.getElementById('new_word');
         const newWordsList = document.getElementById('new_words_list');
-        const hiddenNewWords = document.getElementById('hidden_new_words');
+        const hiddenNewWords = document.getElementById('{{ form.new_words.id }}');
         const newWords = {{ lesson.new_words | tojson }};
     
         const newPhraseInput = document.getElementById('new_phrase');
         const newPhrasesList = document.getElementById('new_phrases_list');
-        const hiddenNewPhrases = document.getElementById('hidden_new_phrases');
+        const hiddenNewPhrases = document.getElementById('{{ form.new_phrases.id }}');
         const newPhrases = {{ lesson.new_phrases | tojson }};
     
         function updateHiddenFields() {
@@ -96,17 +97,16 @@
             }
         });
     
-        // Prevent form submission when Enter is pressed in newWordInput or newPhraseInput
         document.getElementById('edit-lesson-form').addEventListener('keydown', (event) => {
             if ((event.target === newWordInput || event.target === newPhraseInput) && event.key === 'Enter') {
                 event.preventDefault();
             }
         });
 
-        // Prevent form submission when hitting Enter key in any input
         document.getElementById('edit-lesson-form').addEventListener('submit', (event) => {
             if (newWordInput.value.trim() !== '' || newPhraseInput.value.trim() !== '') {
                 event.preventDefault();
+                alert('Please press Enter after adding new words or phrases.');
             } else {
                 updateHiddenFields();
             }

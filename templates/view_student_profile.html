@@ -12,7 +12,11 @@
             {{ form.hidden_tag() }}
             <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
                 <div class="flex items-center space-x-4">
-                    <img class="w-20 h-20 rounded-full" src="{{ url_for('static', filename='img/studentImg/' + student.profile.image_file) }}" alt="Student's profile picture">
+                    {% if student.profile and student.profile.image_file %}
+                        <img class="w-20 h-20 rounded-full" src="{{ url_for('static', filename='img/studentImg/' + student.profile.image_file) }}" alt="Student's profile picture">
+                    {% else %}
+                        <img class="w-20 h-20 rounded-full" src="{{ url_for('static', filename='img/studentImg/default1.png') }}" alt="Default profile picture">
+                    {% endif %}
                     <div>
                         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ student.username }}</h2>
                     </div>
@@ -22,7 +26,7 @@
                     <div class="flex items-center justify-between mb-4">
                         {{ form.hometown.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                         <div class="w-2/3">
-                            <div id="hometown-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.hometown }}</div>
+                            <div id="hometown-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.hometown if student.profile else 'N/A' }}</div>
                             {{ form.hometown(class="form-input hidden w-full custom-input") }}
                             {% if form.hometown.errors %}
                                 <span class="text-red-500 text-sm">{{ form.hometown.errors[0] }}</span>
@@ -33,7 +37,7 @@
                     <div class="flex items-center justify-between mb-4">
                         {{ form.goal.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                         <div class="w-2/3">
-                            <div id="goal-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.goal }}</div>
+                            <div id="goal-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.goal if student.profile else 'N/A' }}</div>
                             {{ form.goal(class="form-input hidden w-full custom-input") }}
                             {% if form.goal.errors %}
                                 <span class="text-red-500 text-sm">{{ form.goal.errors[0] }}</span>
@@ -44,7 +48,7 @@
                     <div class="flex items-center justify-between mb-4">
                         {{ form.hobbies.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                         <div class="w-2/3">
-                            <div id="hobbies-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.hobbies }}</div>
+                            <div id="hobbies-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.hobbies if student.profile else 'N/A' }}</div>
                             {{ form.hobbies(class="form-input hidden w-full custom-input") }}
                             {% if form.hobbies.errors %}
                                 <span class="text-red-500 text-sm">{{ form.hobbies.errors[0] }}</span>
@@ -55,7 +59,7 @@
                     <div class="flex items-center justify-between mb-4">
                         {{ form.correction_style.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                         <div class="w-2/3">
-                            <div id="correction_style-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.correction_style }}</div>
+                            <div id="correction_style-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.correction_style if student.profile else 'N/A' }}</div>
                             {{ form.correction_style(class="form-input hidden w-full custom-input") }}
                             {% if form.correction_style.errors %}
                                 <span class="text-red-500 text-sm">{{ form.correction_style.errors[0] }}</span>
@@ -66,7 +70,7 @@
                     <div class="flex items-center justify-between mb-4">
                         {{ form.english_weakness.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                         <div class="w-2/3">
-                            <div id="english_weakness-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.english_weakness }}</div>
+                            <div id="english_weakness-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.english_weakness if student.profile else 'N/A' }}</div>
                             {{ form.english_weakness(class="form-input hidden w-full custom-input") }}
                             {% if form.english_weakness.errors %}
                                 <span class="text-red-500 text-sm">{{ form.english_weakness.errors[0] }}</span>

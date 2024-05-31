@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_wtf import FlaskForm, CSRFProtect
 from flask_wtf.file import FileAllowed
-from wtforms import StringField, PasswordField, SubmitField, BooleanField, HiddenField, IntegerField, FileField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, HiddenField, IntegerField, FileField, TextAreaField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional, NumberRange
 
 app = Flask(__name__)
@@ -66,6 +66,13 @@ class TeacherEditsStudentForm(FlaskForm):
     english_weakness = StringField('English Weakness', validators=[Optional(), Length(max=1000)])
     submit = SubmitField('Update Profile')
 
+class LessonRecordForm(FlaskForm):
+    lesson_summary = TextAreaField('Lesson Summary', validators=[DataRequired()])
+    strengths = TextAreaField('Strengths', validators=[DataRequired()])
+    areas_to_improve = TextAreaField('Areas to Improve', validators=[DataRequired()])
+    new_words = HiddenField('New Words')
+    new_phrases = HiddenField('New Phrases')
+    submit = SubmitField('Update Lesson')
 
 # Flask-Login initialization
 login_manager = LoginManager()
@@ -159,6 +166,7 @@ class LessonRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'))
     teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'))
+    lesson_slot_id = db.Column(db.Integer, db.ForeignKey('lesson_slot.id'), nullable=False)
     strengths = db.Column(db.String(1000))
     areas_to_improve = db.Column(db.String(1000))
     new_words = db.Column(JsonEncodedDict)
@@ -168,9 +176,11 @@ class LessonRecord(db.Model):
 
     student = db.relationship('Student', back_populates='lesson_records')
     teacher = db.relationship('Teacher', back_populates='lesson_records')
+    lesson_slot = db.relationship('LessonSlot', back_populates='lesson_records')
 
     def __repr__(self):
         return f"LessonRecord('{self.strengths}', '{self.areas_to_improve}', '{self.lesson_summary}')"
+
 
 
 # Representing the time slot that a teacher is available for a lesson
@@ -183,10 +193,10 @@ class LessonSlot(db.Model):
     is_booked = db.Column(db.Boolean, default=False)
     teacher = db.relationship('Teacher', back_populates='lesson_slots')
     booking = db.relationship('Booking', uselist=False, back_populates='lesson_slot')
+    lesson_records = db.relationship('LessonRecord', back_populates='lesson_slot')
 
     def __repr__(self):
         return f"LessonSlot('{self.teacher_id}', '{self.start_time}', '{self.end_time}', '{self.is_booked}')"
-
 
 class Booking(db.Model):
     __tablename__ = 'booking'
@@ -410,11 +420,8 @@ def logout():
 @app.route('/teacher/teacher_dashboard')
 @login_required
 def teacher_dashboard():
-    """
-    The main dashboard for teachers (this will show recent lesson records and schedules)
-    """
     # Ensure the current user is a teacher
-    if session.get('user_type') != 'teacher':
+    if session['user_type'] != 'teacher':
         return redirect(url_for('index'))
 
     # Fetch the most recent lesson record for the logged-in teacher
@@ -428,7 +435,7 @@ def teacher_dashboard():
         joinedload(LessonRecord.student).joinedload(Student.profile)
     ).order_by(LessonRecord.date.desc()).first()
 
-    # Fetch all upcoming lesson slots for the logged-in teacher
+    # Fetch all upcoming booked lesson slots for the logged-in teacher
     upcoming_lessons = LessonSlot.query.filter(
         and_(
             LessonSlot.teacher_id == session['user_id'],
@@ -438,6 +445,9 @@ def teacher_dashboard():
     ).options(
         joinedload(LessonSlot.booking).joinedload(Booking.student).joinedload(Student.profile)
     ).order_by(LessonSlot.start_time.asc()).all()
+
+    # Debugging: Print the upcoming lessons
+    print(upcoming_lessons)
 
     # Convert lesson times to the teacher's timezone
     teacher = Teacher.query.get(session['user_id'])
@@ -456,37 +466,28 @@ def teacher_lesson_records():
     if session['user_type'] != 'teacher':
         return redirect(url_for('home'))
 
-    user_timezone = pytz.timezone('America/Los_Angeles')  # Replace with the teacher's actual timezone
+    # Fetch the teacher's timezone
+    teacher = Teacher.query.get_or_404(session['user_id'])
+    user_timezone = pytz.timezone(teacher.timezone)
+
     page = request.args.get('page', 1, type=int)
-    lesson_records = LessonRecord.query.filter(
-        and_(
-            LessonRecord.teacher_id == session['user_id'],
-            LessonRecord.date <= datetime.utcnow()
-        )
+
+    # Query all lesson records for the logged-in teacher, join with LessonSlot, and order by LessonSlot.start_time
+    lesson_records = LessonRecord.query.join(LessonSlot).filter(
+        LessonRecord.teacher_id == session['user_id']
     ).options(
-        joinedload(LessonRecord.student).joinedload(Student.profile),
-        joinedload(LessonRecord.teacher).joinedload(Teacher.lesson_slots)
-    ).order_by(LessonRecord.date.desc()).paginate(page=page, per_page=5)
+        joinedload(LessonRecord.student).joinedload(Student.profile)
+    ).order_by(LessonSlot.start_time.desc()).paginate(page=page, per_page=5)
 
     for record in lesson_records.items:
-    # Ensure record.date is timezone-aware
+        # Ensure record.date is timezone-aware
         if record.date.tzinfo is None:
             record.date = pytz.utc.localize(record.date).astimezone(user_timezone)
         else:
             record.date = record.date.astimezone(user_timezone)
 
-    for slot in record.teacher.lesson_slots:
-        if slot.start_time.tzinfo is None:
-            slot.start_time = pytz.utc.localize(slot.start_time).astimezone(user_timezone)
-        else:
-            slot.start_time = slot.start_time.astimezone(user_timezone)
-        
-        if slot.end_time.tzinfo is None:
-            slot.end_time = pytz.utc.localize(slot.end_time).astimezone(user_timezone)
-        else:
-            slot.end_time = slot.end_time.astimezone(user_timezone)
+    return render_template('teacher/teacher_lesson_records.html', lesson_records=lesson_records)
 
-    return render_template('/teacher/teacher_lesson_records.html', lesson_records=lesson_records)
 
 
 @app.route('/teacher/edit_teacher_profile', methods=['GET', 'POST'])
@@ -639,7 +640,6 @@ def student_profile(student_id):
     return render_template('view_student_profile.html', form=form, student=student)
 
 
-
 @app.route('/teacher/edit_lesson/<int:lesson_id>', methods=['GET', 'POST'])
 @login_required
 def edit_lesson(lesson_id):
@@ -650,21 +650,19 @@ def edit_lesson(lesson_id):
         return redirect(url_for('index'))
 
     lesson = LessonRecord.query.get_or_404(lesson_id)
+    form = LessonRecordForm()
 
-    if request.method == 'POST':
-        lesson.lesson_summary = request.form.get('lesson_summary')
-        lesson.strengths = request.form.get('strengths')
-        lesson.areas_to_improve = request.form.get('areas_to_improve')
-
-        new_words = request.form.get('new_words')
-        new_phrases = request.form.get('new_phrases')
+    if form.validate_on_submit():
+        lesson.lesson_summary = form.lesson_summary.data
+        lesson.strengths = form.strengths.data
+        lesson.areas_to_improve = form.areas_to_improve.data
 
         try:
-            lesson.new_words = json.loads(new_words) if new_words else []
-            lesson.new_phrases = json.loads(new_phrases) if new_phrases else []
+            lesson.new_words = json.loads(form.new_words.data) if form.new_words.data else []
+            lesson.new_phrases = json.loads(form.new_phrases.data) if form.new_phrases.data else []
         except json.JSONDecodeError:
             flash('Invalid input for new words or new phrases. Please try again.', 'danger')
-            return render_template('teacher/edit_lesson.html', lesson=lesson)
+            return render_template('teacher/edit_lesson.html', form=form, lesson=lesson)
 
         # Update the lesson date to the current UTC time
         lesson.date = datetime.utcnow()
@@ -673,7 +671,25 @@ def edit_lesson(lesson_id):
         flash('Lesson updated successfully!', 'success')
         return redirect(url_for('teacher_dashboard'))
 
-    return render_template('teacher/edit_lesson.html', lesson=lesson)
+    # Pre-fill the form with existing data
+    if request.method == 'GET':
+        form.lesson_summary.data = lesson.lesson_summary
+        form.strengths.data = lesson.strengths
+        form.areas_to_improve.data = lesson.areas_to_improve
+        form.new_words.data = json.dumps(lesson.new_words)
+        form.new_phrases.data = json.dumps(lesson.new_phrases)
+
+    # Fetch the teacher's timezone
+    teacher = Teacher.query.get(session['user_id'])
+    user_timezone = pytz.timezone(teacher.timezone)
+
+    # Convert lesson date to teacher's timezone
+    lesson.date = lesson.date.astimezone(user_timezone)
+
+    return render_template('teacher/edit_lesson.html', form=form, lesson=lesson)
+
+
+
 
 
 # Student Only Routes
