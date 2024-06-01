@@ -101,6 +101,7 @@ class User(UserMixin):
     def __init__(self, id):
         self.id = id
 
+
 # Student model
 class Student(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -108,11 +109,15 @@ class Student(db.Model, UserMixin):
     password = db.Column(db.String(60), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     number_of_lessons = db.Column(db.Integer, default=0)
-    lessons_purchased = db.Column(db.Integer, default=1)
+    lessons_purchased = db.Column(db.Integer, default=30) 
     timezone = db.Column(db.String(50), default='America/Los_Angeles')
     profile = db.relationship('StudentProfile', uselist=False, back_populates='student')
     lesson_records = db.relationship('LessonRecord', back_populates='student')
     bookings = db.relationship('Booking', back_populates='student')
+
+    @property
+    def remaining_lessons(self):
+        return self.lessons_purchased - self.number_of_lessons
 
     def __repr__(self):
         return f"Student('{self.username}', '{self.email}', '{self.number_of_lessons}')"
@@ -195,10 +200,11 @@ class LessonRecord(db.Model):
     student = db.relationship('Student', back_populates='lesson_records')
     teacher = db.relationship('Teacher', back_populates='lesson_records')
     lesson_slot = db.relationship('LessonSlot', back_populates='lesson_records')
+    booking = db.relationship('Booking', back_populates='lesson_record', uselist=False)
 
     def __repr__(self):
         return f"LessonRecord('{self.strengths}', '{self.areas_to_improve}', '{self.lesson_summary}', '{self.lastEditTime}')"
-    
+
 
 # Representing the time slot that a teacher is available for a lesson
 class LessonSlot(db.Model):
@@ -220,13 +226,15 @@ class Booking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
     lesson_slot_id = db.Column(db.Integer, db.ForeignKey('lesson_slot.id'), nullable=False)
+    lesson_record_id = db.Column(db.Integer, db.ForeignKey('lesson_record.id'), nullable=True)
     status = db.Column(db.String(20), nullable=False, default='booked')
     
     student = db.relationship('Student', back_populates='bookings')
     lesson_slot = db.relationship('LessonSlot', back_populates='booking')
+    lesson_record = db.relationship('LessonRecord', back_populates='booking', uselist=False)
 
     def __repr__(self):
-        return f"Booking('{self.student_id}', '{self.lesson_slot_id}', '{self.status}')"
+        return f"Booking('{self.student_id}', '{self.lesson_slot_id}', '{self.status}', '{self.lesson_record_id}')"
 
 
 # Ensure database tables are created
@@ -737,8 +745,8 @@ def edit_lesson(lesson_id):
             flash('Invalid input for new words or new phrases. Please try again.', 'danger')
             return render_template('teacher/edit_lesson.html', form=form, lesson=lesson)
 
-        # Update the lesson date to the current UTC time
-        lesson.date = datetime.utcnow()
+        # Update the lesson edit time to the current UTC time
+        lesson.lastEditTime = datetime.utcnow()
 
         db.session.commit()
         flash('Lesson updated successfully!', 'success')
@@ -757,7 +765,7 @@ def edit_lesson(lesson_id):
     user_timezone = pytz.timezone(teacher.timezone)
 
     # Convert lesson date to teacher's timezone
-    lesson.date = lesson.date.astimezone(user_timezone)
+    lesson.lastEditTime = lesson.lastEditTime.astimezone(user_timezone)
 
     return render_template('teacher/edit_lesson.html', form=form, lesson=lesson)
 
@@ -912,6 +920,15 @@ def student_book_lesson():
         lesson_slot_id = request.form.get('lesson_slot')
         teacher_id = request.form.get('teacher')
 
+        # Debugging logs
+        print('Form Submitted')
+        print('Teacher ID:', teacher_id)
+        print('Lesson Slot ID:', lesson_slot_id)
+
+        if not lesson_slot_id or not teacher_id:
+            flash('Please select a valid lesson slot and teacher.', 'error')
+            return redirect(url_for('student_book_lesson'))
+
         # Fetch the lesson slot
         lesson_slot = db.session.get(LessonSlot, lesson_slot_id)
         if lesson_slot is None:
@@ -938,8 +955,11 @@ def student_book_lesson():
             return redirect(url_for('student_book_lesson'))
 
         # Check if the student has enough lessons purchased
-        if student.lessons_purchased <= student.number_of_lessons:
+        if student.remaining_lessons <= 0:
             flash('Not enough lessons purchased', 'error')
+            print('Lessons purchased:', student.lessons_purchased)
+            print('Number of lessons:', student.number_of_lessons)
+            print('Remaining lessons:', student.remaining_lessons)
             return redirect(url_for('student_book_lesson'))
 
         # Create a new booking
@@ -955,7 +975,6 @@ def student_book_lesson():
             student_id=current_user.id,
             teacher_id=teacher_id,
             lesson_slot_id=lesson_slot.id,
-            date=datetime.utcnow()  # Reflect the date of the update
         )
         db.session.add(lesson_record)
 
@@ -966,6 +985,8 @@ def student_book_lesson():
         except Exception as e:
             db.session.rollback()
             flash(f'Error booking lesson: {e}', 'error')
+            print('Error booking lesson:', e)
+            return redirect(url_for('student_book_lesson'))
 
         return redirect(url_for('student_dashboard'))
 
@@ -1001,7 +1022,8 @@ def student_book_lesson():
             available_slots=available_slots,
             available_teachers=available_teachers,
             week_offset=week_offset,
-            form=form
+            form=form,
+            remaining_lessons=student.remaining_lessons  # Pass remaining lessons to template
         )
 
 

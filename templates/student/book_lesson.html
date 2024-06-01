@@ -12,6 +12,7 @@
         </h1>
 
         <div class="overflow-x-auto dark:text-gray-300 mb-8">
+            <p class="mb-4 text-lg font-medium text-gray-700 dark:text-gray-300">Number of Lessons Remaining: {{ remaining_lessons }}</p>
             <form id="book-lesson-form" action="{{ url_for('student_book_lesson') }}" method="post">
                 {{ form.hidden_tag() }}  <!-- CSRF Token and other hidden fields -->
                 <div class="mb-4">
@@ -50,7 +51,6 @@
     </div>
 </section>
 {% endblock %}
-
 {% block scripts %}
 <script>
     function filterSlots() {
@@ -77,6 +77,20 @@
         lessonSlotSelect.innerHTML = '';
         visibleOptions.forEach(option => lessonSlotSelect.appendChild(option));
     }
+
+    document.getElementById('book-lesson-form').addEventListener('submit', function(event) {
+        const teacherId = document.getElementById('teacher').value;
+        const lessonSlotId = document.getElementById('lesson_slot').value;
+        console.log('Form Submitted');
+        console.log('Teacher ID:', teacherId);
+        console.log('Lesson Slot ID:', lessonSlotId);
+
+        if (!teacherId || !lessonSlotId) {
+            console.log('Validation failed: Teacher or Lesson Slot not selected.');
+            event.preventDefault();
+            alert('Please select a teacher and lesson slot.');
+        }
+    });
 
     window.onload = filterSlots;
 </script>

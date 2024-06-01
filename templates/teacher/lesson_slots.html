@@ -81,6 +81,7 @@
         console.log('DOM fully loaded and parsed');
         let editMode = false;
         const startDate = new Date('{{ start_date.strftime("%Y-%m-%d") }}');
+        const currentTime = new Date();
         console.log('Start Date:', startDate);
 
         function updateTable() {
@@ -92,12 +93,20 @@
             console.log('Initializing slots');
             document.querySelectorAll('.slot').forEach(slot => {
                 const statusDiv = slot.querySelector('div');
-                if (!statusDiv) return;
-                const slotId = statusDiv.getAttribute('data-slot-id');
-                const isOpen = statusDiv.classList.contains('bg-gold-300');
-                statusDiv.textContent = isOpen ? 'OPEN LESSON' : '-';
-                statusDiv.classList.toggle('bg-gold-300', isOpen);
-                statusDiv.classList.toggle('bg-gray-300', !isOpen);
+                const slotTime = new Date(slot.getAttribute('data-time'));
+
+                if (!statusDiv && slotTime > currentTime) {
+                    const newDiv = document.createElement('div');
+                    newDiv.classList.add('bg-gray-300', 'dark:bg-gray-600', 'text-black', 'dark:text-gray-100', 'rounded', 'p-1', 'h-full', 'flex', 'items-center', 'justify-center');
+                    newDiv.textContent = '-';
+                    slot.appendChild(newDiv);
+                } else if (statusDiv) {
+                    const slotId = statusDiv.getAttribute('data-slot-id');
+                    const isOpen = statusDiv.classList.contains('bg-gold-300');
+                    statusDiv.textContent = isOpen ? 'OPEN LESSON' : '-';
+                    statusDiv.classList.toggle('bg-gold-300', isOpen);
+                    statusDiv.classList.toggle('bg-gray-300', !isOpen);
+                }
             });
         }
 

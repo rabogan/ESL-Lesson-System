@@ -21,6 +21,7 @@
         </div>
 
         <!-- Upcoming Lessons Section -->
+<!-- Upcoming Lessons Section -->
 <div class="mb-8">
     <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Upcoming Lessons</h2>
     {% if upcoming_lessons %}
@@ -39,7 +40,11 @@
                 <td class="py-2 px-4 border-b border-gray-200 dark:border-gray-700">{{ lesson.booking.student.username }}</td>
                 <td class="py-2 px-4 border-b border-gray-200 dark:border-gray-700">{{ lesson.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
                 <td class="py-2 px-4 border-b border-gray-200 dark:border-gray-700">
-                    <a href="{{ url_for('edit_lesson', lesson_id=lesson.booking.lesson_record_id) }}" class="text-blue-500 hover:underline dark:text-blue-400">Edit Lesson</a>
+                    {% if lesson.booking.lesson_record_id %}
+                        <a href="{{ url_for('edit_lesson', lesson_id=lesson.booking.lesson_record_id) }}" class="text-blue-500 hover:underline dark:text-blue-400">Edit Lesson</a>
+                    {% else %}
+                        <span class="text-gray-500 dark:text-gray-400">No Lesson Record</span>
+                    {% endif %}
                 </td>
             </tr>
             {% endif %}
@@ -50,6 +55,7 @@
     <p class="text-gray-900 dark:text-gray-100">No upcoming lessons.</p>
     {% endif %}
 </div>
+
 
 
         <!-- Most Recent Lesson Record Section -->
