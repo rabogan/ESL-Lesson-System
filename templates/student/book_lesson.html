@@ -13,14 +13,25 @@
 
         <div class="overflow-x-auto dark:text-gray-300 mb-8">
             <p class="mb-4 text-lg font-medium text-gray-700 dark:text-gray-300">Number of Lessons Remaining: {{ remaining_lessons }}</p>
+
+            <!-- Flash messages for errors or success -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <ul class="list-disc list-inside">
+                        {% for category, message in messages %}
+                            <li class="text-{{ category }}">{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+
             <form id="book-lesson-form" action="{{ url_for('student_book_lesson') }}" method="post">
                 {{ form.hidden_tag() }}  <!-- CSRF Token and other hidden fields -->
                 <div class="mb-4">
                     <label for="teacher" class="block text-lg font-medium text-gray-700 dark:text-gray-300">Select Teacher</label>
                     <select id="teacher" name="teacher" class="block w-full mt-1" onchange="filterSlots()">
-                        <option value="">Select a teacher</option>
                         {% for teacher in available_teachers %}
-                            <option value="{{ teacher.id }}">{{ teacher.username }}</option>
+                            <option value="{{ teacher.id }}" {% if loop.first %}selected{% endif %}>{{ teacher.username }}</option>
                         {% endfor %}
                     </select>
                 </div>

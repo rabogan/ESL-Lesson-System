@@ -3,19 +3,16 @@
 from app import db, app
 from app import Booking, LessonRecord
 
-# Fetch the existing booking and lesson record
 with app.app_context():
-    # Fetch the existing booking and lesson record
-    booking = Booking.query.first()
-    lesson_record = LessonRecord.query.first()
+    # Fetch all bookings
+    bookings = Booking.query.all()
+    
+    for booking in bookings:
+        # Find the corresponding lesson record
+        lesson_record = LessonRecord.query.filter_by(student_id=booking.student_id, lesson_slot_id=booking.lesson_slot_id).first()
+        
+        if lesson_record:
+            booking.lesson_record_id = lesson_record.id
 
-    # Ensure both booking and lesson_record exist
-    if booking and lesson_record:
-        # Link them
-        booking.lesson_record_id = lesson_record.id
-
-        # Commit the changes
-        db.session.commit()
-        print("Booking updated with lesson_record_id.")
-    else:
-        print("Booking or LessonRecord not found.")
+    db.session.commit()
+    print("Updated lesson_record_id in bookings.")

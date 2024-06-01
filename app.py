@@ -34,12 +34,10 @@ logging.basicConfig(level=logging.DEBUG)
 
 #GUESS
 class LessonSlotsForm(FlaskForm):
-    csrf_token = HiddenField()
-    
+    submit = SubmitField('Submit')
 
 class StudentLessonSlotForm(FlaskForm):
-    csrf_token = HiddenField()
-
+    submit = SubmitField('Submit')
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
@@ -48,13 +46,11 @@ class RegistrationForm(FlaskForm):
     confirmation = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Register')
 
-
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
     password = PasswordField('Password', validators=[DataRequired()])
     remember = BooleanField('Remember Me')
     submit = SubmitField('Login')
-
 
 class EditTeacherProfileForm(FlaskForm):
     age = IntegerField('Age', validators=[Optional(), NumberRange(min=0)])
@@ -63,8 +59,7 @@ class EditTeacherProfileForm(FlaskForm):
     blood_type = StringField('Blood Type', validators=[Optional(), Length(max=5)])
     image_file = FileField('Profile Image', validators=[Optional(), FileAllowed(['jpg', 'png'])])
     submit = SubmitField('Update Profile')
-    
-    
+
 class StudentProfileForm(FlaskForm):
     hometown = StringField('Hometown', validators=[Optional(), Length(max=500)])
     goal = StringField('Goal', validators=[Optional(), Length(max=1000)])
@@ -73,7 +68,6 @@ class StudentProfileForm(FlaskForm):
     english_weakness = StringField('English Weakness', validators=[Optional(), Length(max=1000)])
     image_file = FileField('Profile Image', validators=[Optional(), FileAllowed(['jpg', 'png'])])
     submit = SubmitField('Update Profile')
-    
 
 class TeacherEditsStudentForm(FlaskForm):
     hometown = StringField('Hometown', validators=[Optional(), Length(max=500)])
@@ -95,6 +89,14 @@ class LessonRecordForm(FlaskForm):
 class CancelLessonForm(FlaskForm):
     lesson_id = HiddenField('Lesson ID', validators=[DataRequired()])
     csrf_token = HiddenField()
+
+    def validate_on_submit(self):
+        if not super().validate_on_submit():
+            app.logger.debug(f"Validation errors: {self.errors}")
+            return False
+        app.logger.debug(f"Lesson ID in form: {self.lesson_id.data}")
+        return True
+
 
 # User model
 class User(UserMixin):
@@ -803,7 +805,6 @@ def student_dashboard():
     for lesson in upcoming_lessons:
         lesson.start_time = lesson.start_time.replace(tzinfo=timezone.utc).astimezone(user_timezone)
 
-    student_lesson_slot_form = StudentLessonSlotForm()  # Define the student lesson slot form
     cancel_lesson_form = CancelLessonForm()  # Define the cancel lesson form
 
     return render_template(
@@ -811,18 +812,21 @@ def student_dashboard():
         profile=current_user.profile,
         most_recent_record=most_recent_record,
         upcoming_lessons=upcoming_lessons,
-        student_lesson_slot_form=student_lesson_slot_form,  # Pass the student lesson slot form
         cancel_lesson_form=cancel_lesson_form  # Pass the cancel lesson form
     )
 
 
-@app.route('/cancel_lesson', methods=['POST'])
+@app.route('/cancel_lesson/<int:lesson_id>', methods=['POST'])
 @login_required
-def cancel_lesson():
+def cancel_lesson(lesson_id):
     logging.debug("cancel_lesson route called")
     form = CancelLessonForm()
+    logging.debug(f"Form data before validation: {request.form}")
 
-    logging.debug(f"Form data: {request.form}")
+    # Set lesson_id in the form's data
+    form.lesson_id.data = lesson_id
+    logging.debug(f"Lesson ID from URL: {lesson_id}")
+    logging.debug(f"Lesson ID from form: {form.lesson_id.data}")
 
     if form.validate_on_submit():
         lesson_id = form.lesson_id.data
@@ -849,6 +853,16 @@ def cancel_lesson():
         # Update the lesson slot to set is_booked to False
         lesson_slot.is_booked = False
 
+        # Update the student's lesson counts
+        student = db.session.get(Student, current_user.id)
+        if student is not None:
+            student.number_of_lessons -= 1
+            student.lessons_purchased += 1
+        else:
+            logging.debug("Student not found")
+            flash('Student not found', 'error')
+            return redirect(url_for('student_dashboard'))
+
         # Commit the changes to the database
         try:
             db.session.commit()
@@ -860,10 +874,11 @@ def cancel_lesson():
             flash(f'Error cancelling lesson: {e}', 'error')
 
         return redirect(url_for('student_dashboard'))
-    
-    logging.debug("Form submission error. Form not validated.")
+
+    logging.debug(f"Form submission error: {form.errors}")
     flash('Form submission error. Please try again.', 'error')
     return redirect(url_for('student_dashboard'))
+
 
 
 @app.route('/student/lesson_records')
@@ -955,20 +970,11 @@ def student_book_lesson():
             return redirect(url_for('student_book_lesson'))
 
         # Check if the student has enough lessons purchased
-        if student.remaining_lessons <= 0:
+        if student.lessons_purchased <= student.number_of_lessons:
             flash('Not enough lessons purchased', 'error')
             print('Lessons purchased:', student.lessons_purchased)
             print('Number of lessons:', student.number_of_lessons)
-            print('Remaining lessons:', student.remaining_lessons)
             return redirect(url_for('student_book_lesson'))
-
-        # Create a new booking
-        booking = Booking(student_id=student.id, lesson_slot_id=lesson_slot.id, status='booked')
-        db.session.add(booking)
-
-        # Update the lesson slot and student
-        lesson_slot.is_booked = True
-        student.number_of_lessons += 1
 
         # Create a new lesson record
         lesson_record = LessonRecord(
@@ -977,6 +983,15 @@ def student_book_lesson():
             lesson_slot_id=lesson_slot.id,
         )
         db.session.add(lesson_record)
+        db.session.flush()  # Ensure the lesson_record.id is available
+
+        # Create a new booking
+        booking = Booking(student_id=student.id, lesson_slot_id=lesson_slot.id, status='booked', lesson_record_id=lesson_record.id)
+        db.session.add(booking)
+
+        # Update the lesson slot and student
+        lesson_slot.is_booked = True
+        student.number_of_lessons += 1
 
         # Commit the changes to the database
         try:
@@ -1023,7 +1038,7 @@ def student_book_lesson():
             available_teachers=available_teachers,
             week_offset=week_offset,
             form=form,
-            remaining_lessons=student.remaining_lessons  # Pass remaining lessons to template
+            remaining_lessons=student.remaining_lessons
         )
 
 
