@@ -617,9 +617,13 @@ def update_slots():
         try:
             if action == 'open':
                 local_start_time = datetime.fromisoformat(item['start_time'])
+                if local_start_time.tzinfo is None:
+                    local_start_time = user_timezone.localize(local_start_time)
                 start_time = local_start_time.astimezone(pytz.UTC)
-
+                
                 local_end_time = datetime.fromisoformat(item['end_time'])
+                if local_end_time.tzinfo is None:
+                    local_end_time = user_timezone.localize(local_end_time)
                 end_time = local_end_time.astimezone(pytz.UTC)
 
                 new_slot = LessonSlot(
@@ -633,7 +637,7 @@ def update_slots():
                 updates.append({
                     'action': 'open',
                     'slot_id': new_slot.id,
-                    'start_time': new_slot.start_time.astimezone(user_timezone).isoformat()
+                    'start_time': new_slot.start_time.isoformat()
                 })
             elif action == 'close':
                 slot_id = item['slot_id']

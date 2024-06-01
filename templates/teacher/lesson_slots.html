@@ -79,7 +79,7 @@
         let editMode = false;
         let startDate = new Date('{{ start_date.strftime("%Y-%m-%d") }}');
         console.log('Start Date:', startDate);
-        
+    
         function updateTable() {
             console.log('Updating table');
             window.location.href = `/teacher/lesson_slots?start_date=${startDate.toISOString().split('T')[0]}`;
@@ -181,8 +181,8 @@
                     if (data.updates && Array.isArray(data.updates)) {
                         data.updates.forEach(update => {
                             console.log('Processing update:', update);
-                            const startTime = update.start_time.split('.')[0] + 'Z';
                             if (update.action === 'open') {
+                                const startTime = update.start_time.split('.')[0] + 'Z';
                                 const slotElement = document.querySelector(`[data-time='${startTime}'] div`);
                                 if (!slotElement) {
                                     console.error(`No slot element found for data-time='${startTime}'`);
@@ -253,6 +253,6 @@
         });
     
         initializeSlots();
-    });
+    });    
 </script>
 {% endblock %}
