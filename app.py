@@ -29,12 +29,17 @@ login_manager.init_app(app)
 csrf = CSRFProtect(app)
 csrf.init_app(app)
 
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+
 #GUESS
 class LessonSlotsForm(FlaskForm):
     csrf_token = HiddenField()
     
+
 class StudentLessonSlotForm(FlaskForm):
     csrf_token = HiddenField()
+
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
@@ -85,6 +90,11 @@ class LessonRecordForm(FlaskForm):
     new_words = HiddenField('New Words')
     new_phrases = HiddenField('New Phrases')
     submit = SubmitField('Update Lesson')
+
+
+class CancelLessonForm(FlaskForm):
+    lesson_id = HiddenField('Lesson ID', validators=[DataRequired()])
+    csrf_token = HiddenField()
 
 # User model
 class User(UserMixin):
@@ -180,16 +190,15 @@ class LessonRecord(db.Model):
     new_words = db.Column(JsonEncodedDict)
     new_phrases = db.Column(JsonEncodedDict)
     lesson_summary = db.Column(db.String(1000))
-    date = db.Column(db.DateTime, default=datetime.utcnow)
+    lastEditTime = db.Column(db.DateTime, default=datetime.utcnow)
 
     student = db.relationship('Student', back_populates='lesson_records')
     teacher = db.relationship('Teacher', back_populates='lesson_records')
     lesson_slot = db.relationship('LessonSlot', back_populates='lesson_records')
 
     def __repr__(self):
-        return f"LessonRecord('{self.strengths}', '{self.areas_to_improve}', '{self.lesson_summary}')"
-
-
+        return f"LessonRecord('{self.strengths}', '{self.areas_to_improve}', '{self.lesson_summary}', '{self.lastEditTime}')"
+    
 
 # Representing the time slot that a teacher is available for a lesson
 class LessonSlot(db.Model):
@@ -212,6 +221,7 @@ class Booking(db.Model):
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
     lesson_slot_id = db.Column(db.Integer, db.ForeignKey('lesson_slot.id'), nullable=False)
     status = db.Column(db.String(20), nullable=False, default='booked')
+    
     student = db.relationship('Student', back_populates='bookings')
     lesson_slot = db.relationship('LessonSlot', back_populates='booking')
 
@@ -434,12 +444,12 @@ def teacher_dashboard():
     most_recent_record = LessonRecord.query.filter(
         and_(
             LessonRecord.teacher_id == session['user_id'],
-            LessonRecord.date <= datetime.now(timezone.utc),
+            LessonRecord.lastEditTime <= datetime.now(timezone.utc),
             LessonRecord.lesson_summary.isnot(None)
         )
     ).options(
         joinedload(LessonRecord.student).joinedload(Student.profile)
-    ).order_by(LessonRecord.date.desc()).first()
+    ).order_by(LessonRecord.lastEditTime.desc()).first()
 
     # Fetch all upcoming booked lesson slots for the logged-in teacher
     upcoming_lessons = LessonSlot.query.filter(
@@ -462,7 +472,7 @@ def teacher_dashboard():
 
     user_timezone = pytz.timezone(teacher.timezone)
     if most_recent_record:
-        most_recent_record.date = most_recent_record.date.astimezone(user_timezone)
+        most_recent_record.lastEditTime = most_recent_record.lastEditTime.astimezone(user_timezone)
     for lesson in upcoming_lessons:
         lesson.start_time = lesson.start_time.astimezone(user_timezone)
 
@@ -761,7 +771,7 @@ def student_dashboard():
     # Fetch the most recent lesson record for the logged-in student
     most_recent_record = LessonRecord.query.filter_by(student_id=session['user_id']).options(
         joinedload(LessonRecord.teacher).joinedload(Teacher.profile)
-    ).order_by(LessonRecord.date.desc()).first()
+    ).order_by(LessonRecord.lastEditTime.desc()).first()
 
     # Fetch all upcoming lesson slots for the logged-in student
     upcoming_lessons = LessonSlot.query.join(Booking).filter(
@@ -796,14 +806,6 @@ def student_dashboard():
         student_lesson_slot_form=student_lesson_slot_form,  # Pass the student lesson slot form
         cancel_lesson_form=cancel_lesson_form  # Pass the cancel lesson form
     )
-
-
-class CancelLessonForm(FlaskForm):
-    lesson_id = HiddenField('Lesson ID', validators=[DataRequired()])
-    csrf_token = HiddenField()
-
-# Set up logging
-logging.basicConfig(level=logging.DEBUG)
 
 
 @app.route('/cancel_lesson', methods=['POST'])
@@ -865,9 +867,10 @@ def student_lesson_records():
     page = request.args.get('page', 1, type=int)
     lesson_records = LessonRecord.query.filter_by(student_id=session['user_id']).options(
         joinedload(LessonRecord.teacher).joinedload(Teacher.profile)
-    ).order_by(LessonRecord.date.desc()).paginate(page=page, per_page=5)
+    ).order_by(LessonRecord.lastEditTime.desc()).paginate(page=page, per_page=5)
 
     return render_template('student/lesson_records.html', lesson_records=lesson_records)
+
 
 
 @app.route('/student/edit_student_profile', methods=['GET', 'POST'])
