@@ -1,5 +1,6 @@
 import json
 import pytz
+import logging
 from helpers import save_image_file
 from flask import Flask, session, render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
@@ -331,8 +332,6 @@ def student_login():
 
         return redirect(url_for("student_dashboard"))
     return render_template("student_login.html", form=form)
-
-
 
 
 @app.route("/teacher/register", methods=["GET", "POST"])
@@ -753,7 +752,6 @@ def edit_lesson(lesson_id):
     return render_template('teacher/edit_lesson.html', form=form, lesson=lesson)
 
 
-# Student Only Routes@app.route('/student/dashboard')
 @app.route('/student/dashboard')
 @login_required
 def student_dashboard():
@@ -785,52 +783,77 @@ def student_dashboard():
         user_timezone = pytz.timezone('America/Los_Angeles')
 
     for lesson in upcoming_lessons:
-        lesson.start_time = lesson.start_time.astimezone(user_timezone)
+        lesson.start_time = lesson.start_time.replace(tzinfo=timezone.utc).astimezone(user_timezone)
 
-    # Pass the most recent record, the upcoming lessons, and the profile to the template
-    form = StudentLessonSlotForm()  # Add this line to define the form
+    student_lesson_slot_form = StudentLessonSlotForm()  # Define the student lesson slot form
+    cancel_lesson_form = CancelLessonForm()  # Define the cancel lesson form
+
     return render_template(
         'student/student_dashboard.html',
         profile=current_user.profile,
         most_recent_record=most_recent_record,
         upcoming_lessons=upcoming_lessons,
-        form=form  # Add this line to pass the form
+        student_lesson_slot_form=student_lesson_slot_form,  # Pass the student lesson slot form
+        cancel_lesson_form=cancel_lesson_form  # Pass the cancel lesson form
     )
 
 
 class CancelLessonForm(FlaskForm):
     lesson_id = HiddenField('Lesson ID', validators=[DataRequired()])
+    csrf_token = HiddenField()
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
 
 
 @app.route('/cancel_lesson', methods=['POST'])
 @login_required
 def cancel_lesson():
-    if session['user_type'] != 'student':
-        return redirect(url_for('home'))
-
+    logging.debug("cancel_lesson route called")
     form = CancelLessonForm()
-    
+
+    logging.debug(f"Form data: {request.form}")
+
     if form.validate_on_submit():
         lesson_id = form.lesson_id.data
+        logging.debug(f"Form validated. Lesson ID: {lesson_id}")
 
-        # Fetch the lesson record from the database
-        lesson = db.session.get(LessonRecord, lesson_id)
-        if lesson is None or lesson.student_id != session['user_id']:
-            # If not, redirect the user back to the dashboard with an error message
-            flash('Invalid lesson ID', 'error')
+        # Fetch the booking from the database
+        booking = Booking.query.filter_by(lesson_slot_id=lesson_id, student_id=current_user.id).first()
+        if booking is None:
+            logging.debug("Booking not found or invalid booking ID")
+            flash('Invalid booking ID', 'error')
             return redirect(url_for('student_dashboard'))
 
-        # Delete the lesson record from the database
-        db.session.delete(lesson)
-        db.session.commit()
+        # Fetch the associated lesson slot
+        lesson_slot = db.session.get(LessonSlot, lesson_id)
+        if lesson_slot is None:
+            logging.debug("Associated lesson slot not found")
+            flash('Associated lesson slot not found', 'error')
+            return redirect(url_for('student_dashboard'))
 
-        # Redirect the user back to the dashboard with a success message
-        flash('Lesson cancelled successfully', 'success')
+        # Delete the booking entry
+        db.session.delete(booking)
+        logging.debug("Booking deleted")
+
+        # Update the lesson slot to set is_booked to False
+        lesson_slot.is_booked = False
+
+        # Commit the changes to the database
+        try:
+            db.session.commit()
+            logging.debug("Changes committed to the database")
+            flash('Lesson cancelled successfully', 'success')
+        except Exception as e:
+            db.session.rollback()
+            logging.error(f"Error cancelling lesson: {e}")
+            flash(f'Error cancelling lesson: {e}', 'error')
+
         return redirect(url_for('student_dashboard'))
     
+    logging.debug("Form submission error. Form not validated.")
     flash('Form submission error. Please try again.', 'error')
     return redirect(url_for('student_dashboard'))
-
 
 
 @app.route('/student/lesson_records')
@@ -889,12 +912,14 @@ def student_book_lesson():
         # Fetch the lesson slot
         lesson_slot = db.session.get(LessonSlot, lesson_slot_id)
         if lesson_slot is None:
-            return abort(404)
+            flash('Invalid lesson slot selected', 'error')
+            return redirect(url_for('student_book_lesson'))
 
         # Get the current student's timezone
         student = db.session.get(Student, current_user.id)
         if student is None:
-            return abort(404)
+            flash('Student not found', 'error')
+            return redirect(url_for('student_book_lesson'))
 
         user_timezone = pytz.timezone(student.timezone)
 
@@ -907,12 +932,12 @@ def student_book_lesson():
         # Check if the lesson slot exists and is not already booked
         if lesson_slot.is_booked or lesson_start_time < current_time:
             flash('Lesson slot is not available', 'error')
-            return redirect(url_for('student_dashboard'))
+            return redirect(url_for('student_book_lesson'))
 
         # Check if the student has enough lessons purchased
         if student.lessons_purchased <= student.number_of_lessons:
             flash('Not enough lessons purchased', 'error')
-            return redirect(url_for('student_dashboard'))
+            return redirect(url_for('student_book_lesson'))
 
         # Create a new booking
         booking = Booking(student_id=student.id, lesson_slot_id=lesson_slot.id, status='booked')
@@ -927,15 +952,20 @@ def student_book_lesson():
             student_id=current_user.id,
             teacher_id=teacher_id,
             lesson_slot_id=lesson_slot.id,
-            date=lesson_slot.start_time
+            date=datetime.utcnow()  # Reflect the date of the update
         )
         db.session.add(lesson_record)
 
         # Commit the changes to the database
-        db.session.commit()
+        try:
+            db.session.commit()
+            flash('Lesson booked successfully', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error booking lesson: {e}', 'error')
 
-        flash('Lesson booked successfully', 'success')
         return redirect(url_for('student_dashboard'))
+
     else:  # GET request
         week_offset = int(request.args.get('week_offset', 0))
         today = datetime.now(timezone.utc)
