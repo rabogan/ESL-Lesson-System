@@ -752,6 +752,7 @@ def edit_lesson(lesson_id):
 
 
 # Student Only Routes@app.route('/student/dashboard')
+@app.route('/student/dashboard')
 @login_required
 def student_dashboard():
     if session['user_type'] != 'student':
@@ -791,6 +792,7 @@ def student_dashboard():
         most_recent_record=most_recent_record,
         upcoming_lessons=upcoming_lessons
     )
+
 
 
 class CancelLessonForm(FlaskForm):
