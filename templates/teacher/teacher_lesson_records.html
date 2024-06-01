@@ -45,7 +45,7 @@
                                     <p class="text-red-500">Lesson Summary Pending</p>
                                 {% endif %}
                             </div>
-                            <small class="text-gray-900 dark:text-gray-100">Updated for {{ record.student.username }}: {{ record.lastEditTime.strftime('%Y-%m-%d %H:%M') }}</small>
+                            <small class="text-gray-900 dark:text-gray-100">Updated for {{ record.student.username }}: {{ record.date.strftime('%Y-%m-%d %H:%M') }}</small>
                         </div>
                         <div class="lg:col-span-3">
                             <div class="mb-4">
@@ -99,4 +99,17 @@
         {% endif %}
     </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var elements = document.querySelectorAll('.lesson-time');
+        elements.forEach(function (element) {
+            var utcTime = element.getAttribute('data-utc-time');
+            var localTime = new Date(utcTime);
+            element.innerText = localTime.toLocaleString(); // Converts to local timezone
+        });
+    });
+</script>
 {% endblock %}

@@ -51,6 +51,8 @@
     </div>
 </section>
 {% endblock %}
+
+{% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', (event) => {
         const newWordInput = document.getElementById('new_word');
@@ -115,3 +117,4 @@
         updateHiddenFields();
     });
 </script>
+{% endblock %}

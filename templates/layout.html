@@ -168,6 +168,7 @@
         </div>
     </footer>
 
+    <!-- Global Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -203,22 +204,16 @@
                 localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
                 updateThemeIcons(isDarkMode);
             });
-            
 
             var navbarToggle = document.getElementById('navbar-toggle');
             if (navbarToggle) {
                 navbarToggle.addEventListener('click', function () {
-            document.getElementById('navbar-links').classList.toggle('hidden');
-        });
-    }
-
-            var elements = document.querySelectorAll('.lesson-time');
-            elements.forEach(function (element) {
-                var utcTime = element.getAttribute('data-utc-time');
-                var localTime = new Date(utcTime);
-                element.innerText = localTime.toLocaleString(); // Converts to local timezone
-            });
+                    document.getElementById('navbar-links').classList.toggle('hidden');
+                });
+            }
         });
     </script>
+
+    {% block scripts %}{% endblock %}
 </body>
 </html>
