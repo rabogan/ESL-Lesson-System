@@ -573,6 +573,7 @@ def manage_lesson_slots():
                            form=form)
 
 
+
 @app.route('/teacher/update_slot', methods=['POST'])
 @login_required
 def update_lesson_slot():
@@ -584,9 +585,9 @@ def update_lesson_slot():
     user_timezone = pytz.timezone(teacher.timezone)
 
     if action == 'open':
-        local_start_time = datetime.strptime(data['start_time'], '%Y-%m-%d %H:%M:%S')
+        local_start_time = datetime.strptime(data['start_time'], '%Y-%m-%dT%H:%M:%S')
         start_time = user_timezone.localize(local_start_time).astimezone(pytz.UTC)
-        local_end_time = datetime.strptime(data['end_time'], '%Y-%m-%d %H:%M:%S')
+        local_end_time = datetime.strptime(data['end_time'], '%Y-%m-%dT%H:%M:%S')
         end_time = user_timezone.localize(local_end_time).astimezone(pytz.UTC)
         new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time, is_booked=False)
         db.session.add(new_slot)
@@ -606,14 +607,25 @@ def update_lesson_slot():
 @login_required
 def update_slots():
     data = request.get_json()
+    app.logger.info(f"Received data: {data}")
     updates = []
+    teacher = db.session.get(Teacher, current_user.id)
+    user_timezone = pytz.timezone(teacher.timezone)
 
     for item in data:
         action = item['action']
-        if action == 'open':
-            try:
-                start_time = datetime.fromisoformat(item['start_time'].replace('Z', '+00:00'))
-                end_time = datetime.fromisoformat(item['end_time'].replace('Z', '+00:00'))
+        try:
+            if action == 'open':
+                local_start_time = datetime.fromisoformat(item['start_time'])
+                if local_start_time.tzinfo is None:
+                    local_start_time = user_timezone.localize(local_start_time)
+                start_time = local_start_time.astimezone(pytz.UTC)
+                
+                local_end_time = datetime.fromisoformat(item['end_time'])
+                if local_end_time.tzinfo is None:
+                    local_end_time = user_timezone.localize(local_end_time)
+                end_time = local_end_time.astimezone(pytz.UTC)
+
                 new_slot = LessonSlot(
                     teacher_id=current_user.id,
                     start_time=start_time,
@@ -627,11 +639,7 @@ def update_slots():
                     'slot_id': new_slot.id,
                     'start_time': new_slot.start_time.isoformat()
                 })
-            except Exception as e:
-                app.logger.error(f"Error creating lesson slot: {e}")
-                return jsonify({'status': 'error', 'message': 'Invalid data for open action'}), 400
-        elif action == 'close':
-            try:
+            elif action == 'close':
                 slot_id = item['slot_id']
                 slot = LessonSlot.query.get(slot_id)
                 if slot and slot.teacher_id == current_user.id:
@@ -643,9 +651,9 @@ def update_slots():
                     })
                 else:
                     return jsonify({'status': 'error', 'message': 'Invalid slot id'}), 400
-            except Exception as e:
-                app.logger.error(f"Error closing lesson slot: {e}")
-                return jsonify({'status': 'error', 'message': 'Invalid data for close action'}), 400
+        except Exception as e:
+            app.logger.error(f"Error processing slot action: {e}")
+            return jsonify({'status': 'error', 'message': f'Invalid data for {action} action'}), 400
 
     return jsonify({'status': 'success', 'updates': updates})
 

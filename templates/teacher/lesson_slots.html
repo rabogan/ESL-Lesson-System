@@ -34,7 +34,9 @@
                 <tr class="bg-gray-200 dark:bg-gray-700">
                     <th class="border border-gray-300 dark:border-gray-600 p-2 dark:text-gray-100">Time</th>
                     {% for i in range(7) %}
-                    <th class="border border-gray-300 dark:border-gray-600 p-2 dark:text-gray-100">{{ (start_date + timedelta(days=i)).strftime('%d %b') }}</th>
+                    <th class="border border-gray-300 dark:border-gray-600 p-2 dark:text-gray-100">
+                        {{ (start_date + timedelta(days=i)).strftime('%a %d %b') }}
+                    </th>
                     {% endfor %}
                 </tr>
             </thead>
@@ -71,183 +73,180 @@
         </table>
     </div>
 </section>
-<script>
-    (function() {
-        document.addEventListener('DOMContentLoaded', function () {
-            console.log('DOM fully loaded and parsed');
-            let editMode = false;
-            let startDate = new Date('{{ start_date.strftime("%Y-%m-%d") }}');
-            console.log('Start Date:', startDate);
+<script>document.addEventListener('DOMContentLoaded', function () {
+    console.log('DOM fully loaded and parsed');
+    let editMode = false;
+    let startDate = new Date('{{ start_date.strftime("%Y-%m-%d") }}');
+    console.log('Start Date:', startDate);
 
-            function updateTable() {
-                console.log('Updating table');
-                window.location.href = `/teacher/lesson_slots?start_date=${startDate.toISOString().split('T')[0]}`;
+    function updateTable() {
+        console.log('Updating table');
+        window.location.href = `/teacher/lesson_slots?start_date=${startDate.toISOString().split('T')[0]}`;
+    }
+
+    function initializeSlots() {
+        console.log('Initializing slots');
+        document.querySelectorAll('.slot').forEach(function (slot) {
+            const statusDiv = slot.querySelector('div');
+            if (statusDiv) {
+                const slotId = statusDiv.getAttribute('data-slot-id');
+                if (statusDiv.classList.contains('bg-blue-500') || slot.classList.contains('past-slot')) {
+                    return;
+                }
+                if (slotId) {
+                    console.log(`Slot ID ${slotId} is already open`);
+                    statusDiv.classList.add('bg-gold-300');
+                    statusDiv.classList.remove('bg-gray-300');
+                    statusDiv.textContent = 'OPEN LESSON';
+                } else {
+                    console.log('Slot is not open yet');
+                    statusDiv.classList.add('bg-gray-300');
+                    statusDiv.classList.remove('bg-gold-300');
+                    statusDiv.textContent = '-';
+                }
+            }
+        });
+    }
+
+    document.querySelectorAll('.slot').forEach(function (slot) {
+        slot.addEventListener('click', function () {
+            if (!editMode) return;
+
+            const statusDiv = slot.querySelector('div');
+            const slotId = statusDiv.getAttribute('data-slot-id');
+            console.log('Clicked slot ID:', slotId);
+
+            if (statusDiv.classList.contains('bg-blue-500') || slot.classList.contains('past-slot')) {
+                return;
             }
 
-            function initializeSlots() {
-                console.log('Initializing slots');
-                document.querySelectorAll('.slot').forEach(function (slot) {
-                    const statusDiv = slot.querySelector('div');
-                    if (statusDiv) {
-                        const slotId = statusDiv.getAttribute('data-slot-id');
-                        if (statusDiv.classList.contains('bg-blue-500') || slot.classList.contains('past-slot')) {
-                            return;
-                        }
-                        if (slotId) {
-                            console.log(`Slot ID ${slotId} is already open`);
-                            statusDiv.classList.add('bg-gold-300');
-                            statusDiv.classList.remove('bg-gray-300');
-                            statusDiv.textContent = 'OPEN LESSON';
-                        } else {
-                            console.log('Slot is not open yet');
-                            statusDiv.classList.add('bg-gray-300');
-                            statusDiv.classList.remove('bg-gold-300');
-                            statusDiv.textContent = '-';
-                        }
-                    }
+            statusDiv.classList.toggle('bg-gold-300');
+            statusDiv.classList.toggle('bg-gray-300');
+            statusDiv.textContent = statusDiv.classList.contains('bg-gold-300') ? 'OPEN LESSON' : '-';
+        });
+    });
+
+    document.getElementById('unique-submit-button').addEventListener('click', function () {
+        console.log('Submit button clicked');
+        const updates = [];
+        document.querySelectorAll('.slot').forEach(function (slot) {
+            const statusDiv = slot.querySelector('div');
+            if (statusDiv) {
+                const slotId = statusDiv.getAttribute('data-slot-id');
+                const startTime = new Date(slot.getAttribute('data-time')).toISOString().split('.')[0] + 'Z';
+                const isOpen = statusDiv.classList.contains('bg-gold-300');
+                console.log(`Processing slot with ID ${slotId}, Start time: ${startTime}, Is open: ${isOpen}`);
+                if (isOpen && !slotId) {
+                    updates.push({ action: 'open', start_time: startTime, end_time: new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString().split('.')[0] + 'Z' });
+                } else if (!isOpen && slotId) {
+                    updates.push({ action: 'close', slot_id: slotId });
+                }
+            }
+        });
+
+        console.log('Payload:', JSON.stringify(updates));  // Log the payload
+
+        // Get the CSRF token from the hidden input field
+        const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+        console.log('CSRF Token:', csrfToken);  // Log the CSRF token
+
+        fetch('/teacher/update_slots', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken  // Include the CSRF token in the request headers
+            },
+            body: JSON.stringify(updates)
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            console.log('Response status text:', response.statusText);
+            if (!response.ok) {
+                return response.text().then(errorText => {
+                    console.error('Response error body:', errorText);
+                    throw new Error('Network response was not ok ' + response.statusText);
                 });
             }
-
-            document.querySelectorAll('.slot').forEach(function (slot) {
-                slot.addEventListener('click', function () {
-                    if (!editMode) return;
-
-                    const statusDiv = slot.querySelector('div');
-                    const slotId = statusDiv.getAttribute('data-slot-id');
-                    console.log('Clicked slot ID:', slotId);
-
-                    if (statusDiv.classList.contains('bg-blue-500') || slot.classList.contains('past-slot')) {
-                        return;
-                    }
-
-                    statusDiv.classList.toggle('bg-gold-300');
-                    statusDiv.classList.toggle('bg-gray-300');
-                    statusDiv.textContent = statusDiv.classList.contains('bg-gold-300') ? 'OPEN LESSON' : '-';
-                });
-            });
-
-            document.getElementById('unique-submit-button').addEventListener('click', function () {
-                console.log('Submit button clicked');
-                const updates = [];
-                document.querySelectorAll('.slot').forEach(function (slot) {
-                    const statusDiv = slot.querySelector('div');
-                    if (statusDiv) {
-                        const slotId = statusDiv.getAttribute('data-slot-id');
-                        const startTime = new Date(slot.getAttribute('data-time')).toISOString().split('.')[0] + 'Z';
-                        const isOpen = statusDiv.classList.contains('bg-gold-300');
-                        console.log(`Processing slot with ID ${slotId}, Start time: ${startTime}, Is open: ${isOpen}`);
-                        if (isOpen && !slotId) {
-                            updates.push({ action: 'open', start_time: startTime, end_time: new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString().split('.')[0] + 'Z' });
-                        } else if (!isOpen && slotId) {
-                            updates.push({ action: 'close', slot_id: slotId });
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response:', data);  // Log the response
+            if (data.status === 'success') {
+                if (data.updates && Array.isArray(data.updates)) {
+                    data.updates.forEach(update => {
+                        console.log('Processing update:', update);
+                        const startTime = update.start_time.split('.')[0] + 'Z';
+                        if (update.action === 'open') {
+                            const slotElement = document.querySelector(`[data-time='${startTime}'] div`);
+                            if (!slotElement) {
+                                console.error(`No slot element found for data-time='${startTime}'`);
+                            } else {
+                                slotElement.setAttribute('data-slot-id', update.slot_id);
+                                slotElement.classList.remove('bg-gray-300');
+                                slotElement.classList.add('bg-gold-300');
+                                slotElement.textContent = 'OPEN LESSON';
+                            }
+                        } else if (update.action === 'close') {
+                            const slotElement = document.querySelector(`[data-slot-id='${update.slot_id}']`);
+                            if (!slotElement) {
+                                console.error(`No slot element found for data-slot-id='${update.slot_id}'`);
+                            } else {
+                                slotElement.classList.remove('bg-gold-300');
+                                slotElement.classList.add('bg-gray-300');
+                                slotElement.textContent = '-';
+                                slotElement.removeAttribute('data-slot-id');
+                            }
                         }
-                    }
-                });
-
-                console.log('Payload:', JSON.stringify(updates));  // Log the payload
-
-                // Get the CSRF token from the hidden input field
-                const csrfToken = document.querySelector('input[name="csrf_token"]').value;
-                console.log('CSRF Token:', csrfToken);  // Log the CSRF token
-
-                fetch('/teacher/update_slots', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken  // Include the CSRF token in the request headers
-                    },
-                    body: JSON.stringify(updates)
-                })
-                .then(response => {
-                    console.log('Response status:', response.status);
-                    console.log('Response status text:', response.statusText);
-                    if (!response.ok) {
-                        return response.text().then(errorText => {
-                            console.error('Response error body:', errorText);
-                            throw new Error('Network response was not ok ' + response.statusText);
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Response:', data);  // Log the response
-                    if (data.status === 'success') {
-                        if (data.updates && Array.isArray(data.updates)) {
-                            data.updates.forEach(update => {
-                                console.log('Processing update:', update);
-                                const startTime = update.start_time.split('.')[0] + 'Z';
-                                if (update.action === 'open') {
-                                    const slotElement = document.querySelector(`[data-time='${startTime}'] div`);
-                                    if (!slotElement) {
-                                        console.error(`No slot element found for data-time='${startTime}'`);
-                                    } else {
-                                        slotElement.setAttribute('data-slot-id', update.slot_id);
-                                        slotElement.classList.remove('bg-gray-300');
-                                        slotElement.classList.add('bg-gold-300');
-                                        slotElement.textContent = 'OPEN LESSON';
-                                    }
-                                } else if (update.action === 'close') {
-                                    const slotElement = document.querySelector(`[data-slot-id='${update.slot_id}']`);
-                                    if (!slotElement) {
-                                        console.error(`No slot element found for data-slot-id='${update.slot_id}'`);
-                                    } else {
-                                        slotElement.classList.remove('bg-gold-300');
-                                        slotElement.classList.add('bg-gray-300');
-                                        slotElement.textContent = '-';
-                                        slotElement.removeAttribute('data-slot-id');
-                                    }
-                                }
-                            });
-                        } else {
-                            console.error('Updates not found in response:', data);
-                        }
-                        editMode = false;
-                        document.getElementById('unique-edit-button').classList.remove('hidden');
-                        document.getElementById('unique-submit-button').classList.add('hidden');
-                        document.getElementById('unique-cancel-button').classList.add('hidden');
-                        initializeSlots();
-                    } else {
-                        alert('An error occurred.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);  // Log any errors
-                    alert('An error occurred: ' + error.message);
-                });
-            });
-
-            document.getElementById('unique-edit-button').addEventListener('click', function () {
-                console.log('Edit button clicked');
-                editMode = true;
-                document.getElementById('unique-edit-button').classList.add('hidden');
-                document.getElementById('unique-submit-button').classList.remove('hidden');
-                document.getElementById('unique-cancel-button').classList.remove('hidden');
-                initializeSlots();
-            });
-
-            document.getElementById('unique-cancel-button').addEventListener('click', function () {
-                console.log('Cancel button clicked');
+                    });
+                } else {
+                    console.error('Updates not found in response:', data);
+                }
                 editMode = false;
                 document.getElementById('unique-edit-button').classList.remove('hidden');
                 document.getElementById('unique-submit-button').classList.add('hidden');
                 document.getElementById('unique-cancel-button').classList.add('hidden');
-                updateTable();
-            });
-
-            document.getElementById('unique-prev-week').addEventListener('click', function () {
-                console.log('Previous week button clicked');
-                startDate.setDate(startDate.getDate() - 7);
-                updateTable();
-            });
-
-            document.getElementById('unique-next-week').addEventListener('click', function () {
-                console.log('Next week button clicked');
-                startDate.setDate(startDate.getDate() + 7);
-                updateTable();
-            });
-
-            initializeSlots();
+                initializeSlots();
+            } else {
+                alert('An error occurred.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);  // Log any errors
+            alert('An error occurred: ' + error.message);
         });
-    })();
+    });
+
+    document.getElementById('unique-edit-button').addEventListener('click', function () {
+        console.log('Edit button clicked');
+        editMode = true;
+        document.getElementById('unique-edit-button').classList.add('hidden');
+        document.getElementById('unique-submit-button').classList.remove('hidden');
+        document.getElementById('unique-cancel-button').classList.remove('hidden');
+        initializeSlots();
+    });
+
+    document.getElementById('unique-cancel-button').addEventListener('click', function () {
+        console.log('Cancel button clicked');
+        editMode = false;
+        document.getElementById('unique-edit-button').classList.remove('hidden');
+        document.getElementById('unique-submit-button').classList.add('hidden');
+        document.getElementById('unique-cancel-button').classList.add('hidden');
+        updateTable();
+    });
+
+    document.getElementById('unique-prev-week').addEventListener('click', function () {
+        console.log('Previous week button clicked');
+        startDate.setDate(startDate.getDate() - 7);
+        updateTable();
+    });
+
+    document.getElementById('unique-next-week').addEventListener('click', function () {
+        console.log('Next week button clicked');
+        startDate.setDate(startDate.getDate() + 7);
+        updateTable();
+    });
+
+    initializeSlots();
+});
 </script>
 {% endblock %}
