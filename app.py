@@ -31,6 +31,9 @@ csrf.init_app(app)
 #GUESS
 class LessonSlotsForm(FlaskForm):
     csrf_token = HiddenField()
+    
+class StudentLessonSlotForm(FlaskForm):
+    csrf_token = HiddenField()
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
@@ -573,7 +576,6 @@ def manage_lesson_slots():
                            form=form)
 
 
-
 @app.route('/teacher/update_slot', methods=['POST'])
 @login_required
 def update_lesson_slot():
@@ -786,13 +788,14 @@ def student_dashboard():
         lesson.start_time = lesson.start_time.astimezone(user_timezone)
 
     # Pass the most recent record, the upcoming lessons, and the profile to the template
+    form = StudentLessonSlotForm()  # Add this line to define the form
     return render_template(
         'student/student_dashboard.html',
         profile=current_user.profile,
         most_recent_record=most_recent_record,
-        upcoming_lessons=upcoming_lessons
+        upcoming_lessons=upcoming_lessons,
+        form=form  # Add this line to pass the form
     )
-
 
 
 class CancelLessonForm(FlaskForm):
@@ -877,7 +880,9 @@ def edit_student_profile():
 @app.route('/student/book_lesson', methods=['GET', 'POST'])
 @login_required
 def student_book_lesson():
-    if request.method == 'POST':
+    form = StudentLessonSlotForm()
+
+    if request.method == 'POST' and form.validate_on_submit():
         lesson_slot_id = request.form.get('lesson_slot')
         teacher_id = request.form.get('teacher')
 
@@ -894,7 +899,7 @@ def student_book_lesson():
         user_timezone = pytz.timezone(student.timezone)
 
         # Convert lesson_slot.start_time to the student's timezone for comparison
-        lesson_start_time = lesson_slot.start_time.astimezone(user_timezone)
+        lesson_start_time = lesson_slot.start_time.replace(tzinfo=timezone.utc).astimezone(user_timezone)
 
         # Get the current time in the student's timezone
         current_time = datetime.now(user_timezone)
@@ -908,7 +913,7 @@ def student_book_lesson():
         if student.lessons_purchased <= student.number_of_lessons:
             flash('Not enough lessons purchased', 'error')
             return redirect(url_for('student_dashboard'))
-        
+
         # Create a new booking
         booking = Booking(student_id=student.id, lesson_slot_id=lesson_slot.id, status='booked')
         db.session.add(booking)
@@ -933,8 +938,9 @@ def student_book_lesson():
         return redirect(url_for('student_dashboard'))
     else:  # GET request
         week_offset = int(request.args.get('week_offset', 0))
-        start_of_week = datetime.now(timezone.utc) + timedelta(weeks=week_offset)
-        end_of_week = start_of_week + timedelta(days=7)
+        today = datetime.now(timezone.utc)
+        start_of_week = today - timedelta(days=today.weekday()) + timedelta(weeks=week_offset)
+        end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
 
         # Fetch available lesson slots within the specified week
         available_slots = LessonSlot.query.filter(
@@ -954,14 +960,15 @@ def student_book_lesson():
 
         user_timezone = pytz.timezone(student.timezone)
         for slot in available_slots:
-            slot.start_time = slot.start_time.astimezone(user_timezone)
-            slot.end_time = slot.end_time.astimezone(user_timezone)
+            slot.start_time = slot.start_time.replace(tzinfo=timezone.utc).astimezone(user_timezone)
+            slot.end_time = slot.end_time.replace(tzinfo=timezone.utc).astimezone(user_timezone)
 
         return render_template(
             'student/book_lesson.html',
             available_slots=available_slots,
             available_teachers=available_teachers,
-            week_offset=week_offset
+            week_offset=week_offset,
+            form=form
         )
 
 
