@@ -9,25 +9,28 @@ def save_image_file(image_file):
     _, file_extension = os.path.splitext(image_file.filename)
     new_filename = random_hex + file_extension
 
-    # Determine the directory based on the user type
+    # Determine the directory and default image based on the user type
     if session['user_type'] == 'teacher':
         directory = 'static/img/teacherImg'
         default_image = 'default.jpg'
     elif session['user_type'] == 'student':
         directory = 'static/img/studentImg'
-        default_image = 'default1.png'
+        default_image = 'default1.jpg'
     else:
         return None  # Or handle this case differently
 
-    # Build the full file path
+    # Build the full file path for the new image
     image_path = os.path.join(current_app.root_path, directory, new_filename)
 
-    # Save the file
+    # Save the new image file
     image_file.save(image_path)
 
-    # Delete the old image file, if it exists and is not the default image
+    # Only delete the old image if it's not the default image
     old_image_path = os.path.join(current_app.root_path, directory, current_user.profile.image_file)
-    if os.path.exists(old_image_path) and current_user.profile.image_file != default_image:
-        os.remove(old_image_path)
+    if current_user.profile.image_file != default_image and os.path.exists(old_image_path):
+        try:
+            os.remove(old_image_path)
+        except PermissionError:
+            pass  # Ignore the permission error
 
     return new_filename
