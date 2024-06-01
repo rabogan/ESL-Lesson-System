@@ -573,7 +573,6 @@ def manage_lesson_slots():
                            form=form)
 
 
-
 @app.route('/teacher/update_slot', methods=['POST'])
 @login_required
 def update_lesson_slot():
@@ -607,25 +606,14 @@ def update_lesson_slot():
 @login_required
 def update_slots():
     data = request.get_json()
-    teacher = db.session.get(Teacher, current_user.id)
-    user_timezone = pytz.timezone(teacher.timezone)
-    
+    updates = []
+
     for item in data:
         action = item['action']
-        start_time = item['start_time']
-        end_time = item['end_time']
-
         if action == 'open':
             try:
-                # Parse the datetimes
-                start_time = datetime.fromisoformat(start_time).replace(tzinfo=None)
-                end_time = datetime.fromisoformat(end_time).replace(tzinfo=None)
-                
-                # Localize them to the user's timezone
-                start_time = user_timezone.localize(start_time)
-                end_time = user_timezone.localize(end_time)
-                
-                # Create the new lesson slot
+                start_time = datetime.fromisoformat(item['start_time'].replace('Z', '+00:00'))
+                end_time = datetime.fromisoformat(item['end_time'].replace('Z', '+00:00'))
                 new_slot = LessonSlot(
                     teacher_id=current_user.id,
                     start_time=start_time,
@@ -634,24 +622,32 @@ def update_slots():
                 )
                 db.session.add(new_slot)
                 db.session.commit()
-                app.logger.info(f"Opened slot: {new_slot.id} from {new_slot.start_time} to {new_slot.end_time}")
+                updates.append({
+                    'action': 'open',
+                    'slot_id': new_slot.id,
+                    'start_time': new_slot.start_time.isoformat()
+                })
             except Exception as e:
-                app.logger.error(f"Error processing open action: {e}")
+                app.logger.error(f"Error creating lesson slot: {e}")
                 return jsonify({'status': 'error', 'message': 'Invalid data for open action'}), 400
-
         elif action == 'close':
-            slot_id = item['slot_id']
-            slot = db.session.get(LessonSlot, slot_id)
-            if slot and slot.teacher_id == current_user.id:
-                db.session.delete(slot)
-                db.session.commit()
-                app.logger.info(f"Closed slot: {slot_id}")
-            else:
-                app.logger.error(f"Slot {slot_id} not found or unauthorized")
-                return jsonify({'status': 'error', 'message': 'Invalid slot ID or unauthorized'}), 400
+            try:
+                slot_id = item['slot_id']
+                slot = LessonSlot.query.get(slot_id)
+                if slot and slot.teacher_id == current_user.id:
+                    db.session.delete(slot)
+                    db.session.commit()
+                    updates.append({
+                        'action': 'close',
+                        'slot_id': slot_id
+                    })
+                else:
+                    return jsonify({'status': 'error', 'message': 'Invalid slot id'}), 400
+            except Exception as e:
+                app.logger.error(f"Error closing lesson slot: {e}")
+                return jsonify({'status': 'error', 'message': 'Invalid data for close action'}), 400
 
-    return jsonify({'status': 'success'})
-
+    return jsonify({'status': 'success', 'updates': updates})
 
 
 @app.route('/student_profile/<int:student_id>', methods=['GET', 'POST'])
