@@ -10,6 +10,10 @@
         <h1 class="text-3xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white mb-8 text-center">
             Manage Lesson Slots
         </h1>
+
+        <form id="lessonSlotsForm" method="POST">
+            {{ form.hidden_tag() }}
+        </form>
         
         <div class="flex dark:text-white justify-center my-4 space-x-4">
             <button id="prev-week" class="btn btn-secondary">Previous Week</button>
@@ -36,42 +40,39 @@
             </thead>
             <tbody>
                 {% for hour in range(7, 24) %}
-                <tr>
-                    <td class="border border-gray-300 dark:border-gray-600 dark:text-gray-100 p-2 text-center">{{ '%02d:00' % hour }}</td>
-                    {% for i in range(7) %}
-                    {% set slot = lesson_slots | selectattr('start_time', 'equalto', (start_date + timedelta(days=i, hours=hour))) | list | first %}
-                    <td data-time="{{ (start_date + timedelta(days=i)).strftime('%Y-%m-%d') }} {{ '%02d:00:00' % hour }}" 
-                        class="slot border border-gray-300 dark:border-gray-600 p-2 text-center cursor-pointer {% if slot and slot.start_time < datetime.utcnow() %}past-slot{% endif %}">
-                        {% if slot %}
-                            {% if slot.start_time < datetime.utcnow() %}
-                                {% if slot.is_booked %}
-                                    <span class="status bg-blue-500 text-white rounded p-1" data-slot-id="{{ slot.id }}">Complete</span>
-                                {% else %}
-                                    <span class="status bg-gray-300 dark:bg-gray-600 text-black dark:text-gray-100 rounded p-1" data-slot-id="{{ slot.id }}"></span>
-                                {% endif %}
-                            {% else %}
-                                <span class="status {% if slot.is_booked %}bg-blue-500 text-white{% else %}bg-orange-300 text-black{% endif %} rounded p-1" data-slot-id="{{ slot.id }}">
-                                    {{ 'BOOKED' if slot.is_booked else 'OPEN' }}
-                                </span>
-                                {% if slot.is_booked %}
-                                    <div class="text-sm text-gray-700 dark:text-gray-400">Student ID: {{ slot.student_id }}</div>
-                                {% endif %}
-                            {% endif %}
-                        {% else %}
-                            {% if (start_date + timedelta(days=i, hours=hour)) > datetime.utcnow() %}
-                                <span class="status bg-gray-300 dark:bg-gray-600 text-black dark:text-gray-100 rounded p-1"></span>
-                            {% endif %}
-                        {% endif %}
-                    </td>
-                    {% endfor %}
-                </tr>
-                {% endfor %}
+<tr>
+    <td class="border border-gray-300 dark:border-gray-600 dark:text-gray-100 p-2 text-center">{{ '%02d:00' % hour }}</td>
+    {% for i in range(7) %}
+    {% set slot = lesson_slots | selectattr('start_time', 'equalto', (start_date + timedelta(days=i, hours=hour)).astimezone(pytz.UTC)) | list | first %}
+    <td data-time="{{ (start_date + timedelta(days=i, hours=hour)).astimezone(pytz.UTC).isoformat() }}" 
+        class="slot border border-gray-300 dark:border-gray-600 p-2 text-center cursor-pointer {% if slot and slot.start_time < datetime.now(user_timezone) %}past-slot{% endif %}">
+        {% if slot %}
+            {% if slot.start_time < datetime.now(user_timezone) %}
+                {% if slot.is_booked %}
+                    <div class="bg-blue-500 text-white rounded p-1 h-full flex items-center justify-center">Booked!</div>
+                {% else %}
+                    <div class="bg-gray-300 dark:bg-gray-600 text-black dark:text-gray-100 rounded p-1 h-full flex items-center justify-center"></div>
+                {% endif %}
+            {% else %}
+                <div class="h-full flex items-center justify-center {% if slot.is_booked %}bg-blue-500 text-white{% else %}bg-gold-300 text-black{% endif %} rounded p-1">
+                    {{ 'Booked!' if slot.is_booked else 'ADD SLOT' }}
+                </div>
+            {% endif %}
+        {% else %}
+            {% if (start_date + timedelta(days=i, hours=hour)).astimezone(user_timezone) > datetime.now(user_timezone) %}
+                <div class="bg-gray-300 dark:bg-gray-600 text-black dark:text-gray-100 rounded p-1 h-full flex items-center justify-center"></div>
+            {% endif %}
+        {% endif %}
+    </td>
+    {% endfor %}
+</tr>
+{% endfor %}
+
+
             </tbody>
         </table>
     </div>
-</section>
-
-<script>
+</section><script>
     document.addEventListener('DOMContentLoaded', function () {
         let editMode = false;
         let startDate = new Date('{{ start_date.strftime("%Y-%m-%d") }}');
@@ -82,20 +83,20 @@
 
         function initializeSlots() {
             document.querySelectorAll('.slot').forEach(function (slot) {
-                const statusSpan = slot.querySelector('.status');
-                if (statusSpan) {
-                    const slotId = statusSpan.getAttribute('data-slot-id');
-                    if (statusSpan.classList.contains('bg-blue-500') || slot.classList.contains('past-slot')) {
+                const statusDiv = slot.querySelector('div');
+                if (statusDiv) {
+                    const slotId = statusDiv.getAttribute('data-slot-id');
+                    if (statusDiv.classList.contains('bg-blue-500') || slot.classList.contains('past-slot')) {
                         return;
                     }
                     if (slotId) {
-                        statusSpan.classList.add('bg-orange-300');
-                        statusSpan.classList.remove('bg-gray-300');
-                        statusSpan.textContent = 'OPEN';
+                        statusDiv.classList.add('bg-gold-300');
+                        statusDiv.classList.remove('bg-gray-300');
+                        statusDiv.textContent = 'ADD SLOT';
                     } else {
-                        statusSpan.classList.add('bg-gray-300');
-                        statusSpan.classList.remove('bg-orange-300');
-                        statusSpan.textContent = '';
+                        statusDiv.classList.add('bg-gray-300');
+                        statusDiv.classList.remove('bg-gold-300');
+                        statusDiv.textContent = '';
                     }
                 }
             });
@@ -105,27 +106,27 @@
             slot.addEventListener('click', function () {
                 if (!editMode) return;
 
-                const statusSpan = slot.querySelector('.status');
-                const slotId = statusSpan.getAttribute('data-slot-id');
+                const statusDiv = slot.querySelector('div');
+                const slotId = statusDiv.getAttribute('data-slot-id');
 
-                if (statusSpan.classList.contains('bg-blue-500') || slot.classList.contains('past-slot')) {
+                if (statusDiv.classList.contains('bg-blue-500') || slot.classList.contains('past-slot')) {
                     return;
                 }
 
-                statusSpan.classList.toggle('bg-orange-300');
-                statusSpan.classList.toggle('bg-gray-300');
-                statusSpan.textContent = statusSpan.classList.contains('bg-orange-300') ? 'OPEN' : '';
+                statusDiv.classList.toggle('bg-gold-300');
+                statusDiv.classList.toggle('bg-gray-300');
+                statusDiv.textContent = statusDiv.classList.contains('bg-gold-300') ? 'ADD SLOT' : '';
             });
         });
 
         document.getElementById('submit-button').addEventListener('click', function () {
             const updates = [];
             document.querySelectorAll('.slot').forEach(function (slot) {
-                const statusSpan = slot.querySelector('.status');
-                if (statusSpan) {
-                    const slotId = statusSpan.getAttribute('data-slot-id');
+                const statusDiv = slot.querySelector('div');
+                if (statusDiv) {
+                    const slotId = statusDiv.getAttribute('data-slot-id');
                     const startTime = new Date(slot.getAttribute('data-time')).toISOString();
-                    const isOpen = statusSpan.classList.contains('bg-orange-300');
+                    const isOpen = statusDiv.classList.contains('bg-gold-300');
                     if (isOpen && !slotId) {
                         updates.push({ action: 'open', start_time: startTime, end_time: new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString() });
                     } else if (!isOpen && slotId) {
@@ -133,29 +134,57 @@
                     }
                 }
             });
+
+            console.log('Payload:', JSON.stringify(updates));  // Log the payload
+
+            // Get the CSRF token from the hidden input field
+            const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+            console.log('CSRF Token:', csrfToken);  // Log the CSRF token
+
             fetch('/teacher/update_slots', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken  // Include the CSRF token in the request headers
                 },
                 body: JSON.stringify(updates)
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response status text:', response.statusText);
+                if (!response.ok) {
+                    return response.text().then(errorText => {
+                        console.error('Response error body:', errorText);
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log('Response:', data);  // Log the response
                 if (data.status === 'success') {
                     data.updates.forEach(update => {
+                        console.log('Processing update:', update);
                         if (update.action === 'open') {
-                            const slotElement = document.querySelector(`[data-time='${update.start_time}'] .status`);
-                            slotElement.setAttribute('data-slot-id', update.slot_id);
-                            slotElement.classList.remove('bg-gray-300');
-                            slotElement.classList.add('bg-orange-300');
-                            slotElement.textContent = 'OPEN';
+                            const slotElement = document.querySelector(`[data-time='${update.start_time}'] div`);
+                            if (!slotElement) {
+                                console.error(`No slot element found for data-time='${update.start_time}'`);
+                            } else {
+                                slotElement.setAttribute('data-slot-id', update.slot_id);
+                                slotElement.classList.remove('bg-gray-300');
+                                slotElement.classList.add('bg-gold-300');
+                                slotElement.textContent = 'ADD SLOT';
+                            }
                         } else if (update.action === 'close') {
                             const slotElement = document.querySelector(`[data-slot-id='${update.slot_id}']`);
-                            slotElement.classList.remove('bg-orange-300');
-                            slotElement.classList.add('bg-gray-300');
-                            slotElement.textContent = '';
-                            slotElement.removeAttribute('data-slot-id');
+                            if (!slotElement) {
+                                console.error(`No slot element found for data-slot-id='${update.slot_id}'`);
+                            } else {
+                                slotElement.classList.remove('bg-gold-300');
+                                slotElement.classList.add('bg-gray-300');
+                                slotElement.textContent = '';
+                                slotElement.removeAttribute('data-slot-id');
+                            }
                         }
                     });
                     editMode = false;
@@ -166,6 +195,10 @@
                 } else {
                     alert('An error occurred.');
                 }
+            })
+            .catch(error => {
+                console.error('Error:', error);  // Log any errors
+                alert('An error occurred: ' + error.message);
             });
         });
 

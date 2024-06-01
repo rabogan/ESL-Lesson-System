@@ -1,7 +1,7 @@
 import json
 import pytz
 from helpers import save_image_file
-from flask import Flask, session, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, session, render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import types, and_
@@ -11,18 +11,26 @@ from datetime import datetime, timedelta, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_wtf import FlaskForm, CSRFProtect
 from flask_wtf.file import FileAllowed
-from wtforms import StringField, PasswordField, SubmitField, BooleanField, HiddenField, IntegerField, FileField, TextAreaField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, HiddenField, IntegerField, FileField, TextAreaField, HiddenField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional, NumberRange
 
+# Initialize Flask app
 app = Flask(__name__)
 app.secret_key = 'coolie_killer_huimin_himitsunakotogawaruidesune'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['DEBUG'] = True
+
+# Initialize extensions
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+login_manager = LoginManager()
+login_manager.init_app(app)
 csrf = CSRFProtect(app)
 csrf.init_app(app)
 
+#GUESS
+class LessonSlotsForm(FlaskForm):
+    csrf_token = HiddenField()
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
@@ -73,10 +81,6 @@ class LessonRecordForm(FlaskForm):
     new_words = HiddenField('New Words')
     new_phrases = HiddenField('New Phrases')
     submit = SubmitField('Update Lesson')
-
-# Flask-Login initialization
-login_manager = LoginManager()
-login_manager.init_app(app)
 
 # User model
 class User(UserMixin):
@@ -188,7 +192,7 @@ class LessonSlot(db.Model):
     __tablename__ = 'lesson_slot'
     id = db.Column(db.Integer, primary_key=True)
     teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
-    start_time = db.Column(db.DateTime, nullable=False)
+    start_time = db.Column(db.DateTime, nullable=False, index=True)
     end_time = db.Column(db.DateTime, nullable=False)
     is_booked = db.Column(db.Boolean, default=False)
     teacher = db.relationship('Teacher', back_populates='lesson_slots')
@@ -450,7 +454,10 @@ def teacher_dashboard():
     print(upcoming_lessons)
 
     # Convert lesson times to the teacher's timezone
-    teacher = Teacher.query.get(session['user_id'])
+    teacher = db.session.get(Teacher, session['user_id'])
+    if teacher is None:
+        return abort(404)
+
     user_timezone = pytz.timezone(teacher.timezone)
     if most_recent_record:
         most_recent_record.date = most_recent_record.date.astimezone(user_timezone)
@@ -467,7 +474,7 @@ def teacher_lesson_records():
         return redirect(url_for('home'))
 
     # Fetch the teacher's timezone
-    teacher = Teacher.query.get_or_404(session['user_id'])
+    teacher = db.session.get(Teacher, session['user_id'])
     user_timezone = pytz.timezone(teacher.timezone)
 
     page = request.args.get('page', 1, type=int)
@@ -518,37 +525,52 @@ def edit_teacher_profile():
 @app.route('/teacher/lesson_slots', methods=['GET', 'POST'])
 @login_required
 def manage_lesson_slots():
-    user_timezone = pytz.timezone('America/Los_Angeles')  # Replace with the teacher's actual timezone!
+    form = LessonSlotsForm()
+    teacher = db.session.get(Teacher, current_user.id)
+    user_timezone = pytz.timezone(teacher.timezone)
 
-    if request.method == 'POST':
-        local_start_time = datetime.strptime(request.form['start_time'], '%Y-%m-%dT%H:%M')
-        start_time = user_timezone.localize(local_start_time).astimezone(pytz.UTC)
-        local_end_time = datetime.strptime(request.form['end_time'], '%Y-%m-%dT%H:%M')
-        end_time = user_timezone.localize(local_end_time).astimezone(pytz.UTC)
-        new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time)
-        db.session.add(new_slot)
-        db.session.commit()
-        flash('New lesson slot created!', 'success')
+    if request.method == 'POST' and form.validate_on_submit():
+        try:
+            local_start_time = datetime.strptime(request.form['start_time'], '%Y-%m-%dT%H:%M')
+            start_time = user_timezone.localize(local_start_time).astimezone(pytz.UTC)
+            local_end_time = datetime.strptime(request.form['end_time'], '%Y-%m-%dT%H:%M')
+            end_time = user_timezone.localize(local_end_time).astimezone(pytz.UTC)
+            new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time)
+            db.session.add(new_slot)
+            db.session.commit()
+            flash('New lesson slot created!', 'success')
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Error creating lesson slot: {e}")
+            flash('An error occurred while creating the lesson slot.', 'danger')
 
     start_date_str = request.args.get('start_date')
     if start_date_str:
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        start_date = user_timezone.localize(datetime.strptime(start_date_str, '%Y-%m-%d'))
     else:
-        start_date = datetime.utcnow() - timedelta(days=datetime.utcnow().weekday())
+        start_date = datetime.now(user_timezone) - timedelta(days=datetime.now(user_timezone).weekday())
 
     end_date = start_date + timedelta(days=6)
-    lesson_slots = LessonSlot.query.filter(
-        LessonSlot.teacher_id == current_user.id,
-        LessonSlot.start_time >= start_date,
-        LessonSlot.start_time <= end_date
-    ).all()
+    with db.session.no_autoflush:
+        lesson_slots = LessonSlot.query.filter(
+            LessonSlot.teacher_id == current_user.id,
+            LessonSlot.start_time >= start_date.astimezone(pytz.UTC),
+            LessonSlot.start_time <= end_date.astimezone(pytz.UTC)
+        ).all()
 
-    return render_template('teacher/lesson_slots.html', 
-                           lesson_slots=lesson_slots, 
+        for slot in lesson_slots:
+            slot.start_time = slot.start_time.astimezone(user_timezone)
+            slot.end_time = slot.end_time.astimezone(user_timezone)
+
+    return render_template('teacher/lesson_slots.html',
+                           lesson_slots=lesson_slots,
                            start_date=start_date,
                            end_date=end_date,
-                           datetime=datetime, 
-                           timedelta=timedelta)
+                           datetime=datetime,
+                           timedelta=timedelta,
+                           pytz=pytz,
+                           user_timezone=user_timezone,
+                           form=form)
 
 
 
@@ -558,7 +580,9 @@ def update_lesson_slot():
     data = request.get_json()
     slot_id = data['slot_id']
     action = data['action']  # 'open' or 'close'
-    user_timezone = pytz.timezone('America/Los_Angeles')  # Replace with the teacher's actual timezone
+    
+    teacher = db.session.get(Teacher, current_user.id)
+    user_timezone = pytz.timezone(teacher.timezone)
 
     if action == 'open':
         local_start_time = datetime.strptime(data['start_time'], '%Y-%m-%d %H:%M:%S')
@@ -579,30 +603,55 @@ def update_lesson_slot():
     return jsonify({'status': 'error'})
 
 
-
 @app.route('/teacher/update_slots', methods=['POST'])
 @login_required
 def update_slots():
     data = request.get_json()
-    updates = []
-    user_timezone = pytz.timezone('America/Los_Angeles')  # Replace with the teacher's actual timezone
-
+    teacher = db.session.get(Teacher, current_user.id)
+    user_timezone = pytz.timezone(teacher.timezone)
+    
     for item in data:
-        if item['action'] == 'open':
-            local_start_time = datetime.strptime(item['start_time'], '%Y-%m-%d %H:%M:%S')
-            start_time = user_timezone.localize(local_start_time).astimezone(pytz.UTC)
-            end_time = start_time + timedelta(minutes=59)
-            new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time)
-            db.session.add(new_slot)
-            db.session.commit()
-            updates.append({'action': 'open', 'slot_id': new_slot.id, 'start_time': start_time.strftime('%Y-%m-%d %H:%M:%S')})
-        elif item['action'] == 'close':
-            slot = LessonSlot.query.get(item['slot_id'])
-            if slot:
+        action = item['action']
+        start_time = item['start_time']
+        end_time = item['end_time']
+
+        if action == 'open':
+            try:
+                # Parse the datetimes
+                start_time = datetime.fromisoformat(start_time).replace(tzinfo=None)
+                end_time = datetime.fromisoformat(end_time).replace(tzinfo=None)
+                
+                # Localize them to the user's timezone
+                start_time = user_timezone.localize(start_time)
+                end_time = user_timezone.localize(end_time)
+                
+                # Create the new lesson slot
+                new_slot = LessonSlot(
+                    teacher_id=current_user.id,
+                    start_time=start_time,
+                    end_time=end_time,
+                    is_booked=False
+                )
+                db.session.add(new_slot)
+                db.session.commit()
+                app.logger.info(f"Opened slot: {new_slot.id} from {new_slot.start_time} to {new_slot.end_time}")
+            except Exception as e:
+                app.logger.error(f"Error processing open action: {e}")
+                return jsonify({'status': 'error', 'message': 'Invalid data for open action'}), 400
+
+        elif action == 'close':
+            slot_id = item['slot_id']
+            slot = db.session.get(LessonSlot, slot_id)
+            if slot and slot.teacher_id == current_user.id:
                 db.session.delete(slot)
                 db.session.commit()
-                updates.append({'action': 'close', 'slot_id': slot.id})
-    return jsonify({'status': 'success', 'updates': updates})
+                app.logger.info(f"Closed slot: {slot_id}")
+            else:
+                app.logger.error(f"Slot {slot_id} not found or unauthorized")
+                return jsonify({'status': 'error', 'message': 'Invalid slot ID or unauthorized'}), 400
+
+    return jsonify({'status': 'success'})
+
 
 
 @app.route('/student_profile/<int:student_id>', methods=['GET', 'POST'])
@@ -621,7 +670,10 @@ def student_profile(student_id):
         return redirect(url_for('home'))
 
     # Fetch the student's profile
-    student = Student.query.get_or_404(student_id)
+    student = db.session.get(Student, student_id)
+    if student is None:
+        app.logger.error(f"Student with ID {student_id} not found.")
+        return abort(404)
 
     form = TeacherEditsStudentForm(obj=student.profile)
 
@@ -640,6 +692,7 @@ def student_profile(student_id):
     return render_template('view_student_profile.html', form=form, student=student)
 
 
+
 @app.route('/teacher/edit_lesson/<int:lesson_id>', methods=['GET', 'POST'])
 @login_required
 def edit_lesson(lesson_id):
@@ -649,7 +702,11 @@ def edit_lesson(lesson_id):
     if session['user_type'] != 'teacher':
         return redirect(url_for('index'))
 
-    lesson = LessonRecord.query.get_or_404(lesson_id)
+    lesson = db.session.get(LessonRecord, lesson_id)
+    if lesson is None:
+        app.logger.error(f"Lesson with ID {lesson_id} not found.")
+        return abort(404)
+
     form = LessonRecordForm()
 
     if form.validate_on_submit():
@@ -680,7 +737,7 @@ def edit_lesson(lesson_id):
         form.new_phrases.data = json.dumps(lesson.new_phrases)
 
     # Fetch the teacher's timezone
-    teacher = Teacher.query.get(session['user_id'])
+    teacher = db.session.get(Teacher, session['user_id'])
     user_timezone = pytz.timezone(teacher.timezone)
 
     # Convert lesson date to teacher's timezone
@@ -689,11 +746,7 @@ def edit_lesson(lesson_id):
     return render_template('teacher/edit_lesson.html', form=form, lesson=lesson)
 
 
-
-
-
-# Student Only Routes
-@app.route('/student/dashboard')
+# Student Only Routes@app.route('/student/dashboard')
 @login_required
 def student_dashboard():
     if session['user_type'] != 'student':
@@ -713,7 +766,10 @@ def student_dashboard():
     ).order_by(LessonSlot.start_time.asc()).all()
 
     # Convert lesson times to the user's timezone
-    student = Student.query.get(session['user_id'])
+    student = db.session.get(Student, session['user_id'])
+    if student is None:
+        return abort(404)
+
     user_timezone = pytz.timezone(student.timezone) if student.timezone else pytz.timezone('America/Los_Angeles')
     try:
         user_timezone = pytz.timezone(student.timezone)
@@ -735,6 +791,7 @@ def student_dashboard():
 class CancelLessonForm(FlaskForm):
     lesson_id = HiddenField('Lesson ID', validators=[DataRequired()])
 
+
 @app.route('/cancel_lesson', methods=['POST'])
 @login_required
 def cancel_lesson():
@@ -747,9 +804,7 @@ def cancel_lesson():
         lesson_id = form.lesson_id.data
 
         # Fetch the lesson record from the database
-        lesson = LessonRecord.query.get(lesson_id)
-
-        # Check if the lesson exists and belongs to the logged-in student
+        lesson = db.session.get(LessonRecord, lesson_id)
         if lesson is None or lesson.student_id != session['user_id']:
             # If not, redirect the user back to the dashboard with an error message
             flash('Invalid lesson ID', 'error')
@@ -765,6 +820,7 @@ def cancel_lesson():
     
     flash('Form submission error. Please try again.', 'error')
     return redirect(url_for('student_dashboard'))
+
 
 
 @app.route('/student/lesson_records')
@@ -819,24 +875,27 @@ def student_book_lesson():
         teacher_id = request.form.get('teacher')
 
         # Fetch the lesson slot
-        lesson_slot = LessonSlot.query.get(lesson_slot_id)
+        lesson_slot = db.session.get(LessonSlot, lesson_slot_id)
+        if lesson_slot is None:
+            return abort(404)
 
-        # Get current time in UTC timezone
-        current_time = datetime.now(timezone.utc)
+        # Get the current student's timezone
+        student = db.session.get(Student, current_user.id)
+        if student is None:
+            return abort(404)
 
-        # Convert current time to 'America/Los_Angeles' timezone
-        current_time = current_time.astimezone(timezone(timedelta(hours=-7)))  # Replace -7 with the actual UTC offset
+        user_timezone = pytz.timezone(student.timezone)
 
-        # Convert lesson_slot.start_time to 'America/Los_Angeles' timezone for comparison
-        lesson_start_time = lesson_slot.start_time.astimezone(timezone(timedelta(hours=-7)))  # Replace -7 with the actual UTC offset
+        # Convert lesson_slot.start_time to the student's timezone for comparison
+        lesson_start_time = lesson_slot.start_time.astimezone(user_timezone)
+
+        # Get the current time in the student's timezone
+        current_time = datetime.now(user_timezone)
 
         # Check if the lesson slot exists and is not already booked
-        if not lesson_slot or lesson_slot.is_booked or lesson_start_time < current_time:
+        if lesson_slot.is_booked or lesson_start_time < current_time:
             flash('Lesson slot is not available', 'error')
             return redirect(url_for('student_dashboard'))
-
-        # Fetch the current student
-        student = Student.query.get(current_user.id)
 
         # Check if the student has enough lessons purchased
         if student.lessons_purchased <= student.number_of_lessons:
@@ -844,7 +903,7 @@ def student_book_lesson():
             return redirect(url_for('student_dashboard'))
         
         # Create a new booking
-        booking = Booking(student_id=student.id, lesson_slot_id=lesson_slot.id, teacher_id=teacher_id)
+        booking = Booking(student_id=student.id, lesson_slot_id=lesson_slot.id, status='booked')
         db.session.add(booking)
 
         # Update the lesson slot and student
@@ -855,7 +914,8 @@ def student_book_lesson():
         lesson_record = LessonRecord(
             student_id=current_user.id,
             teacher_id=teacher_id,
-            date=lesson_slot.start_time.date()
+            lesson_slot_id=lesson_slot.id,
+            date=lesson_slot.start_time
         )
         db.session.add(lesson_record)
 
@@ -880,8 +940,12 @@ def student_book_lesson():
         # Fetch teachers who have available slots
         available_teachers = {slot.teacher for slot in available_slots}
 
-        # Convert lesson times to the user's timezone
-        user_timezone = pytz.timezone('America/Los_Angeles')
+        # Convert lesson times to the student's timezone
+        student = db.session.get(Student, current_user.id)
+        if student is None:
+            return abort(404)
+
+        user_timezone = pytz.timezone(student.timezone)
         for slot in available_slots:
             slot.start_time = slot.start_time.astimezone(user_timezone)
             slot.end_time = slot.end_time.astimezone(user_timezone)
@@ -893,6 +957,10 @@ def student_book_lesson():
             week_offset=week_offset
         )
 
+
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    db.session.remove()
 
 if __name__ == '__main__':
     app.run(debug=True)
