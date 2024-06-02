@@ -988,10 +988,6 @@ def edit_student_profile():
 def student_book_lesson():
     form = StudentLessonSlotForm()
 
-    # Populate the SelectFields with available options
-    available_teachers = Teacher.query.all()
-    form.teacher.choices = [(teacher.id, teacher.username) for teacher in available_teachers]
-
     # Get the current student's timezone
     student = db.session.get(Student, current_user.id)
     if student is None:
@@ -1019,7 +1015,11 @@ def student_book_lesson():
     
     if request.method == 'POST':
         # Retrieve available slots from session
-        available_slots_dict = session.get('available_slots', [])
+        available_slots_dict = session.get('available_slots', None)
+        if available_slots_dict is None:
+            flash('Your session has expired. Please log in again.', 'warning')
+            return redirect(url_for('login'))
+
         available_slots = [
             type('LessonSlot', (object,), {
                 'id': slot_dict['id'],
@@ -1058,32 +1058,22 @@ def student_book_lesson():
     # Convert lesson times to the student's timezone
     for slot in available_slots:
         slot.start_time = slot.start_time.replace(tzinfo=timezone.utc).astimezone(user_timezone)
-        print(f"LessonSlot.start_time: {slot.start_time}")
         slot.end_time = slot.end_time.replace(tzinfo=timezone.utc).astimezone(user_timezone)
-        print(f"LessonSlot.end_time: {slot.end_time}")
-        
-    print(f"Available slots after converting times: {available_slots}")  # New print statement
         
     # Get the current time in the student's timezone
     current_time = datetime.now(user_timezone)
-    print(f"Current time in student's timezone: {current_time}")
     
     form.lesson_slot.choices = [
         (slot.id, f"{slot.start_time.strftime('%Y-%m-%d %I:%M %p')} - {slot.end_time.strftime('%I:%M %p')} with {slot.teacher.username}")
         for slot in available_slots
     ]
-    
-    print(f"Available slots after filtering: {available_slots}")
 
-    # Log the choices set for form.lesson_slot
-    print('Form lesson_slot choices:')
-    for choice in form.lesson_slot.choices:
-        print(choice)
+    # Filter available teachers based on available slots
+    available_teacher_ids = {slot.teacher.id for slot in available_slots}
+    available_teachers = [teacher for teacher in Teacher.query.all() if teacher.id in available_teacher_ids]
+    form.teacher.choices = [(teacher.id, teacher.username) for teacher in available_teachers]
 
-    # Log the data being submitted
     if request.method == 'POST':
-        print('Submitted lesson_slot:', form.lesson_slot.data)
-
         if form.validate_on_submit():
             lesson_slot_id = form.lesson_slot.data
             teacher_id = form.teacher.data
@@ -1200,6 +1190,7 @@ def student_book_lesson():
         form=form,
         remaining_lessons=student.remaining_lessons
     )
+
     
 
 @app.teardown_appcontext
