@@ -25,7 +25,7 @@
                     {{ form.age.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="age-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.age or '' }}</div>
-                        {{ form.age(class="form-input hidden w-full custom-input") }}
+                        {{ form.age(class="form-input hidden w-full custom-input dark:bg-gray-700 dark:text-gray-100") }}
                         {% if form.age.errors %}
                             <span class="text-red-500 text-sm">{{ form.age.errors[0] }}</span>
                         {% endif %}
@@ -35,7 +35,7 @@
                     {{ form.hobbies.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="hobbies-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.hobbies or '' }}</div>
-                        {{ form.hobbies(class="form-input hidden w-full custom-input") }}
+                        {{ form.hobbies(class="form-input hidden w-full custom-input dark:bg-gray-700 dark:text-gray-100") }}
                         {% if form.hobbies.errors %}
                             <span class="text-red-500 text-sm">{{ form.hobbies.errors[0] }}</span>
                         {% endif %}
@@ -45,7 +45,7 @@
                     {{ form.motto.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="motto-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.motto or '' }}</div>
-                        {{ form.motto(class="form-input hidden w-full custom-input") }}
+                        {{ form.motto(class="form-input hidden w-full custom-input dark:bg-gray-700 dark:text-gray-100") }}
                         {% if form.motto.errors %}
                             <span class="text-red-500 text-sm">{{ form.motto.errors[0] }}</span>
                         {% endif %}
@@ -55,7 +55,7 @@
                     {{ form.blood_type.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="blood_type-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.blood_type or '' }}</div>
-                        {{ form.blood_type(class="form-input hidden w-full custom-input") }}
+                        {{ form.blood_type(class="form-input hidden w-full custom-input dark:bg-gray-700 dark:text-gray-100") }}
                         {% if form.blood_type.errors %}
                             <span class="text-red-500 text-sm">{{ form.blood_type.errors[0] }}</span>
                         {% endif %}
@@ -64,8 +64,8 @@
                 <div class="flex items-center justify-between mb-4">
                     {{ form.image_file.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
-                        <img id="image_file-text" src="{{ url_for('static', filename='img/teacherImg/' + profile.image_file) }}" class="form-text w-2/3">
-                        {{ form.image_file(class="form-input hidden w-2/3") }}
+                        <img id="image_file-text" src="{{ url_for('static', filename='img/teacherImg/' + profile.image_file) }}" class="form-text w-2/3 rounded-lg mb-2">
+                        {{ form.image_file(class="form-input hidden w-full custom-input dark:bg-gray-700 dark:text-gray-100") }}
                     </div>
                 </div>
                 <div class="mt-6 text-center">

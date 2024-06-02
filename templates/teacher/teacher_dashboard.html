@@ -7,66 +7,88 @@
 {% block main %}
 <section class="bg-white dark:bg-gray-900 py-8">
     <div class="max-w-screen-xl px-4 mx-auto lg:py-16">
-        <h1 class="text-3xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white mb-8">
+        <h1 class="text-4xl font-extrabold leading-none tracking-tight md:text-6xl xl:text-7xl dark:text-white mb-16 text-center">
             Welcome, {{ session['user_name'] }}!
         </h1>
 
-        <!-- Manage Schedule Button -->
-        <div class="mb-8">
+        <!-- Jumbotron for Manage Schedule -->
+        <div class="bg-blue-100 dark:bg-blue-900 text-center py-8 rounded-lg shadow-lg mb-16">
+            <h2 class="text-3xl font-bold dark:text-white mb-4">Manage Your Schedule</h2>
+            <p class="text-gray-700 dark:text-gray-300 mb-6">Easily manage your lesson slots with a single click.</p>
             <a href="{{ url_for('manage_lesson_slots') }}">
-                <button class="w-full bg-blue-500 text-white py-4 px-6 rounded hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-xl font-bold">
+                <button class="bg-blue-500 text-white py-4 px-6 rounded hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-xl font-bold">
                     Manage Schedule
                 </button>
             </a>
         </div>
 
         <!-- Upcoming Lessons Section -->
-<!-- Upcoming Lessons Section -->
-<div class="mb-8">
-    <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Upcoming Lessons</h2>
-    {% if upcoming_lessons %}
-    <table class="min-w-full bg-white dark:bg-gray-800">
-        <thead>
-            <tr>
-                <th class="py-2 px-4 border-b border-gray-200 dark:border-gray-700 text-left text-sm leading-4 font-medium text-gray-900 dark:text-gray-100">Student</th>
-                <th class="py-2 px-4 border-b border-gray-200 dark:border-gray-700 text-left text-sm leading-4 font-medium text-gray-900 dark:text-gray-100">Date</th>
-                <th class="py-2 px-4 border-b border-gray-200 dark:border-gray-700 text-left text-sm leading-4 font-medium text-gray-900 dark:text-gray-100">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for lesson in upcoming_lessons %}
-            {% if lesson.booking %}
-            <tr>
-                <td class="py-2 px-4 border-b border-gray-200 dark:border-gray-700">{{ lesson.booking.student.username }}</td>
-                <td class="py-2 px-4 border-b border-gray-200 dark:border-gray-700">{{ lesson.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
-                <td class="py-2 px-4 border-b border-gray-200 dark:border-gray-700">
-                    {% if lesson.booking.lesson_record_id %}
-                        <a href="{{ url_for('edit_lesson', lesson_id=lesson.booking.lesson_record_id) }}" class="text-blue-500 hover:underline dark:text-blue-400">Edit Lesson</a>
-                    {% else %}
-                        <span class="text-gray-500 dark:text-gray-400">No Lesson Record</span>
-                    {% endif %}
-                </td>
-            </tr>
+        <div class="mb-16 text-center">
+            <h2 class="text-3xl font-bold dark:text-gray-300 mb-12">Upcoming Lessons</h2>
+            {% if upcoming_lessons %}
+            <div class="overflow-x-auto dark:text-gray-300 mb-16">
+                <table class="min-w-full bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                    <thead>
+                        <tr class="bg-gray-200 dark:bg-gray-700">
+                            <th class="py-3 px-4 text-center">Student</th>
+                            <th class="py-3 px-4 text-center">Date</th>
+                            <th class="py-3 px-4 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lesson in upcoming_lessons %}
+                        {% if lesson.booking %}
+                        <tr class="border-b dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150">
+                            <td class="py-3 px-4 text-center">
+                                <a href="{{ url_for('student_profile', student_id=lesson.booking.student.id) }}" class="text-blue-500 hover:underline dark:text-blue-400">
+                                    {{ lesson.booking.student.username }}
+                                </a>
+                            </td>
+                            <td class="py-3 px-4 text-center">{{ lesson.start_time.strftime('%B %d at %H:%M') }}</td>
+                            <td class="py-3 px-4 text-center">
+                                {% if lesson.booking.lesson_record_id %}
+                                    <a href="{{ url_for('edit_lesson', lesson_id=lesson.booking.lesson_record_id) }}" class="text-blue-500 hover:underline dark:text-blue-400"><i class="fas fa-edit"></i> Edit Lesson</a>
+                                {% else %}
+                                    <span class="text-gray-500 dark:text-gray-400">No Lesson Record</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-gray-900 dark:text-gray-100">No upcoming lessons.</p>
             {% endif %}
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p class="text-gray-900 dark:text-gray-100">No upcoming lessons.</p>
-    {% endif %}
-</div>
-
-
+        </div>
 
         <!-- Most Recent Lesson Record Section -->
         {% if most_recent_record %}
-        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+        <h2 class="text-3xl font-bold dark:text-gray-300 mb-12 text-center">Most Recent Lesson Record</h2>
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-8 mb-16">
             <div class="grid lg:grid-cols-12 gap-8">
                 <div class="lg:col-span-2 flex flex-col items-center">
-                    <img class="w-24 h-24 rounded-full mb-4" src="{{ url_for('static', filename='img/studentImg/' + (most_recent_record.student.profile.image_file if most_recent_record.student.profile else 'default1.jpg')) }}" alt="Student's profile picture">
+                    {% if most_recent_record.student.profile and most_recent_record.student.profile.image_file %}
+                        <img class="w-24 h-24 rounded-full mb-4" src="{{ url_for('static', filename='img/studentImg/' + most_recent_record.student.profile.image_file) }}" alt="Student's profile picture">
+                    {% else %}
+                        <img class="w-24 h-24 rounded-full mb-4" src="{{ url_for('static', filename='img/studentImg/default1.jpg') }}" alt="Default profile picture">
+                    {% endif %}
                     <p class="text-gray-900 dark:text-gray-100">{{ most_recent_record.student.username }}</p>
+                    <a href="{{ url_for('student_profile', student_id=most_recent_record.student.id) }}" class="text-blue-500 hover:underline dark:text-blue-400">View Profile</a>
                 </div>
                 <div class="lg:col-span-7">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                            {% set lesson_slot = most_recent_record.lesson_slot %}
+                            {% if lesson_slot %}
+                                Lesson with {{ most_recent_record.teacher.username }} on {{ lesson_slot.start_time.strftime('%B %d, %Y') }} at {{ lesson_slot.start_time.strftime('%H:%M') }}
+                            {% endif %}
+                        </div>
+                        <a href="{{ url_for('edit_lesson', lesson_id=most_recent_record.id) }}" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    </div>
                     <div class="p-6 bg-green-100 dark:bg-green-900 rounded-lg text-gray-900 dark:text-gray-100 mb-4">
                         {% if most_recent_record.lesson_summary %}
                             <p>{{ most_recent_record.lesson_summary.replace('\n', '<br>')|safe }}</p>
@@ -74,7 +96,7 @@
                             <p>No recent lessons.</p>
                         {% endif %}
                     </div>
-                    <small class="text-gray-900 dark:text-gray-100">Updated for {{ most_recent_record.student.username }}: {{ most_recent_record.lastEditTime.strftime('%Y-%m-%d %H:%M') }}</small>
+                    <small class="text-gray-900 dark:text-gray-100">Updated by {{ most_recent_record.teacher.username }}: {{ most_recent_record.lastEditTime.strftime('%Y-%m-%d %H:%M') }}</small>
                 </div>
                 <div class="lg:col-span-3">
                     <div class="mb-4">
@@ -105,12 +127,13 @@
                     <p class="text-gray-900 dark:text-gray-100">{{ most_recent_record.areas_to_improve }}</p>
                 </div>
             </div>
-            <a href="{{ url_for('teacher_lesson_records') }}">
-                <button class="mt-4 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500">View All Lesson Records</button>
-            </a>
+            <div class="text-center">
+                <a href="{{ url_for('teacher_lesson_records') }}">
+                    <button class="mt-4 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500">View All Lesson Records</button>
+                </a>
+            </div>
         </div>
         {% else %}
-        <!-- Show a message if there are no lesson records -->
         <p class="text-gray-900 dark:text-gray-100">No lessons taken yet!</p>
         {% endif %}
     </div>

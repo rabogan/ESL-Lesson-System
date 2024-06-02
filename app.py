@@ -98,12 +98,22 @@ class TeacherEditsStudentForm(FlaskForm):
     
 
 class LessonRecordForm(FlaskForm):
-    lesson_summary = TextAreaField('Lesson Summary', validators=[DataRequired()])
-    strengths = TextAreaField('Strengths', validators=[DataRequired()])
-    areas_to_improve = TextAreaField('Areas to Improve', validators=[DataRequired()])
+    lesson_summary = TextAreaField('Lesson Summary')
+    strengths = TextAreaField('Strengths')
+    areas_to_improve = TextAreaField('Areas to Improve')
     new_words = TextAreaField('New Words', validators=[Optional()])
     new_phrases = TextAreaField('New Phrases', validators=[Optional()])
     submit = SubmitField('Update Lesson')
+
+    def validate_new_words(form, field):
+        words = json.loads(field.data) if field.data else []
+        if len(words) > 40:
+            raise ValidationError('You can add a maximum of 40 new words.')
+
+    def validate_new_phrases(form, field):
+        phrases = json.loads(field.data) if field.data else []
+        if len(phrases) > 20:
+            raise ValidationError('You can add a maximum of 20 new phrases.')
 
 
 class LessonSlotsForm(FlaskForm):
@@ -503,11 +513,15 @@ def teacher_dashboard():
 
     user_timezone = pytz.timezone(teacher.timezone)
     if most_recent_record:
+    # Ensure most_recent_record.lastEditTime is timezone-aware
+        if most_recent_record.lastEditTime.tzinfo is None:
+            most_recent_record.lastEditTime = pytz.utc.localize(most_recent_record.lastEditTime)
         most_recent_record.lastEditTime = most_recent_record.lastEditTime.astimezone(user_timezone)
     for lesson in upcoming_lessons:
         lesson.start_time = lesson.start_time.astimezone(user_timezone)
 
-    return render_template('teacher/teacher_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record, upcoming_lessons=upcoming_lessons)
+    # Pass the user_timezone to the template
+    return render_template('teacher/teacher_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record, upcoming_lessons=upcoming_lessons, user_timezone=user_timezone)
 
 
 @app.route('/teacher/lesson_records')
@@ -530,11 +544,11 @@ def teacher_lesson_records():
     ).order_by(LessonSlot.start_time.desc()).paginate(page=page, per_page=5)
 
     for record in lesson_records.items:
-        # Ensure record.date is timezone-aware
-        if record.date.tzinfo is None:
-            record.date = pytz.utc.localize(record.date).astimezone(user_timezone)
+        # Ensure record.lastEditTime is timezone-aware
+        if record.lastEditTime.tzinfo is None:
+            record.lastEditTime = pytz.utc.localize(record.lastEditTime).astimezone(user_timezone)
         else:
-            record.date = record.date.astimezone(user_timezone)
+            record.lastEditTime = record.lastEditTime.astimezone(user_timezone)
 
     return render_template('teacher/teacher_lesson_records.html', lesson_records=lesson_records)
 
@@ -770,7 +784,7 @@ def edit_lesson(lesson_id):
         app.logger.error(f"Lesson with ID {lesson_id} not found.")
         return abort(404)
 
-    form = LessonRecordForm()
+    form = LessonRecordForm()  # Instantiate the updated form
 
     if form.validate_on_submit():
         lesson.lesson_summary = form.lesson_summary.data
@@ -799,12 +813,17 @@ def edit_lesson(lesson_id):
         form.new_words.data = json.dumps(lesson.new_words)
         form.new_phrases.data = json.dumps(lesson.new_phrases)
 
-    # Fetch the teacher's timezone
+    # Converting To Teacher's Timezone
     teacher = db.session.get(Teacher, session['user_id'])
     user_timezone = pytz.timezone(teacher.timezone)
+    today = datetime.now(timezone.utc)
+    today = today.astimezone(user_timezone)
+    
+    # Convert the current time in the teacher's timezone to UTC
+    utc_now = today.astimezone(pytz.utc)
 
-    # Convert lesson date to teacher's timezone
-    lesson.lastEditTime = lesson.lastEditTime.astimezone(user_timezone)
+    # Update the lesson edit time to the current UTC time
+    lesson.lastEditTime = utc_now
 
     return render_template('teacher/edit_lesson.html', form=form, lesson=lesson)
 

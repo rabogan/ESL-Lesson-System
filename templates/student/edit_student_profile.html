@@ -25,7 +25,7 @@
                     {{ form.hometown.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="hometown-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.hometown or ''|e }}</div>
-                        {{ form.hometown(class="form-input hidden w-full custom-input") }}
+                        {{ form.hometown(class="form-input hidden w-full custom-input dark:bg-gray-700 dark:text-gray-100") }}
                         {% if form.hometown.errors %}
                             <span class="text-red-500 text-sm">{{ form.hometown.errors[0] }}</span>
                         {% endif %}
@@ -35,7 +35,7 @@
                     {{ form.goal.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="goal-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.goal or ''|e }}</div>
-                        {{ form.goal(class="form-input hidden w-full custom-input") }}
+                        {{ form.goal(class="form-input hidden w-full custom-input dark:bg-gray-700 dark:text-gray-100") }}
                         {% if form.goal.errors %}
                             <span class="text-red-500 text-sm">{{ form.goal.errors[0] }}</span>
                         {% endif %}
@@ -45,7 +45,7 @@
                     {{ form.hobbies.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="hobbies-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.hobbies or ''|e }}</div>
-                        {{ form.hobbies(class="form-input hidden w-full custom-input") }}
+                        {{ form.hobbies(class="form-input hidden w-full custom-input dark:bg-gray-700 dark:text-gray-100") }}
                         {% if form.hobbies.errors %}
                             <span class="text-red-500 text-sm">{{ form.hobbies.errors[0] }}</span>
                         {% endif %}
@@ -55,7 +55,7 @@
                     {{ form.correction_style.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="correction_style-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.correction_style or ''|e }}</div>
-                        {{ form.correction_style(class="form-input hidden w-full custom-input") }}
+                        {{ form.correction_style(class="form-input hidden w-full custom-input dark:bg-gray-700 dark:text-gray-100") }}
                         {% if form.correction_style.errors %}
                             <span class="text-red-500 text-sm">{{ form.correction_style.errors[0] }}</span>
                         {% endif %}
@@ -65,7 +65,7 @@
                     {{ form.english_weakness.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <div id="english_weakness-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.english_weakness or ''|e }}</div>
-                        {{ form.english_weakness(class="form-input hidden w-full custom-input") }}
+                        {{ form.english_weakness(class="form-input hidden w-full custom-input dark:bg-gray-700 dark:text-gray-100") }}
                         {% if form.english_weakness.errors %}
                             <span class="text-red-500 text-sm">{{ form.english_weakness.errors[0] }}</span>
                         {% endif %}
@@ -74,8 +74,8 @@
                 <div class="flex items-center justify-between mb-4">
                     {{ form.image_file.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
-                        <img id="image_file-text" src="{{ url_for('static', filename='img/studentImg/' + profile.image_file) }}" class="form-text w-2/3">
-                        {{ form.image_file(class="form-input w-2/3 dark:text-gray-100") }}
+                        <img id="image_file-text" src="{{ url_for('static', filename='img/studentImg/' + profile.image_file) }}" class="form-text w-2/3 rounded-lg mb-2">
+                        {{ form.image_file(class="form-input hidden w-full custom-input dark:bg-gray-700 dark:text-gray-100") }}
                     </div>
                 </div>
                 <div class="text-center">

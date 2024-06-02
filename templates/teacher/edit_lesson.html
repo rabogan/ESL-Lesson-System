@@ -5,8 +5,15 @@
 {% endblock %}
 
 {% block main %}
-<section class="bg-white dark:bg-gray-900">
+<section class="bg-white dark:bg-gray-800">
     <div class="max-w-screen-xl px-4 py-8 mx-auto lg:py-16">
+        <!-- Breadcrumb Navigation -->
+        <nav class="mb-4 text-sm text-gray-600 dark:text-gray-400">
+            <a href="{{ url_for('teacher_dashboard') }}" class="hover:underline">Dashboard</a> &gt; 
+            <a href="{{ url_for('teacher_lesson_records') }}" class="hover:underline">Lesson Records</a> &gt; 
+            Edit Lesson
+        </nav>
+
         <h1 class="text-3xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white mb-8">
             Edit Lesson for {{ lesson.student.username }}
         </h1>
@@ -14,31 +21,31 @@
             {{ form.hidden_tag() }}
             <div class="mb-4">
                 {{ form.lesson_summary.label(class="block text-sm font-medium text-gray-700 dark:text-gray-300") }}
-                {{ form.lesson_summary(class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-100") }}
+                {{ form.lesson_summary(class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-100") }}
             </div>
             <div class="mb-4">
                 {{ form.strengths.label(class="block text-sm font-medium text-gray-700 dark:text-gray-300") }}
-                {{ form.strengths(class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-100") }}
+                {{ form.strengths(class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-100") }}
             </div>
             <div class="mb-4">
                 {{ form.areas_to_improve.label(class="block text-sm font-medium text-gray-700 dark:text-gray-300") }}
-                {{ form.areas_to_improve(class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-100") }}
+                {{ form.areas_to_improve(class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-100") }}
             </div>
             <div class="mb-4">
                 <label for="new_word" class="block text-sm font-medium text-gray-700 dark:text-gray-300">New Words</label>
-                <input type="text" id="new_word" class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-100" placeholder="Type a new word and hit Enter">
+                <input type="text" id="new_word" class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-100" placeholder="Type a new word and hit Enter">
                 <div id="new_words_list" class="mt-2">
                     {% for word in lesson.new_words %}
-                    <span class="inline-block bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm font-medium mr-2 mb-2 px-3 py-1 rounded">{{ word }}</span>
+                    <span class="inline-block bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium mr-2 mb-2 px-3 py-1 rounded">{{ word }}</span>
                     {% endfor %}
                 </div>
             </div>
             <div class="mb-4">
                 <label for="new_phrase" class="block text-sm font-medium text-gray-700 dark:text-gray-300">New Phrases</label>
-                <input type="text" id="new_phrase" class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-100" placeholder="Type a new phrase and hit Enter">
+                <input type="text" id="new_phrase" class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-100" placeholder="Type a new phrase and hit Enter">
                 <div id="new_phrases_list" class="mt-2">
                     {% for phrase in lesson.new_phrases %}
-                    <span class="inline-block bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm font-medium mr-2 mb-2 px-3 py-1 rounded">{{ phrase }}</span>
+                    <span class="inline-block bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium mr-2 mb-2 px-3 py-1 rounded">{{ phrase }}</span>
                     {% endfor %}
                 </div>
             </div>
@@ -74,7 +81,7 @@
             array.push(tag);
             const span = document.createElement('span');
             span.textContent = tag;
-            span.classList.add('inline-block', 'bg-gray-200', 'dark:bg-gray-700', 'text-gray-800', 'dark:text-gray-200', 'text-sm', 'font-medium', 'mr-2', 'mb-2', 'px-3', 'py-1', 'rounded');
+            span.classList.add('inline-block', 'bg-gray-200', 'dark:bg-gray-600', 'text-gray-800', 'dark:text-gray-200', 'text-sm', 'font-medium', 'mr-2', 'mb-2', 'px-3', 'py-1', 'rounded');
             list.appendChild(span);
             updateHiddenFields();
         }
