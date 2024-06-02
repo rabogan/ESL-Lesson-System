@@ -797,7 +797,7 @@ def student_profile(student_id):
     student = db.session.get(Student, student_id)
     if student is None:
         app.logger.error(f"Student with ID {student_id} not found.")
-    return render_template('404.html'), 404
+        return render_template('404.html'), 404
 
     form = TeacherEditsStudentForm(obj=student.profile)
     profile_updated = request.args.get('updated', False)
@@ -828,7 +828,7 @@ def edit_lesson(lesson_id):
     lesson = db.session.get(LessonRecord, lesson_id)
     if lesson is None:
         app.logger.error(f"Lesson with ID {lesson_id} not found.")
-    return render_template('404.html'), 404
+        return render_template('404.html'), 404
 
 
     form = LessonRecordForm()  # Instantiate the updated form
@@ -899,7 +899,7 @@ def student_dashboard():
     student = db.session.get(Student, session['user_id'])
     if student is None:
         app.logger.error(f"Student with ID {session['user_id']} not found.")
-    return render_template('404.html'), 404
+        return render_template('404.html'), 404
 
     user_timezone = pytz.timezone(student.timezone) if student.timezone else pytz.timezone('America/Los_Angeles')
     try:
