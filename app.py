@@ -1,6 +1,7 @@
 import json
 import pytz
 import logging
+from flask_limiter import Limiter
 from helpers import save_image_file
 from flask import Flask, session, render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
@@ -15,11 +16,13 @@ from flask_wtf.file import FileAllowed
 from wtforms import ValidationError, SelectField, DateTimeField, StringField, PasswordField, SubmitField, BooleanField, HiddenField, IntegerField, FileField, TextAreaField, HiddenField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional, NumberRange
 
+
 # Initialize Flask app
 app = Flask(__name__)
 app.secret_key = 'coolie_killer_huimin_himitsunakotogawaruidesune'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['DEBUG'] = True
+
 
 # Initialize extensions
 db = SQLAlchemy(app)
@@ -28,6 +31,8 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 csrf = CSRFProtect(app)
 csrf.init_app(app)
+limiter = Limiter(app)
+
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -37,20 +42,8 @@ def strip_whitespace(form, field):
     if field.data:
         field.data = field.data.strip()
 
-#GUESS
-class LessonSlotsForm(FlaskForm):
-    start_time = DateTimeField('Start Time', validators=[DataRequired()])
-    end_time = DateTimeField('End Time', validators=[DataRequired()])
-    is_booked = BooleanField('Is Booked', default=False)
-    submit = SubmitField('Submit')
 
-
-class StudentLessonSlotForm(FlaskForm):
-    teacher = SelectField('Teacher', coerce=int, validators=[DataRequired()])
-    lesson_slot = SelectField('Lesson Slot', coerce=int, validators=[DataRequired()])
-    submit = SubmitField('Submit')
-
-
+# Forms
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('Email', validators=[DataRequired(), Email()])
@@ -113,6 +106,19 @@ class LessonRecordForm(FlaskForm):
     submit = SubmitField('Update Lesson')
 
 
+class LessonSlotsForm(FlaskForm):
+    start_time = DateTimeField('Start Time', validators=[DataRequired()])
+    end_time = DateTimeField('End Time', validators=[DataRequired()])
+    is_booked = BooleanField('Is Booked', default=False)
+    submit = SubmitField('Submit')
+    
+
+class StudentLessonSlotForm(FlaskForm):
+    teacher = SelectField('Teacher', coerce=int, validators=[DataRequired()])
+    lesson_slot = SelectField('Lesson Slot', coerce=int, validators=[DataRequired()])
+    submit = SubmitField('Submit')
+
+
 class CancelLessonForm(FlaskForm):
     lesson_id = HiddenField('Lesson ID', validators=[DataRequired()])
     csrf_token = HiddenField()
@@ -121,14 +127,6 @@ class CancelLessonForm(FlaskForm):
         lesson = LessonSlot.query.get(lesson_id.data)
         if not lesson:
             raise ValidationError('Invalid lesson ID.')
-
-    def validate_on_submit(self):
-        if not super().validate_on_submit():
-            app.logger.debug(f"Validation errors: {self.errors}")
-            return False
-        app.logger.debug(f"Lesson ID in form: {self.lesson_id.data}")
-        return True
-
 
     def validate_on_submit(self):
         if not super().validate_on_submit():
@@ -194,6 +192,7 @@ class Teacher(db.Model, UserMixin):
     def __repr__(self):
         return f"Teacher('{self.username}', '{self.email}')"
 
+
 # TeacherProfile model
 class TeacherProfile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -239,7 +238,6 @@ class LessonRecord(db.Model):
     new_phrases = db.Column(JsonEncodedDict)
     lesson_summary = db.Column(db.String(1000))
     lastEditTime = db.Column(db.DateTime, default=datetime.utcnow)
-
     student = db.relationship('Student', back_populates='lesson_records')
     teacher = db.relationship('Teacher', back_populates='lesson_records')
     lesson_slot = db.relationship('LessonSlot', back_populates='lesson_records')
@@ -264,6 +262,7 @@ class LessonSlot(db.Model):
     def __repr__(self):
         return f"LessonSlot('{self.teacher_id}', '{self.start_time}', '{self.end_time}', '{self.is_booked}')"
 
+
 class Booking(db.Model):
     __tablename__ = 'booking'
     id = db.Column(db.Integer, primary_key=True)
@@ -271,7 +270,6 @@ class Booking(db.Model):
     lesson_slot_id = db.Column(db.Integer, db.ForeignKey('lesson_slot.id'), nullable=False)
     lesson_record_id = db.Column(db.Integer, db.ForeignKey('lesson_record.id'), nullable=True)
     status = db.Column(db.String(20), nullable=False, default='booked')
-    
     student = db.relationship('Student', back_populates='bookings')
     lesson_slot = db.relationship('LessonSlot', back_populates='booking')
     lesson_record = db.relationship('LessonRecord', back_populates='booking', uselist=False)
@@ -327,6 +325,7 @@ def portal_choice():
 
 
 @app.route("/student/register", methods=["GET", "POST"])
+@limiter.limit("5/minute")
 def student_register():
     """
     Register a new student here
@@ -364,8 +363,8 @@ def student_register():
     return render_template("student_register.html", form=form)
 
 
-
 @app.route("/student/login", methods=["GET", "POST"])
+@limiter.limit("5/minute")
 def student_login():
     """
     Allow existing students to log in (or redirect them!)
@@ -396,52 +395,33 @@ def student_login():
 
 
 @app.route("/teacher/register", methods=["GET", "POST"])
+@limiter.limit("5/minute")
 def teacher_register():
-    """
-    Allow new teachers to register for the platform
-    """
     form = RegistrationForm()
     if form.validate_on_submit():
-        username = form.username.data
-        email = form.email.data
-        password = form.password.data
-        confirmation = form.confirmation.data
-
-        # Input valdidity check
-        if not username:
-            return render_template("apology.html", top="Error", bottom="Please provide a valid username"), 400
-        if not password:
-            return render_template("apology.html", top="Error", bottom="Please provide a password"), 400
-        if not confirmation:
-            return render_template("apology.html", top="Error", bottom="Confirmation not provided"), 400
-        if password != confirmation:
-            return render_template("apology.html", top="Error", bottom="Password and confirmation must match!"), 400
-
-        # Check if the username already exists
-        existing_teacher = Teacher.query.filter_by(username=username).first()
+        hashed_password = generate_password_hash(form.password.data)
+        new_teacher = Teacher(username=form.username.data, email=form.email.data, password=hashed_password)
+        
+        # Check if the username or email already exists
+        existing_teacher = Teacher.query.filter((Teacher.username == form.username.data) | (Teacher.email == form.email.data)).first()
         if existing_teacher is not None:
-            return render_template("apology.html", top="Error", bottom="Username already exists"), 400
+            return render_template("apology.html", top="Error", bottom="Registration error"), 400
 
-        hashed_password = generate_password_hash(password)
-        new_teacher = Teacher(username=username, email=email, password=hashed_password)
         db.session.add(new_teacher)
         db.session.commit()
 
-        # Create a new TeacherProfile for the newly registered teacher
         profile = TeacherProfile(teacher_id=new_teacher.id, image_file='default.jpg')
         db.session.add(profile)
         db.session.commit()
 
-        # Store the user_id, user_type and user_name in the session
-        session['user_id'] = new_teacher.id
-        session['user_type'] = 'teacher'
-        session['user_name'] = new_teacher.username
+        login_user(new_teacher)  # Use Flask-Login to manage the session
 
-        return redirect(url_for("teacher_login"))
+        return redirect(url_for("teacher_dashboard"))  # Redirect to a different page
     return render_template("teacher_register.html", form=form)
 
 
 @app.route("/teacher/login", methods=["GET", "POST"])
+@limiter.limit("5/minute")
 def teacher_login():
     """
     Allow existing teachers to log in!
@@ -464,8 +444,8 @@ def teacher_login():
         # Log in the user and store their info in the session
         login_user(teacher, remember=remember)
         session['user_id'] = teacher.id
-        session['user_type'] = 'teacher'
-        session['user_name'] = teacher.username
+        session['user_type'] = 'teacher'  # Add this line
+        session['user_name'] = teacher.username  # If you need the username in the session
 
         return redirect(url_for("teacher_dashboard"))
     return render_template("teacher_login.html", form=form)
@@ -559,9 +539,9 @@ def teacher_lesson_records():
     return render_template('teacher/teacher_lesson_records.html', lesson_records=lesson_records)
 
 
-
 @app.route('/teacher/edit_teacher_profile', methods=['GET', 'POST'])
 @login_required
+@limiter.limit("5/minute") 
 def edit_teacher_profile():
     """
     Where teachers can edit and update their own profiles
@@ -653,7 +633,6 @@ def manage_lesson_slots():
                            form=form)
 
 
-
 @app.route('/teacher/update_slot', methods=['POST'])
 @login_required
 def update_lesson_slot():
@@ -681,6 +660,7 @@ def update_lesson_slot():
             return jsonify({'status': 'success'})
 
     return jsonify({'status': 'error'})
+
 
 @app.route('/teacher/update_slots', methods=['POST'])
 @login_required
@@ -737,9 +717,9 @@ def update_slots():
     return jsonify({'status': 'success', 'updates': updates})
 
 
-
 @app.route('/student_profile/<int:student_id>', methods=['GET', 'POST'])
 @login_required
+@limiter.limit("5/minute") 
 def student_profile(student_id):
     """
     This route lets a teacher view and edit a student's profile.
@@ -774,9 +754,6 @@ def student_profile(student_id):
 
     # Pass the student's profile to the template
     return render_template('view_student_profile.html', form=form, student=student, profile_updated=profile_updated)
-
-
-
 
 
 @app.route('/teacher/edit_lesson/<int:lesson_id>', methods=['GET', 'POST'])
@@ -832,6 +809,7 @@ def edit_lesson(lesson_id):
     return render_template('teacher/edit_lesson.html', form=form, lesson=lesson)
 
 
+# Student Only Routes!
 @app.route('/student/dashboard')
 @login_required
 def student_dashboard():
@@ -966,9 +944,9 @@ def student_lesson_records():
     return render_template('student/lesson_records.html', lesson_records=lesson_records)
 
 
-
 @app.route('/student/edit_student_profile', methods=['GET', 'POST'])
 @login_required
+@limiter.limit("5/minute") 
 def edit_student_profile():
     if 'user_type' not in session or session['user_type'] != 'student':
         return redirect(url_for('login'))
@@ -1197,7 +1175,6 @@ def student_book_lesson():
         form=form,
         remaining_lessons=student.remaining_lessons
     )
-
     
 
 @app.teardown_appcontext
