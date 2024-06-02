@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Teacher Profile
+{% endblock %}
+
+{% block main %}
+<section class="bg-white dark:bg-gray-900 py-8">
+    <div class="max-w-screen-lg mx-auto px-4">
+        <nav class="mb-4 text-sm text-gray-600 dark:text-gray-400">
+            <a href="{{ url_for('meet_your_teacher') }}" class="hover:underline">Back to Teachers</a>
+        </nav>
+        <h1 class="text-3xl md:text-5xl font-extrabold text-center text-gray-900 dark:text-gray-100 mb-8">Teacher Profile: {{ teacher.username }}</h1>
+
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 max-w-2xl mx-auto">
+            <div class="flex items-center space-x-4 mb-6">
+                {% if profile.image_file %}
+                    <img class="w-20 h-20 rounded-full" src="{{ url_for('static', filename='img/teacherImg/' + profile.image_file) }}" alt="Teacher's profile picture">
+                {% else %}
+                    <img class="w-20 h-20 rounded-full" src="{{ url_for('static', filename='img/teacherImg/default.jpg') }}" alt="Default profile picture">
+                {% endif %}
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ teacher.username }}</h2>
+                </div>
+            </div>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="w-1/4 text-gray-900 dark:text-gray-100">Age</span>
+                    <div class="w-2/3 text-gray-900 dark:text-gray-100">{{ profile.age or 'N/A' }}</div>
+                </div>
+                <div class="flex items-center justify-between mb-4">
+                    <span class="w-1/4 text-gray-900 dark:text-gray-100">Hobbies</span>
+                    <div class="w-2/3 text-gray-900 dark:text-gray-100">{{ profile.hobbies or 'N/A' }}</div>
+                </div>
+                <div class="flex items-center justify-between mb-4">
+                    <span class="w-1/4 text-gray-900 dark:text-gray-100">Motto</span>
+                    <div class="w-2/3 text-gray-900 dark:text-gray-100">{{ profile.motto or 'N/A' }}</div>
+                </div>
+                <div class="flex items-center justify-between mb-4">
+                    <span class="w-1/4 text-gray-900 dark:text-gray-100">Blood Type</span>
+                    <div class="w-2/3 text-gray-900 dark:text-gray-100">{{ profile.blood_type or 'N/A' }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

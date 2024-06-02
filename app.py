@@ -307,6 +307,17 @@ def load_user(user_id):
         return None
 
 
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('apology.html', top="404 Error", bottom="Page not found"), 404
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    app.logger.error(f"Server Error: {error}")
+    return render_template('500.html'), 500
+
+
 # Homepage Routes
 @app.route("/")
 def index():
@@ -324,6 +335,29 @@ def meet_your_teacher():
     page = request.args.get('page', 1, type=int)
     teachers = Teacher.query.paginate(page=page, per_page=6)
     return render_template('meetYourTeacher.html', teachers=teachers)
+
+
+@app.route('/teacher_profile/<int:teacher_id>', methods=['GET'])
+def teacher_profile(teacher_id):
+    """
+    This route displays a teacher's profile.
+    It is a public view and not editable.
+    """
+    # Fetch the teacher
+    teacher = db.session.query(Teacher).filter(Teacher.id == teacher_id).first()
+    if teacher is None:
+        app.logger.error(f"Teacher with ID {teacher_id} not found.")
+        return render_template('404.html'), 404
+
+    # Fetch the teacher's profile
+    profile = db.session.query(TeacherProfile).filter(TeacherProfile.teacher_id == teacher_id).first()
+    if profile is None:
+        app.logger.error(f"Profile for teacher with ID {teacher_id} not found.")
+        return render_template('404.html'), 404
+
+    # Pass the teacher's profile to the template
+    return render_template('view_teacher_profile.html', teacher=teacher, profile=profile)
+
 
 
 @app.route('/portal_choice')
@@ -417,6 +451,7 @@ def teacher_register():
         if existing_teacher is not None:
             return render_template("apology.html", top="Error", bottom="Registration error"), 400
 
+
         db.session.add(new_teacher)
         db.session.commit()
 
@@ -425,6 +460,11 @@ def teacher_register():
         db.session.commit()
 
         login_user(new_teacher)  # Use Flask-Login to manage the session
+        
+        # Store the new teacher's info in the session
+        session['user_id'] = new_teacher.id
+        session['user_type'] = 'teacher'
+        session['user_name'] = new_teacher.username
 
         return redirect(url_for("teacher_dashboard"))  # Redirect to a different page
     return render_template("teacher_register.html", form=form)
@@ -450,6 +490,7 @@ def teacher_login():
         teacher = Teacher.query.filter_by(username=username).first()
         if teacher is None or not check_password_hash(teacher.password, password):
             return render_template("apology.html", top="Error", bottom="Invalid username or password"), 400
+
 
         # Log in the user and store their info in the session
         login_user(teacher, remember=remember)
@@ -508,8 +549,10 @@ def teacher_dashboard():
 
     # Convert lesson times to the teacher's timezone
     teacher = db.session.get(Teacher, session['user_id'])
+    teacher = db.session.get(Teacher, session['user_id'])
     if teacher is None:
-        return abort(404)
+        app.logger.error(f"Teacher with ID {session['user_id']} not found.")
+        return render_template('404.html'), 404
 
     user_timezone = pytz.timezone(teacher.timezone)
     if most_recent_record:
@@ -590,30 +633,32 @@ def manage_lesson_slots():
     teacher = db.session.get(Teacher, current_user.id)
     user_timezone = pytz.timezone(teacher.timezone)
 
-    if request.method == 'POST' and form.validate_on_submit():
-        try:
-            local_start_time = datetime.strptime(request.form['start_time'], '%Y-%m-%dT%H:%M')
-            start_time = user_timezone.localize(local_start_time).astimezone(pytz.UTC)
-            local_end_time = datetime.strptime(request.form['end_time'], '%Y-%m-%dT%H:%M')
-            end_time = user_timezone.localize(local_end_time).astimezone(pytz.UTC)
+    if request.method == 'POST':
+        if form.validate_on_submit():
+            try:
+                local_start_time = datetime.strptime(request.form['start_time'], '%Y-%m-%dT%H:%M')
+                start_time = user_timezone.localize(local_start_time).astimezone(pytz.UTC)
+                local_end_time = datetime.strptime(request.form['end_time'], '%Y-%m-%dT%H:%M')
+                end_time = user_timezone.localize(local_end_time).astimezone(pytz.UTC)
 
-            existing_slot = LessonSlot.query.filter_by(teacher_id=current_user.id, start_time=start_time, end_time=end_time).first()
-            if existing_slot:
-                db.session.delete(existing_slot)
-                print('Lesson slot closed!')
-            else:
-                new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time)
-                db.session.add(new_slot)
-                print('New lesson slot created!')
+                existing_slot = LessonSlot.query.filter_by(teacher_id=current_user.id, start_time=start_time, end_time=end_time).first()
+                if existing_slot:
+                    db.session.delete(existing_slot)
+                    print('Lesson slot closed!')
+                else:
+                    new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time)
+                    db.session.add(new_slot)
+                    print('New lesson slot created!')
 
-            db.session.commit()
-            return jsonify({'status': 'success'})
-        except Exception as e:
-            db.session.rollback()
-            app.logger.error(f"Error creating or deleting lesson slot: {e}")
-            return jsonify({'status': 'error', 'message': 'An error occurred while creating or deleting the lesson slot.'}), 500
+                db.session.commit()
+                return jsonify({'status': 'success'})
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"Error creating or deleting lesson slot: {e}")
+                return jsonify({'status': 'error', 'message': 'An error occurred while creating or deleting the lesson slot.'}), 500
         else:
-            return jsonify({'status': 'error', 'message': 'Invalid form data.'}), 400
+            app.logger.error('Invalid form data.')
+            return render_template("apology.html", top="400 Error", bottom="Invalid form data."), 400
 
     start_date_str = request.args.get('start_date')
     if start_date_str:
@@ -723,10 +768,11 @@ def update_slots():
                         'slot_id': slot_id
                     })
                 else:
-                    return jsonify({'status': 'error', 'message': 'Invalid slot id'}), 400
+                    app.logger.error('Invalid slot id.')
+                    return render_template("apology.html", top="400 Error", bottom="Invalid slot id."), 400
         except Exception as e:
             app.logger.error(f"Error processing slot action: {e}")
-            return jsonify({'status': 'error', 'message': f'Invalid data for {action} action'}), 400
+            return render_template("apology.html", top="400 Error", bottom=f"Invalid data for {action} action."), 400
 
     return jsonify({'status': 'success', 'updates': updates})
 
@@ -751,7 +797,7 @@ def student_profile(student_id):
     student = db.session.get(Student, student_id)
     if student is None:
         app.logger.error(f"Student with ID {student_id} not found.")
-        return abort(404)
+    return render_template('404.html'), 404
 
     form = TeacherEditsStudentForm(obj=student.profile)
     profile_updated = request.args.get('updated', False)
@@ -782,7 +828,8 @@ def edit_lesson(lesson_id):
     lesson = db.session.get(LessonRecord, lesson_id)
     if lesson is None:
         app.logger.error(f"Lesson with ID {lesson_id} not found.")
-        return abort(404)
+    return render_template('404.html'), 404
+
 
     form = LessonRecordForm()  # Instantiate the updated form
 
@@ -851,7 +898,8 @@ def student_dashboard():
     # Convert lesson times to the user's timezone
     student = db.session.get(Student, session['user_id'])
     if student is None:
-        return abort(404)
+        app.logger.error(f"Student with ID {session['user_id']} not found.")
+    return render_template('404.html'), 404
 
     user_timezone = pytz.timezone(student.timezone) if student.timezone else pytz.timezone('America/Los_Angeles')
     try:
@@ -1006,7 +1054,8 @@ def student_book_lesson():
 
     student = db.session.get(Student, current_user.id)
     if student is None:
-        return abort(404)
+        app.logger.error(f"Student with ID {current_user.id} not found.")
+        return render_template('404.html'), 404
     
     # Get the student's timezone
     user_timezone = pytz.timezone(student.timezone)
