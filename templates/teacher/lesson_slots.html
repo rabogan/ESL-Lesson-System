@@ -45,7 +45,7 @@
                 <tr>
                     <td class="border border-gray-300 dark:border-gray-600 dark:text-gray-100 p-2 text-center">{{ '%02d:00' % hour }}</td>
                     {% for i in range(7) %}
-                    {% set slot = lesson_slots | selectattr('start_time', 'equalto', (start_date + timedelta(days=i, hours=hour)).astimezone(pytz.UTC)) | list | first %}
+                    {% set slot = lesson_slots | selectattr('start_time.astimezone(user_timezone)', 'equalto', (start_date + timedelta(days=i, hours=hour)).astimezone(user_timezone)) | list | first %}
                     <td data-time="{{ (start_date + timedelta(days=i, hours=hour)).astimezone(pytz.UTC).isoformat() }}" 
                         class="slot border border-gray-300 dark:border-gray-600 p-2 text-center cursor-pointer {% if slot and slot.start_time < datetime.now(user_timezone) %}past-slot{% endif %}">
                         {% if slot %}
@@ -60,6 +60,9 @@
                                     {{ 'BOOKED' if slot.is_booked else 'OPEN LESSON' }}
                                 </div>
                             {% endif %}
+                            <script>
+                                console.log('Slot ID:', '{{ slot.id }}', 'Is Open:', '{{ 'OPEN LESSON' if not slot.is_booked else 'BOOKED' }}', 'Start Time:', '{{ slot.start_time }}', 'End Time:', '{{ slot.end_time }}');
+                            </script>
                         {% else %}
                             {% if (start_date + timedelta(days=i, hours=hour)).astimezone(user_timezone) > datetime.now(user_timezone) %}
                                 <div class="bg-gray-300 dark:bg-gray-600 text-black dark:text-gray-100 rounded p-1 h-full flex items-center justify-center">-</div>
@@ -77,155 +80,198 @@
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        console.log('DOM fully loaded and parsed');
-        let editMode = false;
-        const startDate = new Date('{{ start_date.strftime("%Y-%m-%d") }}');
-        const currentTime = new Date();
-        console.log('Start Date:', startDate);
+window.onload = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    console.log('URL Params:', urlParams);
+    if (!urlParams.has('start_date')) {
+        const currentDate = new Date();
+        const day = currentDate.getUTCDay();
+        const diff = currentDate.getUTCDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+        const startDate = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), diff));
+        const startDateString = startDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+        const newUrl = `${window.location.pathname}?start_date=${startDateString}`;
+        console.log(`Redirecting to: ${newUrl}`);
+        window.location.href = newUrl;
+    }
+};
 
-        function updateTable() {
-            console.log('Updating table');
-            window.location.href = `/teacher/lesson_slots?start_date=${startDate.toISOString().split('T')[0]}`;
-        }
+document.addEventListener('DOMContentLoaded', function () {
+    console.log('DOM fully loaded and parsed');
+    let editMode = false;
+    const startDate = new Date('{{ start_date.strftime("%Y-%m-%d") }}');
+    const currentTime = new Date();
+    console.log('Start Date:', startDate);
+    console.log('Current Time:', currentTime);
 
-        function initializeSlots() {
-            console.log('Initializing slots');
-            document.querySelectorAll('.slot').forEach(slot => {
-                const statusDiv = slot.querySelector('div');
-                const slotTime = new Date(slot.getAttribute('data-time'));
+    function updateTable() {
+        console.log('Updating table');
+        const url = `/teacher/lesson_slots?start_date=${startDate.toISOString().split('T')[0]}`;
+        console.log(`Redirecting to: ${url}`);
+        window.location.href = url;
+    }
 
-                if (!statusDiv && slotTime > currentTime) {
+    function initializeSlots() {
+        console.log('Initializing slots');
+        document.querySelectorAll('.slot').forEach(slot => {
+            const statusDiv = slot.querySelector('div');
+            let slotTime = new Date(slot.getAttribute('data-time'));
+
+            console.log('Original Slot Time:', slot.getAttribute('data-time'));
+
+            // Convert slotTime to local time zone
+            slotTime = new Date(slotTime.getTime() - slotTime.getTimezoneOffset() * 60000);
+
+            console.log('Converted Slot Time:', slotTime, 'Current Time:', currentTime);
+
+            if (statusDiv) {
+                console.log('Updating existing div');
+                const slotId = statusDiv.getAttribute('data-slot-id');
+                const isOpen = statusDiv.classList.contains('bg-gold-300');
+                console.log('Slot ID:', slotId, 'Is Open:', isOpen);
+                statusDiv.textContent = isOpen ? 'OPEN LESSON' : '-';
+                statusDiv.classList.toggle('bg-gold-300', isOpen);
+                statusDiv.classList.toggle('bg-gray-300', !isOpen);
+                console.log('Status Div Text:', statusDiv.textContent);
+                console.log('Status Div Classes:', statusDiv.classList);
+            } else {
+                if (slotTime > currentTime) {
+                    console.log('Creating new div for future slot');
                     const newDiv = document.createElement('div');
                     newDiv.classList.add('bg-gray-300', 'dark:bg-gray-600', 'text-black', 'dark:text-gray-100', 'rounded', 'p-1', 'h-full', 'flex', 'items-center', 'justify-center');
                     newDiv.textContent = '-';
                     slot.appendChild(newDiv);
-                } else if (statusDiv) {
-                    const slotId = statusDiv.getAttribute('data-slot-id');
-                    const isOpen = statusDiv.classList.contains('bg-gold-300');
-                    statusDiv.textContent = isOpen ? 'OPEN LESSON' : '-';
-                    statusDiv.classList.toggle('bg-gold-300', isOpen);
-                    statusDiv.classList.toggle('bg-gray-300', !isOpen);
+                    console.log('New Div Created for future slot:', newDiv);
                 }
-            });
-        }
-
-        function handleSlotClick(event) {
-            if (!editMode) return;
-            const statusDiv = event.currentTarget.querySelector('div');
-            if (statusDiv.classList.contains('bg-blue-500') || event.currentTarget.classList.contains('past-slot')) {
-                return;
             }
-            statusDiv.classList.toggle('bg-gold-300');
-            statusDiv.classList.toggle('bg-gray-300');
-            statusDiv.textContent = statusDiv.classList.contains('bg-gold-300') ? 'OPEN LESSON' : '-';
+        });
+    }
+
+    function handleSlotClick(event) {
+        if (!editMode) return;
+        const statusDiv = event.currentTarget.querySelector('div');
+        console.log('Slot clicked:', statusDiv);
+
+        if (statusDiv.classList.contains('bg-blue-500') || event.currentTarget.classList.contains('past-slot')) {
+            return;
         }
+        statusDiv.classList.toggle('bg-gold-300');
+        statusDiv.classList.toggle('bg-gray-300');
+        statusDiv.textContent = statusDiv.classList.contains('bg-gold-300') ? 'OPEN LESSON' : '-';
+        console.log('Toggled Slot:', statusDiv);
+    }
 
-        function handleFormSubmission() {
-            console.log('Submit button clicked');
-            const updates = [];
-            document.querySelectorAll('.slot').forEach(slot => {
-                const statusDiv = slot.querySelector('div');
-                if (!statusDiv) return;
-                const slotId = statusDiv.getAttribute('data-slot-id');
-                const startTime = new Date(slot.getAttribute('data-time')).toISOString().split('.')[0] + 'Z';
-                const isOpen = statusDiv.classList.contains('bg-gold-300');
-                console.log(`Processing slot with ID ${slotId}, Start time: ${startTime}, Is open: ${isOpen}`);
-                if (isOpen && !slotId) {
-                    updates.push({ action: 'open', start_time: startTime, end_time: new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString().split('.')[0] + 'Z' });
-                } else if (!isOpen && slotId) {
-                    updates.push({ action: 'close', slot_id: slotId });
-                }
-            });
-            console.log('Payload:', JSON.stringify(updates));
-
-            const csrfToken = document.querySelector('input[name="csrf_token"]').value;
-            console.log('CSRF Token:', csrfToken);
-
-            fetch('/teacher/update_slots', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify(updates)
-            })
-            .then(response => response.ok ? response.json() : Promise.reject(response.statusText))
-            .then(data => {
-                console.log('Response:', data);
-                if (data.status === 'success') {
-                    data.updates.forEach(update => {
-                        console.log('Processing update:', update);
-                        if (update.action === 'open') {
-                            const slotElement = document.querySelector(`[data-time='${update.start_time.split('.')[0]}Z'] div`);
-                            if (slotElement) {
-                                slotElement.setAttribute('data-slot-id', update.slot_id);
-                                slotElement.classList.add('bg-gold-300');
-                                slotElement.classList.remove('bg-gray-300');
-                                slotElement.textContent = 'OPEN LESSON';
-                            }
-                        } else if (update.action === 'close') {
-                            const slotElement = document.querySelector(`[data-slot-id='${update.slot_id}']`);
-                            if (slotElement) {
-                                slotElement.classList.add('bg-gray-300');
-                                slotElement.classList.remove('bg-gold-300');
-                                slotElement.textContent = '-';
-                                slotElement.removeAttribute('data-slot-id');
-                            }
-                        }
-                    });
-                    editMode = false;
-                    toggleEditButtons();
-                    initializeSlots();
-                } else {
-                    alert('An error occurred.');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred: ' + error.message);
-            });
-        }
-
-        function toggleEditButtons() {
-            document.getElementById('unique-edit-button').classList.toggle('hidden', editMode);
-            document.getElementById('unique-submit-button').classList.toggle('hidden', !editMode);
-            document.getElementById('unique-cancel-button').classList.toggle('hidden', !editMode);
-        }
-
+    function handleFormSubmission() {
+        console.log('Submit button clicked');
+        const updates = [];
         document.querySelectorAll('.slot').forEach(slot => {
-            slot.addEventListener('click', handleSlotClick);
+            const statusDiv = slot.querySelector('div');
+            if (!statusDiv) return;
+            const slotId = statusDiv.getAttribute('data-slot-id');
+            const startTime = new Date(slot.getAttribute('data-time')).toISOString().split('.')[0] + 'Z';
+            const isOpen = statusDiv.classList.contains('bg-gold-300');
+            console.log(`Processing slot with ID ${slotId}, Start time: ${startTime}, Is open: ${isOpen}`);
+            if (isOpen && !slotId) {
+                updates.push({ action: 'open', start_time: startTime, end_time: new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString().split('.')[0] + 'Z' });
+            } else if (!isOpen && slotId) {
+                updates.push({ action: 'close', slot_id: slotId });
+            }
         });
+        console.log('Payload:', JSON.stringify(updates));
 
-        document.getElementById('unique-submit-button').addEventListener('click', handleFormSubmission);
+        const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+        console.log('CSRF Token:', csrfToken);
 
-        document.getElementById('unique-edit-button').addEventListener('click', () => {
-            console.log('Edit button clicked');
-            editMode = true;
-            toggleEditButtons();
-            initializeSlots();
+        fetch('/teacher/update_slots', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(updates)
+        })
+        .then(response => {
+            console.log('Response:', response);
+            return response.ok ? response.json() : Promise.reject(response.statusText);
+        })
+        .then(data => {
+            console.log('Data:', data);
+            if (data.status === 'success') {
+                data.updates.forEach(update => {
+                    console.log('Processing update:', update);
+                    if (update.action === 'open') {
+                        const slotElement = document.querySelector(`[data-time='${update.start_time.split('.')[0]}Z'] div`);
+                        if (slotElement) {
+                            slotElement.setAttribute('data-slot-id', update.slot_id);
+                            slotElement.classList.add('bg-gold-300');
+                            slotElement.classList.remove('bg-gray-300');
+                            slotElement.textContent = 'OPEN LESSON';
+                            console.log('Updated slot element for open:', slotElement);
+                        }
+                    } else if (update.action === 'close') {
+                        const slotElement = document.querySelector(`[data-slot-id='${update.slot_id}']`);
+                        if (slotElement) {
+                            slotElement.classList.add('bg-gray-300');
+                            slotElement.classList.remove('bg-gold-300');
+                            slotElement.textContent = '-';
+                            slotElement.removeAttribute('data-slot-id');
+                            console.log('Updated slot element for close:', slotElement);
+                        }
+                    }
+                });
+                editMode = false;
+                toggleEditButtons();
+                initializeSlots();
+            } else {
+                alert('An error occurred: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred: ' + error.message);
         });
+    }
 
-        document.getElementById('unique-cancel-button').addEventListener('click', () => {
-            console.log('Cancel button clicked');
-            editMode = false;
-            toggleEditButtons();
-            updateTable();
-        });
+    function toggleEditButtons() {
+        console.log('Toggling edit buttons, edit mode:', editMode);
+        document.getElementById('unique-edit-button').classList.toggle('hidden', editMode);
+        document.getElementById('unique-submit-button').classList.toggle('hidden', !editMode);
+        document.getElementById('unique-cancel-button').classList.toggle('hidden', !editMode);
+        console.log('Edit buttons toggled:', editMode);
+    }
 
-        document.getElementById('unique-prev-week').addEventListener('click', () => {
-            console.log('Previous week button clicked');
-            startDate.setDate(startDate.getDate() - 7);
-            updateTable();
-        });
+    document.querySelectorAll('.slot').forEach(slot => {
+        slot.addEventListener('click', handleSlotClick);
+    });
 
-        document.getElementById('unique-next-week').addEventListener('click', () => {
-            console.log('Next week button clicked');
-            startDate.setDate(startDate.getDate() + 7);
-            updateTable();
-        });
+    document.getElementById('unique-submit-button').addEventListener('click', handleFormSubmission);
 
+    document.getElementById('unique-edit-button').addEventListener('click', () => {
+        console.log('Edit button clicked');
+        editMode = true;
+        toggleEditButtons();
         initializeSlots();
     });
+
+    document.getElementById('unique-cancel-button').addEventListener('click', () => {
+        console.log('Cancel button clicked');
+        editMode = false;
+        toggleEditButtons();
+        updateTable();
+    });
+
+    document.getElementById('unique-prev-week').addEventListener('click', () => {
+        console.log('Previous week button clicked');
+        startDate.setDate(startDate.getDate() - 7);
+        updateTable();
+    });
+
+    document.getElementById('unique-next-week').addEventListener('click', () => {
+        console.log('Next week button clicked');
+        startDate.setDate(startDate.getDate() + 7);
+        updateTable();
+    });
+
+    initializeSlots();
+});
 </script>
 {% endblock %}

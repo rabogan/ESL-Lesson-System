@@ -14,7 +14,7 @@
         <div class="overflow-x-auto dark:text-gray-300 mb-8">
             <p class="mb-4 text-lg font-medium text-gray-700 dark:text-gray-300">Number of Lessons Remaining: {{ remaining_lessons }}</p>
 
-            <!-- Flash messages for errors or success -->
+            <!-- Feedback messages for errors or success -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     <ul class="list-disc list-inside">
@@ -25,48 +25,49 @@
                 {% endif %}
             {% endwith %}
 
-            <form id="book-lesson-form" action="{{ url_for('student_book_lesson') }}" method="post">
-                {{ form.hidden_tag() }}  <!-- CSRF Token and other hidden fields -->
-                <div class="mb-4">
-                    <label for="teacher" class="block text-lg font-medium text-gray-700 dark:text-gray-300">Select Teacher</label>
-                    <select id="teacher" name="teacher" class="block w-full mt-1" onchange="filterSlots()">
-                        {% for teacher in available_teachers %}
-                            <option value="{{ teacher.id }}" {% if loop.first %}selected{% endif %}>{{ teacher.username }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label for="sort" class="block text-lg font-medium text-gray-700 dark:text-gray-300">Sort By</label>
-                    <select id="sort" name="sort" class="block w-full mt-1" onchange="filterSlots()">
-                        <option value="date">Date</option>
-                        <option value="time">Time</option>
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label for="lesson_slot" class="block text-lg font-medium text-gray-700 dark:text-gray-300">Select Lesson Slot</label>
-                    <select id="lesson_slot" name="lesson_slot" class="block w-full mt-1">
-                        {% for slot in available_slots %}
-                            <option data-teacher-id="{{ slot.teacher.id }}" value="{{ slot.id }}">{{ slot.start_time.strftime('%Y-%m-%d %I:%M %p') }} - {{ slot.end_time.strftime('%I:%M %p') }} with {{ slot.teacher.username }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+            {% if available_slots %}
+                <form id="book-lesson-form" action="{{ url_for('student_book_lesson') }}" method="post">
+                    {{ form.hidden_tag() }}  <!-- CSRF Token and other hidden fields -->
+                    <div class="mb-4">
+                        <label for="teacher" class="block text-lg font-medium text-gray-700 dark:text-gray-300">Select Teacher</label>
+                        <select id="teacher" name="teacher" class="block w-full mt-1" onchange="filterSlots()">
+                            {% for teacher in available_teachers %}
+                                <option value="{{ teacher.id }}" {% if loop.first %}selected{% endif %}>{{ teacher.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="lesson_slot" class="block text-lg font-medium text-gray-700 dark:text-gray-300">Select Lesson Slot</label>
+                        <select id="lesson_slot" name="lesson_slot" class="block w-full mt-1">
+                            {% for slot in available_slots %}
+                                <option data-teacher-id="{{ slot.teacher.id }}" value="{{ slot.id }}">{{ slot.start_time.strftime('%Y-%m-%d %I:%M %p') }} - {{ slot.end_time.strftime('%I:%M %p') }} with {{ slot.teacher.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="flex justify-between items-center mb-4">
+                        <a href="{{ url_for('student_book_lesson', week_offset=week_offset - 1) }}" class="bg-gray-500 hover:bg-gray-700 text-white py-2 px-4 rounded">Previous Week</a>
+                        <a href="{{ url_for('student_book_lesson', week_offset=week_offset + 1) }}" class="bg-gray-500 hover:bg-gray-700 text-white py-2 px-4 rounded">Next Week</a>
+                    </div>
+                    <div>
+                        <input type="submit" value="Book Lesson" class="bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded">
+                    </div>
+                </form>
+            {% else %}
+                <p class="text-red-500">No Lessons Available. Please try again next week!</p>
                 <div class="flex justify-between items-center mb-4">
                     <a href="{{ url_for('student_book_lesson', week_offset=week_offset - 1) }}" class="bg-gray-500 hover:bg-gray-700 text-white py-2 px-4 rounded">Previous Week</a>
                     <a href="{{ url_for('student_book_lesson', week_offset=week_offset + 1) }}" class="bg-gray-500 hover:bg-gray-700 text-white py-2 px-4 rounded">Next Week</a>
                 </div>
-                <div>
-                    <input type="submit" value="Book Lesson" class="bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded" onclick="return confirm('Are you sure you want to book this lesson?');">
-                </div>
-            </form>
+            {% endif %}
         </div>
     </div>
 </section>
 {% endblock %}
+
 {% block scripts %}
 <script>
     function filterSlots() {
         const teacherId = document.getElementById('teacher').value;
-        const sortBy = document.getElementById('sort').value;
         const lessonSlotSelect = document.getElementById('lesson_slot');
         const options = Array.from(lessonSlotSelect.options);
 
@@ -75,34 +76,34 @@
             option.style.display = (teacherId === '' || option.dataset.teacherId === teacherId) ? '' : 'none';
         });
 
-        // Sort visible options
+        // Sort visible options by date
         const visibleOptions = options.filter(option => option.style.display === '');
-
-        if (sortBy === 'date') {
-            visibleOptions.sort((a, b) => new Date(a.text.split(' - ')[0]) - new Date(b.text.split(' - ')[0]));
-        } else if (sortBy === 'time') {
-            visibleOptions.sort((a, b) => new Date(`1970/01/01 ${a.text.split(' - ')[0].split(' ')[1]} ${a.text.split(' - ')[0].split(' ')[2]}`) - new Date(`1970/01/01 ${b.text.split(' - ')[0].split(' ')[1]} ${b.text.split(' ')[2]}`));
-        }
+        visibleOptions.sort((a, b) => new Date(a.text.split(' - ')[0]) - new Date(b.text.split(' - ')[0]));
 
         // Clear and append sorted options
         lessonSlotSelect.innerHTML = '';
         visibleOptions.forEach(option => lessonSlotSelect.appendChild(option));
     }
 
-    document.getElementById('book-lesson-form').addEventListener('submit', function(event) {
-        const teacherId = document.getElementById('teacher').value;
-        const lessonSlotId = document.getElementById('lesson_slot').value;
-        console.log('Form Submitted');
-        console.log('Teacher ID:', teacherId);
-        console.log('Lesson Slot ID:', lessonSlotId);
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('book-lesson-form');
+        if (form) {
+            form.addEventListener('submit', function(event) {
+                const teacherId = document.getElementById('teacher').value;
+                const lessonSlotId = document.getElementById('lesson_slot').value;
+                console.log('Form Submitted');
+                console.log('Teacher ID:', teacherId);
+                console.log('Lesson Slot ID:', lessonSlotId);
 
-        if (!teacherId || !lessonSlotId) {
-            console.log('Validation failed: Teacher or Lesson Slot not selected.');
-            event.preventDefault();
-            alert('Please select a teacher and lesson slot.');
+                if (!teacherId || !lessonSlotId) {
+                    console.log('Validation failed: Teacher or Lesson Slot not selected.');
+                    event.preventDefault();
+                    alert('Please select a teacher and lesson slot.');
+                }
+            });
         }
-    });
 
-    window.onload = filterSlots;
+        filterSlots();
+    });
 </script>
 {% endblock %}
