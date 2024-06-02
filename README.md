@@ -8,3 +8,9 @@ TODO
 # 1) https://tailwindcss.com/docs/installation
 # 2) https://flowbite.com/docs/getting-started/flask/
 # 3) https://tw-elements.com/docs/standard/components/social-buttons/ (Social Media Icons)
+
+CSRF protection is an important part of securing your web application, but it's not directly related to preventing SQL Injection attacks. CSRF (Cross-Site Request Forgery) protection is about preventing unauthorized commands from being transmitted from a user that the web application trusts.
+
+SQL Injection is prevented in Flask by using the SQLAlchemy ORM for database queries. SQLAlchemy automatically escapes any variables that are passed into a query, which prevents SQL Injection attacks.
+
+In your code, you're using SQLAlchemy, so as long as you're not manually constructing SQL queries with string concatenation or formatting, you should be safe from SQL Injection attacks.

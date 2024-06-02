@@ -11,13 +11,20 @@
             <a href="{{ url_for('student_dashboard') }}" class="hover:underline">Dashboard</a> &gt; Edit Profile
         </nav>
         <h1 class="text-3xl md:text-5xl font-extrabold text-center text-gray-900 dark:text-gray-100 mb-8">Edit Your Profile</h1>
+        
+        {% if profile_updated %}
+            <div id="success-message" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-8" role="alert">
+                <span class="block sm:inline">Your profile has been updated!</span>
+            </div>
+        {% endif %}
+
         <form method="POST" enctype="multipart/form-data" class="space-y-6">
             {{ form.hidden_tag() }}
             <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 max-w-2xl mx-auto">
                 <div class="flex items-center justify-between mb-4">
                     {{ form.hometown.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
-                        <div id="hometown-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.hometown }}</div>
+                        <div id="hometown-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.hometown or ''|e }}</div>
                         {{ form.hometown(class="form-input hidden w-full custom-input") }}
                         {% if form.hometown.errors %}
                             <span class="text-red-500 text-sm">{{ form.hometown.errors[0] }}</span>
@@ -27,52 +34,48 @@
                 <div class="flex items-center justify-between mb-4">
                     {{ form.goal.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
-                        <div id="goal-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.goal }}</div>
+                        <div id="goal-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.goal or ''|e }}</div>
                         {{ form.goal(class="form-input hidden w-full custom-input") }}
                         {% if form.goal.errors %}
                             <span class="text-red-500 text-sm">{{ form.goal.errors[0] }}</span>
                         {% endif %}
-                        <div id="goal-limit" class="text-sm text-gray-500 hidden">Character limit: 1000</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
                     {{ form.hobbies.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
-                        <div id="hobbies-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.hobbies }}</div>
+                        <div id="hobbies-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.hobbies or ''|e }}</div>
                         {{ form.hobbies(class="form-input hidden w-full custom-input") }}
                         {% if form.hobbies.errors %}
                             <span class="text-red-500 text-sm">{{ form.hobbies.errors[0] }}</span>
                         {% endif %}
-                        <div id="hobbies-limit" class="text-sm text-gray-500 hidden">Character limit: 1000</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
                     {{ form.correction_style.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
-                        <div id="correction_style-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.correction_style }}</div>
+                        <div id="correction_style-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.correction_style or ''|e }}</div>
                         {{ form.correction_style(class="form-input hidden w-full custom-input") }}
                         {% if form.correction_style.errors %}
                             <span class="text-red-500 text-sm">{{ form.correction_style.errors[0] }}</span>
                         {% endif %}
-                        <div id="correction_style-limit" class="text-sm text-gray-500 hidden">Character limit: 1000</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
                     {{ form.english_weakness.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
-                        <div id="english_weakness-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.english_weakness }}</div>
+                        <div id="english_weakness-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.english_weakness or ''|e }}</div>
                         {{ form.english_weakness(class="form-input hidden w-full custom-input") }}
                         {% if form.english_weakness.errors %}
                             <span class="text-red-500 text-sm">{{ form.english_weakness.errors[0] }}</span>
                         {% endif %}
-                        <div id="english_weakness-limit" class="text-sm text-gray-500 hidden">Character limit: 1000</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
                     {{ form.image_file.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
                         <img id="image_file-text" src="{{ url_for('static', filename='img/studentImg/' + profile.image_file) }}" class="form-text w-2/3">
-                        {{ form.image_file(class="form-input hidden w-2/3") }}
+                        {{ form.image_file(class="form-input w-2/3 dark:text-gray-100") }}
                     </div>
                 </div>
                 <div class="text-center">
@@ -87,6 +90,13 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+    @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+    }
+</style>
+
 <script>
     function editAllFields() {
         const fields = ['hometown', 'goal', 'hobbies', 'correction_style', 'english_weakness', 'image_file'];
@@ -97,9 +107,6 @@
         document.getElementById('edit-button').classList.add('hidden');
         document.getElementById('cancel-button').classList.remove('hidden');
         document.getElementById('update-profile-button').classList.remove('hidden');
-        ['goal', 'hobbies', 'correction_style', 'english_weakness'].forEach(field => {
-            document.getElementById(`${field}-limit`).classList.remove('hidden');
-        });
     }
 
     function cancelEditAllFields() {
@@ -111,9 +118,21 @@
         document.getElementById('edit-button').classList.remove('hidden');
         document.getElementById('cancel-button').classList.add('hidden');
         document.getElementById('update-profile-button').classList.add('hidden');
-        ['goal', 'hobbies', 'correction_style', 'english_weakness'].forEach(field => {
-            document.getElementById(`${field}-limit`).classList.add('hidden');
-        });
     }
+
+    // Function to hide the success message after a few seconds with fade out effect
+    function hideSuccessMessage() {
+        const message = document.getElementById('success-message');
+        if (message) {
+            setTimeout(() => {
+                message.style.animation = 'fadeOut 2s';
+                setTimeout(() => {
+                    message.remove();
+                }, 2000);
+            }, 3000);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', hideSuccessMessage);
 </script>
 {% endblock %}

@@ -32,6 +32,11 @@ csrf.init_app(app)
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 
+
+def strip_whitespace(form, field):
+    if field.data:
+        field.data = field.data.strip()
+
 #GUESS
 class LessonSlotsForm(FlaskForm):
     start_time = DateTimeField('Start Time', validators=[DataRequired()])
@@ -70,29 +75,32 @@ class LoginForm(FlaskForm):
     remember = BooleanField('Remember Me')
     submit = SubmitField('Login')
 
+
 class EditTeacherProfileForm(FlaskForm):
     age = IntegerField('Age', validators=[Optional(), NumberRange(min=0)])
-    hobbies = StringField('Hobbies', validators=[Optional(), Length(max=500)])
-    motto = StringField('Motto', validators=[Optional(), Length(max=500)])
-    blood_type = StringField('Blood Type', validators=[Optional(), Length(max=5)])
+    hobbies = StringField('Hobbies', validators=[Optional(), Length(max=500), strip_whitespace])
+    motto = StringField('Motto', validators=[Optional(), Length(max=500), strip_whitespace])
+    blood_type = StringField('Blood Type', validators=[Optional(), Length(max=5), strip_whitespace])
     image_file = FileField('Profile Image', validators=[Optional(), FileAllowed(['jpg', 'png'])])
     submit = SubmitField('Update Profile')
+
 
 class StudentProfileForm(FlaskForm):
-    hometown = StringField('Hometown', validators=[Optional(), Length(max=500)])
-    goal = StringField('Goal', validators=[Optional(), Length(max=1000)])
-    hobbies = StringField('Hobbies', validators=[Optional(), Length(max=1000)])
-    correction_style = StringField('Correction Style', validators=[Optional(), Length(max=1000)])
-    english_weakness = StringField('English Weakness', validators=[Optional(), Length(max=1000)])
+    hometown = StringField('Hometown', validators=[Optional(), Length(max=500), strip_whitespace])
+    goal = StringField('Goal', validators=[Optional(), Length(max=1000), strip_whitespace])
+    hobbies = StringField('Hobbies', validators=[Optional(), Length(max=1000), strip_whitespace])
+    correction_style = StringField('Correction Style', validators=[Optional(), Length(max=1000), strip_whitespace])
+    english_weakness = StringField('English Weakness', validators=[Optional(), Length(max=1000), strip_whitespace])
     image_file = FileField('Profile Image', validators=[Optional(), FileAllowed(['jpg', 'png'])])
     submit = SubmitField('Update Profile')
 
+
 class TeacherEditsStudentForm(FlaskForm):
-    hometown = StringField('Hometown', validators=[Optional(), Length(max=500)])
-    goal = StringField('Goal', validators=[Optional(), Length(max=1000)])
-    hobbies = StringField('Hobbies', validators=[Optional(), Length(max=1000)])
-    correction_style = StringField('Correction Style', validators=[Optional(), Length(max=1000)])
-    english_weakness = StringField('English Weakness', validators=[Optional(), Length(max=1000)])
+    hometown = StringField('Hometown', validators=[Optional(), Length(max=500), strip_whitespace])
+    goal = StringField('Goal', validators=[Optional(), Length(max=1000), strip_whitespace])
+    hobbies = StringField('Hobbies', validators=[Optional(), Length(max=1000), strip_whitespace])
+    correction_style = StringField('Correction Style', validators=[Optional(), Length(max=1000), strip_whitespace])
+    english_weakness = StringField('English Weakness', validators=[Optional(), Length(max=1000), strip_whitespace])
     submit = SubmitField('Update Profile')
     
 
@@ -170,6 +178,7 @@ class StudentProfile(db.Model):
 
     def __repr__(self):
         return f"StudentProfile('{self.hometown}', '{self.goal}', '{self.hobbies}', '{self.correction_style}', '{self.english_weakness}', '{self.image_file}')"
+
 
 # Teacher model
 class Teacher(db.Model, UserMixin):
@@ -557,14 +566,18 @@ def edit_teacher_profile():
     """
     Where teachers can edit and update their own profiles
     """
+    
+    if 'user_type' not in session or session['user_type'] != 'teacher':
+        return redirect(url_for('login'))
+    
     form = EditTeacherProfileForm(obj=current_user.profile)
     profile_updated = request.args.get('updated', False)
 
     if form.validate_on_submit():
-        current_user.profile.age = form.age.data
-        current_user.profile.hobbies = form.hobbies.data
-        current_user.profile.motto = form.motto.data
-        current_user.profile.blood_type = form.blood_type.data
+        current_user.profile.age = form.age.data if form.age.data else None
+        current_user.profile.hobbies = form.hobbies.data.strip() if form.hobbies.data else ''
+        current_user.profile.motto = form.motto.data.strip() if form.motto.data else ''
+        current_user.profile.blood_type = form.blood_type.data.strip() if form.blood_type.data else ''
 
         # Handle the image file separately because it's not a simple text field.
         if form.image_file.data:
@@ -747,20 +760,22 @@ def student_profile(student_id):
         return abort(404)
 
     form = TeacherEditsStudentForm(obj=student.profile)
+    profile_updated = request.args.get('updated', False)
 
     if form.validate_on_submit():
-        student.profile.hometown = form.hometown.data
-        student.profile.goal = form.goal.data
-        student.profile.hobbies = form.hobbies.data
-        student.profile.correction_style = form.correction_style.data
-        student.profile.english_weakness = form.english_weakness.data
+        student.profile.hometown = form.hometown.data.strip() if form.hometown.data else ''
+        student.profile.goal = form.goal.data.strip() if form.goal.data else ''
+        student.profile.hobbies = form.hobbies.data.strip() if form.hobbies.data else ''
+        student.profile.correction_style = form.correction_style.data.strip() if form.correction_style.data else ''
+        student.profile.english_weakness = form.english_weakness.data.strip() if form.english_weakness.data else ''
 
         db.session.commit()
-        flash('Student profile has been updated!', 'success')
-        return redirect(url_for('student_profile', student_id=student.id))
+        return redirect(url_for('student_profile', student_id=student.id, updated=True))
 
     # Pass the student's profile to the template
-    return render_template('view_student_profile.html', form=form, student=student)
+    return render_template('view_student_profile.html', form=form, student=student, profile_updated=profile_updated)
+
+
 
 
 
@@ -966,19 +981,19 @@ def edit_student_profile():
     
     form = StudentProfileForm(obj=current_user.profile)
     if form.validate_on_submit():
-        current_user.profile.hometown = form.hometown.data
-        current_user.profile.goal = form.goal.data
-        current_user.profile.hobbies = form.hobbies.data
-        current_user.profile.correction_style = form.correction_style.data
-        current_user.profile.english_weakness = form.english_weakness.data
+        current_user.profile.hometown = form.hometown.data.strip() if form.hometown.data else ''
+        current_user.profile.goal = form.goal.data.strip() if form.goal.data else ''
+        current_user.profile.hobbies = form.hobbies.data.strip() if form.hobbies.data else ''
+        current_user.profile.correction_style = form.correction_style.data.strip() if form.correction_style.data else ''
+        current_user.profile.english_weakness = form.english_weakness.data.strip() if form.english_weakness.data else ''
 
         if form.image_file.data:
             current_user.profile.image_file = save_image_file(form.image_file.data)
 
         db.session.commit()
-        return redirect(url_for('student_dashboard'))
+        return redirect(url_for('edit_student_profile', updated=True))
 
-    return render_template('student/edit_student_profile.html', form=form, profile=current_user.profile)
+    return render_template('student/edit_student_profile.html', form=form, profile=current_user.profile, profile_updated=request.args.get('updated', False))
 
 
 @app.route('/student/book_lesson', methods=['GET', 'POST'])

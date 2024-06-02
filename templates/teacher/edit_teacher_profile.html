@@ -24,7 +24,7 @@
                 <div class="flex items-center justify-between mb-4">
                     {{ form.age.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
-                        <div id="age-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.age }}</div>
+                        <div id="age-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.age or '' }}</div>
                         {{ form.age(class="form-input hidden w-full custom-input") }}
                         {% if form.age.errors %}
                             <span class="text-red-500 text-sm">{{ form.age.errors[0] }}</span>
@@ -34,29 +34,27 @@
                 <div class="flex items-center justify-between mb-4">
                     {{ form.hobbies.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
-                        <div id="hobbies-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.hobbies }}</div>
+                        <div id="hobbies-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.hobbies or '' }}</div>
                         {{ form.hobbies(class="form-input hidden w-full custom-input") }}
                         {% if form.hobbies.errors %}
                             <span class="text-red-500 text-sm">{{ form.hobbies.errors[0] }}</span>
                         {% endif %}
-                        <div id="hobbies-limit" class="text-sm text-gray-500" style="display: none;">Character limit: 200</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
                     {{ form.motto.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
-                        <div id="motto-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.motto }}</div>
+                        <div id="motto-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.motto or '' }}</div>
                         {{ form.motto(class="form-input hidden w-full custom-input") }}
                         {% if form.motto.errors %}
                             <span class="text-red-500 text-sm">{{ form.motto.errors[0] }}</span>
                         {% endif %}
-                        <div id="motto-limit" class="text-sm text-gray-500" style="display: none;">Character limit: 200</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
                     {{ form.blood_type.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                     <div class="w-2/3">
-                        <div id="blood_type-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.blood_type }}</div>
+                        <div id="blood_type-text" class="form-text text-gray-900 dark:text-gray-100">{{ profile.blood_type or '' }}</div>
                         {{ form.blood_type(class="form-input hidden w-full custom-input") }}
                         {% if form.blood_type.errors %}
                             <span class="text-red-500 text-sm">{{ form.blood_type.errors[0] }}</span>
@@ -70,9 +68,9 @@
                         {{ form.image_file(class="form-input hidden w-2/3") }}
                     </div>
                 </div>
-                <div class="text-center">
-                    <button type="button" id="edit-button" class="btn btn-primary py-2 px-4 bg-blue-500 text-white rounded-lg" onclick="editAllFields()">Edit</button>
-                    <button type="button" id="cancel-button" class="btn btn-outline bg-red-500 text-white hidden py-2 px-4 rounded-lg" onclick="cancelEditAllFields()">Cancel</button>
+                <div class="mt-6 text-center">
+                    <button type="button" id="edit-button" class="btn btn-primary py-2 px-4 bg-blue-500 text-white rounded-lg mr-2" onclick="editAllFields()">Edit</button>
+                    <button type="button" id="cancel-button" class="btn btn-outline bg-red-500 text-white hidden py-2 px-4 rounded-lg mr-2" onclick="cancelEditAllFields()">Cancel</button>
                     {{ form.submit(class="btn btn-primary py-2 px-4 bg-blue-500 text-white hidden rounded-lg", id="update-profile-button") }}
                 </div>
             </div>
@@ -99,10 +97,6 @@
         document.getElementById('edit-button').classList.add('hidden');
         document.getElementById('cancel-button').classList.remove('hidden');
         document.getElementById('update-profile-button').classList.remove('hidden');
-        // Show the character limit message for 'hobbies' and 'motto' fields
-        ['hobbies', 'motto'].forEach(field => {
-            document.getElementById(`${field}-limit`).style.display = 'block';
-        });
     }
 
     function cancelEditAllFields() {
@@ -114,23 +108,21 @@
         document.getElementById('edit-button').classList.remove('hidden');
         document.getElementById('cancel-button').classList.add('hidden');
         document.getElementById('update-profile-button').classList.add('hidden');
-        // Hide the character limit message for 'hobbies' and 'motto' fields
-        ['hobbies', 'motto'].forEach(field => {
-            document.getElementById(`${field}-limit`).style.display = 'none';
-        });
     }
 
-    // Function to hide the success message after a few seconds with fade out
-    document.addEventListener('DOMContentLoaded', function() {
-        const successMessage = document.getElementById('success-message');
-        if (successMessage) {
+    // Function to hide the success message after a few seconds with fade out effect
+    function hideSuccessMessage() {
+        const message = document.getElementById('success-message');
+        if (message) {
             setTimeout(() => {
-                successMessage.style.animation = 'fadeOut 2s forwards';
+                message.style.animation = 'fadeOut 2s';
                 setTimeout(() => {
-                    successMessage.remove();
-                }, 2000); // Remove from DOM after fade out
-            }, 3000); // Start fade out after 3 seconds
+                    message.remove();
+                }, 2000);
+            }, 3000);
         }
-    });
+    }
+
+    document.addEventListener('DOMContentLoaded', hideSuccessMessage);
 </script>
 {% endblock %}
