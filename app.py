@@ -838,6 +838,7 @@ def cancel_lesson(lesson_id):
             logging.debug("Booking not found or invalid booking ID")
             flash('Invalid booking ID', 'error')
             return redirect(url_for('student_dashboard'))
+        logging.debug(f"Booking found: {booking}")
 
         # Fetch the associated lesson slot
         lesson_slot = db.session.get(LessonSlot, lesson_id)
@@ -845,6 +846,16 @@ def cancel_lesson(lesson_id):
             logging.debug("Associated lesson slot not found")
             flash('Associated lesson slot not found', 'error')
             return redirect(url_for('student_dashboard'))
+        logging.debug(f"Lesson slot found: {lesson_slot}")
+
+        # Fetch the lesson record from the database
+        lesson_record = LessonRecord.query.filter_by(id=booking.lesson_record_id).first()
+        if lesson_record is not None:
+            # Delete the lesson record entry
+            db.session.delete(lesson_record)
+            logging.debug("Lesson record deleted")
+        else:
+            logging.debug("Lesson record not found")
 
         # Delete the booking entry
         db.session.delete(booking)
@@ -852,12 +863,13 @@ def cancel_lesson(lesson_id):
 
         # Update the lesson slot to set is_booked to False
         lesson_slot.is_booked = False
+        logging.debug("Lesson slot updated")
 
         # Update the student's lesson counts
         student = db.session.get(Student, current_user.id)
         if student is not None:
             student.number_of_lessons -= 1
-            student.lessons_purchased += 1
+            logging.debug("Student lesson counts updated")
         else:
             logging.debug("Student not found")
             flash('Student not found', 'error')
@@ -878,8 +890,6 @@ def cancel_lesson(lesson_id):
     logging.debug(f"Form submission error: {form.errors}")
     flash('Form submission error. Please try again.', 'error')
     return redirect(url_for('student_dashboard'))
-
-
 
 @app.route('/student/lesson_records')
 @login_required
