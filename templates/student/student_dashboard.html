@@ -7,45 +7,45 @@
 {% block main %}
 <section class="bg-white dark:bg-gray-900 py-8">
     <div class="max-w-screen-xl px-4 mx-auto lg:py-16">
-        <h1 class="text-3xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white mb-8">
+        <h1 class="text-4xl font-extrabold leading-none tracking-tight md:text-6xl xl:text-7xl dark:text-white mb-16 text-center">
             Welcome, {{ session['user_name'] }}!
         </h1>
 
         <!-- Upcoming Lessons Header -->
-        <!-- Upcoming Lessons Header -->
-<h2 class="text-2xl font-bold dark:text-gray-300 mb-4 text-center">Upcoming Lessons</h2>
-<div class="overflow-x-auto dark:text-gray-300 mb-8">
-    <table class="min-w-full bg-white dark:bg-gray-800 rounded-lg shadow-md">
-        <thead>
-            <tr class="bg-gray-200 dark:bg-gray-700">
-                <th class="py-3 px-4 text-left">Teacher Name</th>
-                <th class="py-3 px-4 text-left">Date</th>
-                <th class="py-3 px-4 text-left">Time</th>
-                <th class="py-3 px-4 text-left">Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for lesson in upcoming_lessons %}
-            <tr class="border-b dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150">
-                <td class="py-3 px-4">{{ lesson.teacher.username }}</td>
-                <td class="py-3 px-4">{{ lesson.start_time.strftime('%Y-%m-%d') }}</td>
-                <td class="py-3 px-4">{{ lesson.start_time.strftime('%I:%M %p') }}</td>
-                <td class="py-3 px-4">
-                    <form action="{{ url_for('cancel_lesson', lesson_id=lesson.id) }}" method="post">
-                        {{ cancel_lesson_form.hidden_tag() }}
-                        <input type="submit" value="Cancel" class="bg-red-500 hover:bg-red-700 text-white py-1 px-3 rounded" onclick="return confirm('Are you sure you want to cancel this lesson?');">
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-
+        {% if upcoming_lessons %}
+        <h2 class="text-3xl font-bold dark:text-gray-300 mb-12 text-center">Upcoming Lessons</h2>
+        <div class="overflow-x-auto dark:text-gray-300 mb-16">
+            <table class="min-w-full bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                <thead>
+                    <tr class="bg-gray-200 dark:bg-gray-700">
+                        <th class="py-3 px-4 text-left">Teacher Name</th>
+                        <th class="py-3 px-4 text-left">Date</th>
+                        <th class="py-3 px-4 text-left">Time</th>
+                        <th class="py-3 px-4 text-left">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lesson in upcoming_lessons %}
+                    <tr class="border-b dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150">
+                        <td class="py-3 px-4">{{ lesson.teacher.username }}</td>
+                        <td class="py-3 px-4">{{ lesson.start_time.strftime('%Y-%m-%d') }}</td>
+                        <td class="py-3 px-4">{{ lesson.start_time.strftime('%I:%M %p') }}</td>
+                        <td class="py-3 px-4">
+                            <form action="{{ url_for('cancel_lesson', lesson_id=lesson.id) }}" method="post">
+                                {{ cancel_lesson_form.hidden_tag() }}
+                                <input type="submit" value="Cancel" class="bg-red-500 hover:bg-red-700 text-white py-1 px-3 rounded" onclick="return confirm('Are you sure you want to cancel this lesson?');">
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
 
         <!-- Schedule a Lesson Header -->
-        <h2 class="text-2xl font-bold dark:text-gray-300 mb-4">Schedule A Lesson</h2>
-        <section class="bg-white dark:bg-gray-900 flex items-center justify-center mb-8">
+        <h2 class="text-3xl font-bold dark:text-gray-300 mb-12 text-center">Schedule A Lesson</h2>
+        <section class="bg-white dark:bg-gray-900 flex items-center justify-center mb-16">
             <div class="card bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden w-full max-w-md">
                 <div class="p-6 text-center">
                     <h2 class="text-2xl font-bold dark:text-gray-300 mb-4">Ready for your next lesson?</h2>
@@ -59,8 +59,8 @@
 
         <!-- Previous Lesson Record -->
         {% if most_recent_record %}
-        <h2 class="text-2xl font-bold dark:text-gray-300 mb-4">Your Previous Lesson With {{ most_recent_record.teacher.username }}</h2>
-        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+        <h2 class="text-3xl font-bold dark:text-gray-300 mb-12 text-center">Your Previous Lesson With {{ most_recent_record.teacher.username }}</h2>
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-8 mb-16">
             <div class="grid lg:grid-cols-12 gap-8">
                 <div class="lg:col-span-2 flex flex-col items-center">
                     <img class="w-24 h-24 rounded-full mb-4" src="{{ url_for('static', filename='img/teacherImg/' + (most_recent_record.teacher.profile.image_file if most_recent_record.teacher.profile else 'default.jpg')) }}" alt="Teacher's profile picture">
@@ -105,12 +105,12 @@
                     <p class="text-gray-900 dark:text-gray-100">{{ most_recent_record.areas_to_improve }}</p>
                 </div>
             </div>
-            <a href="{{ url_for('student_lesson_records') }}">
-                <button class="mt-4 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500">View All Lesson Records</button>
-            </a>
+            <div class="text-center">
+                <a href="{{ url_for('student_lesson_records') }}">
+                    <button class="mt-4 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500">View All Lesson Records</button>
+                </a>
+            </div>
         </div>
-        {% else %}
-            <p class="text-gray-900 dark:text-gray-100">No lessons taken yet!</p>
         {% endif %}
     </div>
 </section>

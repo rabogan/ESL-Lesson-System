@@ -7,7 +7,17 @@
 {% block main %}
 <section class="bg-white dark:bg-gray-900 py-8">
     <div class="max-w-screen-lg mx-auto px-4">
+        <nav class="mb-4 text-sm text-gray-600 dark:text-gray-400">
+            <a href="{{ url_for('teacher_dashboard') }}" class="hover:underline">Dashboard</a> &gt; Edit Profile
+        </nav>
         <h1 class="text-3xl md:text-5xl font-extrabold text-center text-gray-900 dark:text-gray-100 mb-8">Edit Your Profile</h1>
+        
+        {% if profile_updated %}
+            <div id="success-message" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-8" role="alert">
+                <span class="block sm:inline">Your profile has been updated!</span>
+            </div>
+        {% endif %}
+
         <form method="POST" enctype="multipart/form-data" class="space-y-6">
             {{ form.hidden_tag() }}
             <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 max-w-2xl mx-auto">
@@ -72,6 +82,13 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+    @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+    }
+</style>
+
 <script>
     function editAllFields() {
         const fields = ['age', 'hobbies', 'motto', 'blood_type', 'image_file'];
@@ -102,5 +119,18 @@
             document.getElementById(`${field}-limit`).style.display = 'none';
         });
     }
+
+    // Function to hide the success message after a few seconds with fade out
+    document.addEventListener('DOMContentLoaded', function() {
+        const successMessage = document.getElementById('success-message');
+        if (successMessage) {
+            setTimeout(() => {
+                successMessage.style.animation = 'fadeOut 2s forwards';
+                setTimeout(() => {
+                    successMessage.remove();
+                }, 2000); // Remove from DOM after fade out
+            }, 3000); // Start fade out after 3 seconds
+        }
+    });
 </script>
 {% endblock %}

@@ -558,6 +558,7 @@ def edit_teacher_profile():
     Where teachers can edit and update their own profiles
     """
     form = EditTeacherProfileForm(obj=current_user.profile)
+    profile_updated = request.args.get('updated', False)
 
     if form.validate_on_submit():
         current_user.profile.age = form.age.data
@@ -570,11 +571,9 @@ def edit_teacher_profile():
             current_user.profile.image_file = save_image_file(form.image_file.data)
 
         db.session.commit()
-        flash('Your profile has been updated!', 'success')
-        return redirect(url_for('teacher_dashboard'))
+        return redirect(url_for('edit_teacher_profile', updated=True))
 
-    return render_template('teacher/edit_teacher_profile.html', form=form, profile=current_user.profile)
-
+    return render_template('teacher/edit_teacher_profile.html', form=form, profile=current_user.profile, profile_updated=profile_updated)
 
 
 @app.route('/teacher/lesson_slots', methods=['GET', 'POST'])
@@ -977,7 +976,6 @@ def edit_student_profile():
             current_user.profile.image_file = save_image_file(form.image_file.data)
 
         db.session.commit()
-        flash('Your profile has been updated!', 'success')
         return redirect(url_for('student_dashboard'))
 
     return render_template('student/edit_student_profile.html', form=form, profile=current_user.profile)
@@ -986,38 +984,34 @@ def edit_student_profile():
 @app.route('/student/book_lesson', methods=['GET', 'POST'])
 @login_required
 def student_book_lesson():
+    """
+    This allows a student to book a lesson with a teacher.
+    They search for an open lesson_slot, and then book it.
+    Forms are used for CSRF!
+    """
+    
     form = StudentLessonSlotForm()
 
-    # Get the current student's timezone
     student = db.session.get(Student, current_user.id)
     if student is None:
         return abort(404)
-
+    
+    # Get the student's timezone
     user_timezone = pytz.timezone(student.timezone)
-
     week_offset = int(request.args.get('week_offset', 0))
-    print(f"Week offset: {week_offset}")
-    
     today = datetime.now(timezone.utc)
-    print(f"Today in UTC: {today}")  # New print statement
     today = datetime.now(timezone.utc).astimezone(user_timezone)
-    print(f"Today in student's timezone: {today}")
     
+    # Calculate the start and end of the current week in the student's timezone
     start_of_week = today - timedelta(days=today.weekday(), hours=today.hour, minutes=today.minute, seconds=today.second, microseconds=today.microsecond) + timedelta(weeks=week_offset)
     end_of_week = start_of_week + timedelta(days=7)
-    print(f"Start of week in student's timezone: {start_of_week}")
-    print(f"End of week in student's timezone: {end_of_week}")
-    
     start_of_week_utc = start_of_week.astimezone(timezone.utc)
     end_of_week_utc = end_of_week.astimezone(timezone.utc)
-    print(f"Start of week in UTC: {start_of_week_utc}")
-    print(f"End of week in UTC: {end_of_week_utc}")
     
     if request.method == 'POST':
         # Retrieve available slots from session
         available_slots_dict = session.get('available_slots', None)
         if available_slots_dict is None:
-            flash('Your session has expired. Please log in again.', 'warning')
             return redirect(url_for('login'))
 
         available_slots = [
@@ -1124,9 +1118,9 @@ def student_book_lesson():
 
             # Check if the student has enough lessons purchased
             if student.lessons_purchased <= student.number_of_lessons:
-                print('Not enough lessons purchased')
+                print('Not enough points to book a lesson')
                 print('Lessons purchased:', student.lessons_purchased)
-                print('Number of lessons:', student.number_of_lessons)
+                print('Number of lessons taken:', student.number_of_lessons)
                 return render_template(
                     'student/book_lesson.html',
                     available_slots=available_slots,
@@ -1162,8 +1156,6 @@ def student_book_lesson():
             try:
                 db.session.commit()
                 print('Lesson booked successfully')
-                # Provide feedback to the user
-                flash('Lesson booked successfully!', 'success')
                 # Reload the page to update available slots
                 return redirect(url_for('student_book_lesson', week_offset=week_offset))
             except Exception as e:
