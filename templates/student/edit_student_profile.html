@@ -7,6 +7,9 @@
 {% block main %}
 <section class="bg-white dark:bg-gray-900 py-8">
     <div class="max-w-screen-lg mx-auto px-4">
+        <nav class="mb-4 text-sm text-gray-600 dark:text-gray-400">
+            <a href="{{ url_for('student_dashboard') }}" class="hover:underline">Dashboard</a> &gt; Edit Profile
+        </nav>
         <h1 class="text-3xl md:text-5xl font-extrabold text-center text-gray-900 dark:text-gray-100 mb-8">Edit Your Profile</h1>
         <form method="POST" enctype="multipart/form-data" class="space-y-6">
             {{ form.hidden_tag() }}
@@ -29,7 +32,7 @@
                         {% if form.goal.errors %}
                             <span class="text-red-500 text-sm">{{ form.goal.errors[0] }}</span>
                         {% endif %}
-                        <div id="goal-limit" class="text-sm text-gray-500">Character limit: 1000</div>
+                        <div id="goal-limit" class="text-sm text-gray-500 hidden">Character limit: 1000</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
@@ -40,7 +43,7 @@
                         {% if form.hobbies.errors %}
                             <span class="text-red-500 text-sm">{{ form.hobbies.errors[0] }}</span>
                         {% endif %}
-                        <div id="hobbies-limit" class="text-sm text-gray-500">Character limit: 1000</div>
+                        <div id="hobbies-limit" class="text-sm text-gray-500 hidden">Character limit: 1000</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
@@ -51,7 +54,7 @@
                         {% if form.correction_style.errors %}
                             <span class="text-red-500 text-sm">{{ form.correction_style.errors[0] }}</span>
                         {% endif %}
-                        <div id="correction_style-limit" class="text-sm text-gray-500">Character limit: 1000</div>
+                        <div id="correction_style-limit" class="text-sm text-gray-500 hidden">Character limit: 1000</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
@@ -62,7 +65,7 @@
                         {% if form.english_weakness.errors %}
                             <span class="text-red-500 text-sm">{{ form.english_weakness.errors[0] }}</span>
                         {% endif %}
-                        <div id="english_weakness-limit" class="text-sm text-gray-500">Character limit: 1000</div>
+                        <div id="english_weakness-limit" class="text-sm text-gray-500 hidden">Character limit: 1000</div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mb-4">
@@ -95,7 +98,7 @@
         document.getElementById('cancel-button').classList.remove('hidden');
         document.getElementById('update-profile-button').classList.remove('hidden');
         ['goal', 'hobbies', 'correction_style', 'english_weakness'].forEach(field => {
-            document.getElementById(`${field}-limit`).style.display = 'block';
+            document.getElementById(`${field}-limit`).classList.remove('hidden');
         });
     }
 
@@ -109,7 +112,7 @@
         document.getElementById('cancel-button').classList.add('hidden');
         document.getElementById('update-profile-button').classList.add('hidden');
         ['goal', 'hobbies', 'correction_style', 'english_weakness'].forEach(field => {
-            document.getElementById(`${field}-limit`).style.display = 'none';
+            document.getElementById(`${field}-limit`).classList.add('hidden');
         });
     }
 </script>

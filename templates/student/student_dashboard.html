@@ -12,34 +12,36 @@
         </h1>
 
         <!-- Upcoming Lessons Header -->
-        <h2 class="text-2xl font-bold dark:text-gray-300 mb-4">Upcoming Lessons</h2>
-        <div class="overflow-x-auto dark:text-gray-300 mb-8">
-            <table class="min-w-full bg-white dark:bg-gray-800 rounded-lg shadow-md">
-                <thead>
-                    <tr class="bg-gray-200 dark:bg-gray-700">
-                        <th class="py-2 px-4">Lesson Name</th>
-                        <th class="py-2 px-4">Date</th>
-                        <th class="py-2 px-4">Time</th>
-                        <th class="py-2 px-4">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for lesson in upcoming_lessons %}
-                    <tr class="border-b dark:border-gray-700">
-                        <td class="py-2 px-4">{{ lesson.teacher.username }}</td>
-                        <td class="py-2 px-4">{{ lesson.start_time.strftime('%Y-%m-%d') }}</td>
-                        <td class="py-2 px-4">{{ lesson.start_time.strftime('%I:%M %p') }}</td>
-                        <td class="py-2 px-4">
-                            <form action="{{ url_for('cancel_lesson', lesson_id=lesson.id) }}" method="post">
-                                {{ cancel_lesson_form.hidden_tag() }}
-                                <input type="submit" value="Cancel" class="bg-red-500 hover:bg-red-700 text-white py-1 px-3 rounded" onclick="return confirm('Are you sure you want to cancel this lesson?');">
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+        <!-- Upcoming Lessons Header -->
+<h2 class="text-2xl font-bold dark:text-gray-300 mb-4 text-center">Upcoming Lessons</h2>
+<div class="overflow-x-auto dark:text-gray-300 mb-8">
+    <table class="min-w-full bg-white dark:bg-gray-800 rounded-lg shadow-md">
+        <thead>
+            <tr class="bg-gray-200 dark:bg-gray-700">
+                <th class="py-3 px-4 text-left">Teacher Name</th>
+                <th class="py-3 px-4 text-left">Date</th>
+                <th class="py-3 px-4 text-left">Time</th>
+                <th class="py-3 px-4 text-left">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for lesson in upcoming_lessons %}
+            <tr class="border-b dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150">
+                <td class="py-3 px-4">{{ lesson.teacher.username }}</td>
+                <td class="py-3 px-4">{{ lesson.start_time.strftime('%Y-%m-%d') }}</td>
+                <td class="py-3 px-4">{{ lesson.start_time.strftime('%I:%M %p') }}</td>
+                <td class="py-3 px-4">
+                    <form action="{{ url_for('cancel_lesson', lesson_id=lesson.id) }}" method="post">
+                        {{ cancel_lesson_form.hidden_tag() }}
+                        <input type="submit" value="Cancel" class="bg-red-500 hover:bg-red-700 text-white py-1 px-3 rounded" onclick="return confirm('Are you sure you want to cancel this lesson?');">
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
 
         <!-- Schedule a Lesson Header -->
         <h2 class="text-2xl font-bold dark:text-gray-300 mb-4">Schedule A Lesson</h2>
