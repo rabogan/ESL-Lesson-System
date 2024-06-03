@@ -9,6 +9,12 @@
     <link rel="stylesheet" href="{{url_for('static',filename='dist/css/output.css')}}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/flowbite@1.4.6/dist/flowbite.min.css" />
+    <style>
+        .nav-link:hover {
+            color: #1e40af; /* Change to your desired hover color */
+            background-color: #f3f4f6; /* Optional: background color change */
+        }
+    </style>
 </head>
 <body class="bg-white dark:bg-gray-900 flex flex-col min-h-screen">
     <nav class="bg-white border-gray-200 dark:bg-gray-800">
@@ -22,13 +28,14 @@
                 </svg>
                 <span id="theme-toggle-text" class="ml-2">Dark Mode</span>
             </button>
-            <a href="/" class="flex items-center space-x-3 rtl:space-x-reverse">
+            {% if current_user.is_authenticated %}
+            <!-- Centered logo/title and user menu for authenticated users -->
+            <a href="/" class="flex items-center space-x-3 rtl:space-x-reverse mx-auto">
                 <img src="/static/img/logo.png" class="h-8" alt="Logo" />
                 <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">B-Grade English</span>
             </a>
             <div class="flex items-center md:order-2 space-x-3 md:space-x-0 rtl:space-x-reverse">
-                {% if current_user.is_authenticated %}
-                <!-- User is authenticated, show user menu -->
+                <!-- User menu -->
                 <button type="button" class="flex text-sm bg-gray-800 rounded-full md:me-0 focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600" id="user-menu-button" aria-expanded="false" data-dropdown-toggle="user-dropdown" data-dropdown-placement="bottom">
                     <span class="sr-only">Open user menu</span>
                     {% if session['user_type'] == 'teacher' %}
@@ -70,41 +77,32 @@
                         </li>
                     </ul>
                 </div>
-                <!-- Hamburger menu button -->
-                <button class="md:hidden flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600" id="navbar-toggle">
-                    <span class="sr-only">Open main menu</span>
-                    <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 17 14">
-                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 1h15M1 7h15M1 13h15" />
-                    </svg>
-                </button>
-                {% else %}
-                <!-- User is not authenticated, show Login/Register button -->
-                <div class="flex items-center justify-end md:order-3">
-                    <a href="/portal_choice" class="block py-2 px-3 text-white bg-blue-700 rounded">Login/Register</a>
-                </div>
-                {% endif %}
             </div>
+            {% else %}
+            <!-- Navbar for unauthenticated users with navigation links only -->
             <div class="hidden md:flex items-center justify-between w-full md:w-auto md:order-1" id="navbar-links">
                 <ul class="flex flex-col font-medium p-4 md:p-0 mt-4 border border-gray-100 rounded-lg md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 md:bg-white dark:bg-gray-800 md:dark:bg-gray-800 dark:border-gray-700">
                     <li>
-                        <a href="/" class="block py-2 px-3 text-white bg-blue-700 rounded md:bg-transparent md:text-blue-700 md:p-0 md:dark:text-blue-500" aria-current="page">Home</a>
+                        <a href="/" class="nav-link block py-2 px-3 text-white bg-blue-700 rounded md:bg-transparent md:text-blue-700 md:p-0 md:dark:text-blue-500" aria-current="page">Home</a>
                     </li>
                     <li>
-                        <a href="/meetYourTeacher"
-                            class="block py-2 px-3 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Teacher</a>
+                        <a href="/meetYourTeacher" class="nav-link block py-2 px-3 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Teacher</a>
                     </li>
                     <li>
-                        <a href="#"
-                            class="block py-2 px-3 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Lessons</a>
+                        <a href="/ourLessons" class="nav-link block py-2 px-3 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Lessons</a>
                     </li>
                     <li>
-                        <a href="#"
-                            class="block py-2 px-3 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Chatbot</a>
+                        <a href="/contactSchool" class="nav-link block py-2 px-3 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Contact</a>
                     </li>
                 </ul>
             </div>
+            <div class="flex items-center justify-end md:order-3">
+                <a href="/portal_choice" class="block py-2 px-3 text-white bg-blue-700 rounded hover:bg-blue-800">Login/Register</a>
+            </div>
+            {% endif %}
         </div>
     </nav>
+    
 
     <main>
         {% block main %}
@@ -120,11 +118,9 @@
             <div class="flex space-x-4">
                 <a href="https://www.facebook.com/p/D-Style-%E8%8B%B1%E8%AA%9E%E5%AD%A6%E5%9C%92-100088277141105/" data-tooltip-target="tooltip-facebook"
                     class="inline-flex justify-center p-2 text-gray-500 rounded-lg cursor-pointer dark:text-gray-400 dark:hover:text-white hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-600">
-                    <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 8 19">
-                        <path fill-rule="evenodd"
-                            d="M6.135 3H8V0H6.135a4.147 4.147 0 0 0-4.142 4.142V6H0v3h2v9.938h3V9h2.021l.592-3H5V3.591A.6.6 0 0 1 5.592 3h.543Z"
-                            clip-rule="evenodd" />
-                    </svg>
+                    <span class="h-5 w-5">
+                        <img src="{{ url_for('static', filename='img/socials/facebook.svg') }}" alt="Facebook">
+                    </span>
                     <span class="sr-only">Facebook</span>
                 </a>
                 <div id="tooltip-facebook" role="tooltip"
@@ -133,13 +129,10 @@
                     <div class="tooltip-arrow" data-popper-arrow></div>
                 </div>
 
-                <a href="https://www.instagram.com/dstyle.english/" data-tooltip-target="tooltip-instagram"
+                <a href="https://www.instagram.com/dstyle.english" data-tooltip-target="tooltip-instagram"
                     class="inline-flex justify-center p-2 text-gray-500 rounded-lg cursor-pointer dark:text-gray-400 dark:hover:text-white hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-600">
                     <span class="h-5 w-5">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 448 512">
-                            <path
-                                d="M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9S339 319.5 339 255.9 287.7 141 224.1 141zm0 189.6c-41.1 0-74.7-33.5-74.7-74.7s33.5-74.7 74.7-74.7 74.7 33.5 74.7 74.7-33.6 74.7-74.7 74.7zm146.4-194.3c0 14.9-12 26.8-26.8 26.8-14.9 0-26.8-12-26.8-26.8s12-26.8 26.8-26.8 26.8 12 26.8 26.8zm76.1 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9s58 34.4 93.9 36.2c37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z" />
-                        </svg>
+                        <img src="{{ url_for('static', filename='img/socials/instagram.svg') }}" alt="Instagram">
                     </span>
                     <span class="sr-only">Instagram</span>
                 </a>
@@ -152,10 +145,7 @@
                 <a href="https://www.tiktok.com/@dstyle.english" data-tooltip-target="tooltip-tiktok"
                     class="inline-flex justify-center p-2 text-gray-500 rounded-lg cursor-pointer dark:text-gray-400 dark:hover:text-white hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-600">
                     <span class="h-5 w-5">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 448 512">
-                            <path
-                                d="M448 209.9a210.1 210.1 0 0 1 -122.8-39.3V349.4A162.6 162.6 0 1 1 185 188.3V278.2a74.6 74.6 0 1 0 52.2 71.2V0l88 0a121.2 121.2 0 0 0 1.9 22.2h0A122.2 122.2 0 0 0 381 102.4a121.4 121.4 0 0 0 67 20.1z" />
-                        </svg>
+                        <img src="{{ url_for('static', filename='img/socials/tiktok.svg') }}" alt="Tiktok">
                     </span>
                     <span class="sr-only">TikTok</span>
                 </a>

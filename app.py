@@ -337,6 +337,23 @@ def meet_your_teacher():
     return render_template('meetYourTeacher.html', teachers=teachers)
 
 
+@app.route('/ourLessons')
+def our_lessons():
+    """
+    This page provides information about the lessons offered.
+    """
+    return render_template('ourLessons.html')
+
+
+@app.route('/contactSchool')
+def contact_school():
+    """
+    This page provides contact information for the school.
+    """
+    return render_template('contactSchool.html')
+
+
+
 @app.route('/teacher_profile/<int:teacher_id>', methods=['GET'])
 def teacher_profile(teacher_id):
     """

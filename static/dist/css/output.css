@@ -1135,6 +1135,10 @@ input:checked + .toggle-bg {
   z-index: 50;
 }
 
+.col-span-12 {
+  grid-column: span 12 / span 12;
+}
+
 .mx-auto {
   margin-left: auto;
   margin-right: auto;
@@ -1249,10 +1253,6 @@ input:checked + .toggle-bg {
   display: none;
 }
 
-.h-10 {
-  height: 2.5rem;
-}
-
 .h-20 {
   height: 5rem;
 }
@@ -1303,10 +1303,6 @@ input:checked + .toggle-bg {
 
 .w-1\/4 {
   width: 25%;
-}
-
-.w-10 {
-  width: 2.5rem;
 }
 
 .w-2\/3 {
@@ -2421,10 +2417,6 @@ input:checked + .toggle-bg {
     display: inline-flex;
   }
 
-  .md\:hidden {
-    display: none;
-  }
-
   .md\:w-auto {
     width: auto;
   }
@@ -2543,6 +2535,10 @@ input:checked + .toggle-bg {
     grid-column: span 7 / span 7;
   }
 
+  .lg\:mb-4 {
+    margin-bottom: 1rem;
+  }
+
   .lg\:mb-8 {
     margin-bottom: 2rem;
   }
@@ -2551,8 +2547,16 @@ input:checked + .toggle-bg {
     margin-top: 0px;
   }
 
+  .lg\:mt-4 {
+    margin-top: 1rem;
+  }
+
   .lg\:flex {
     display: flex;
+  }
+
+  .lg\:max-w-\[90\%\] {
+    max-width: 90%;
   }
 
   .lg\:max-w-lg {
@@ -2574,6 +2578,16 @@ input:checked + .toggle-bg {
   .lg\:py-16 {
     padding-top: 4rem;
     padding-bottom: 4rem;
+  }
+
+  .lg\:py-8 {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+
+  .lg\:text-6xl {
+    font-size: 3.75rem;
+    line-height: 1;
   }
 
   .lg\:text-xl {
