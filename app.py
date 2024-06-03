@@ -2,7 +2,7 @@ import json
 import pytz
 import logging
 from flask_limiter import Limiter
-from helpers import save_image_file, ensure_timezone_aware
+from helpers import save_image_file, ensure_timezone_aware, get_week_boundaries
 from flask import Flask, session, render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
@@ -571,13 +571,17 @@ def teacher_dashboard():
         return render_template('404.html'), 404
 
     user_timezone = pytz.timezone(teacher.timezone)
+    
     if most_recent_record:
-    # Ensure most_recent_record.lastEditTime is timezone-aware
-        if most_recent_record.lastEditTime.tzinfo is None:
-            most_recent_record.lastEditTime = pytz.utc.localize(most_recent_record.lastEditTime)
-        most_recent_record.lastEditTime = most_recent_record.lastEditTime.astimezone(user_timezone)
+    # Ensure most_recent_record.lastEditTime and start_time are timezone-aware
+        most_recent_record.lastEditTime = ensure_timezone_aware(most_recent_record.lastEditTime, teacher.timezone)
+        most_recent_record.lesson_slot.start_time = ensure_timezone_aware(most_recent_record.lesson_slot.start_time, teacher.timezone)
+    # Ensure start_time of each upcoming lesson is timezone-aware
     for lesson in upcoming_lessons:
-        lesson.start_time = lesson.start_time.astimezone(user_timezone)
+        lesson.start_time = ensure_timezone_aware(lesson.start_time, teacher.timezone)
+        
+    for lesson in upcoming_lessons:
+        print(lesson.start_time)
 
     # Pass the user_timezone to the template
     return render_template('teacher/teacher_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record, upcoming_lessons=upcoming_lessons, user_timezone=user_timezone)
@@ -594,8 +598,6 @@ def teacher_lesson_records():
     if teacher is None:
         app.logger.error(f"Teacher with ID {session['user_id']} not found.")
         return render_template('404.html'), 404
-
-    user_timezone = pytz.timezone(teacher.timezone)
 
     page = request.args.get('page', 1, type=int)
 
@@ -698,8 +700,8 @@ def manage_lesson_slots():
     for slot in lesson_slots:
         print(f"Original start time: {slot.start_time}, Converted start time: {slot.start_time.astimezone(user_timezone)}")
         print(f"Original end time: {slot.end_time}, Converted end time: {slot.end_time.astimezone(user_timezone)}")
-        slot.start_time = slot.start_time.astimezone(user_timezone)
-        slot.end_time = slot.end_time.astimezone(user_timezone)
+        slot.start_time = ensure_timezone_aware(slot.start_time, teacher.timezone)
+        slot.end_time = ensure_timezone_aware(slot.end_time, teacher.timezone)
 
     print(f"Lesson Slots: {lesson_slots}")
     return render_template('teacher/lesson_slots.html',
@@ -725,9 +727,9 @@ def update_lesson_slot():
 
     if action == 'open':
         local_start_time = datetime.strptime(data['start_time'], '%Y-%m-%dT%H:%M:%S')
-        start_time = user_timezone.localize(local_start_time).astimezone(pytz.UTC)
+        start_time = ensure_timezone_aware(local_start_time, teacher.timezone)
         local_end_time = datetime.strptime(data['end_time'], '%Y-%m-%dT%H:%M:%S')
-        end_time = user_timezone.localize(local_end_time).astimezone(pytz.UTC)
+        end_time = ensure_timezone_aware(local_end_time, teacher.timezone)
         new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time, is_booked=False)
         db.session.add(new_slot)
         db.session.commit()
@@ -749,28 +751,16 @@ def update_slots():
     app.logger.info(f"Received data: {data}")
     updates = []
     teacher = db.session.get(Teacher, current_user.id)
-    user_timezone = pytz.timezone(teacher.timezone)
 
     for item in data:
         action = item['action']
         try:
             if action == 'open':
                 local_start_time = datetime.fromisoformat(item['start_time'])
-                if local_start_time.tzinfo is None:
-                    local_start_time = user_timezone.localize(local_start_time)
-                start_time = local_start_time.astimezone(pytz.UTC)
-
+                start_time = ensure_timezone_aware(local_start_time, teacher.timezone)
                 local_end_time = datetime.fromisoformat(item['end_time'])
-                if local_end_time.tzinfo is None:
-                    local_end_time = user_timezone.localize(local_end_time)
-                end_time = local_end_time.astimezone(pytz.UTC)
-
-                new_slot = LessonSlot(
-                    teacher_id=current_user.id,
-                    start_time=start_time,
-                    end_time=end_time,
-                    is_booked=False
-                )
+                end_time = ensure_timezone_aware(local_end_time, teacher.timezone)
+                new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time, is_booked=False)
                 db.session.add(new_slot)
                 db.session.commit()
                 updates.append({
@@ -883,9 +873,8 @@ def edit_lesson(lesson_id):
 
     # Converting To Teacher's Timezone
     teacher = db.session.get(Teacher, session['user_id'])
-    user_timezone = pytz.timezone(teacher.timezone)
     today = datetime.now(timezone.utc)
-    today = today.astimezone(user_timezone)
+    today = ensure_timezone_aware(today, teacher.timezone)
     
     # Convert the current time in the teacher's timezone to UTC
     utc_now = today.astimezone(pytz.utc)
@@ -1058,8 +1047,6 @@ def student_lesson_records():
     except pytz.UnknownTimeZoneError:
         user_timezone = pytz.timezone('America/Los_Angeles')
 
-    current_time = datetime.now(timezone.utc).astimezone(user_timezone)
-
     # Fetch all past lesson records for the logged-in student
     page = request.args.get('page', 1, type=int)
     lesson_records = LessonRecord.query.filter(
@@ -1110,7 +1097,6 @@ def edit_student_profile():
 
     return render_template('student/edit_student_profile.html', form=form, profile=current_user.profile, profile_updated=request.args.get('updated', False))
 
-
 @app.route('/student/book_lesson', methods=['GET', 'POST'])
 @login_required
 def student_book_lesson():
@@ -1119,9 +1105,8 @@ def student_book_lesson():
     They search for an open lesson_slot, and then book it.
     Forms are used for CSRF! (Care taken with XSS)
     """
-    
     form = StudentLessonSlotForm()
-
+    
     student = db.session.get(Student, current_user.id)
     if student is None:
         app.logger.error(f"Student with ID {current_user.id} not found.")
@@ -1133,9 +1118,14 @@ def student_book_lesson():
     today = datetime.now(timezone.utc)
     today = datetime.now(timezone.utc).astimezone(user_timezone)
     
+    # PERFECT WEEK OFFSET!
     # Calculate the start and end of the current week in the student/teacher's timezone
     start_of_week = today - timedelta(days=today.weekday(), hours=today.hour, minutes=today.minute, seconds=today.second, microseconds=today.microsecond) + timedelta(weeks=week_offset)
     end_of_week = start_of_week + timedelta(days=7)
+    start_of_week = today - timedelta(days=today.weekday(), hours=today.hour, minutes=today.minute, seconds=today.second, microseconds=today.microsecond) + timedelta(weeks=week_offset)
+    end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59)
+    print(f"Book Lessons From {start_of_week.strftime('%A, %B %d, %Y %I:%M %p')} - {end_of_week.strftime('%A, %B %d, %Y %I:%M %p')}")
+
     start_of_week_utc = start_of_week.astimezone(timezone.utc)
     end_of_week_utc = end_of_week.astimezone(timezone.utc)
     
@@ -1175,7 +1165,7 @@ def student_book_lesson():
                 'start_time': slot.start_time.isoformat(),
                 'end_time': slot.end_time.isoformat(),
                 'teacher_id': slot.teacher.id,
-                'teacher_username': slot.teacher.username
+                'teacher_username': slot.teacher.username,
             }
             for slot in available_slots
         ]
@@ -1185,8 +1175,8 @@ def student_book_lesson():
 
     # Convert lesson times to the student's timezone
     for slot in available_slots:
-        slot.start_time = slot.start_time.replace(tzinfo=timezone.utc).astimezone(user_timezone)
-        slot.end_time = slot.end_time.replace(tzinfo=timezone.utc).astimezone(user_timezone)
+        slot.start_time = ensure_timezone_aware(slot.start_time, student.timezone)
+        slot.end_time = ensure_timezone_aware(slot.end_time, student.timezone)
         
     # Get the current time in the student's timezone
     current_time = datetime.now(user_timezone)
@@ -1219,7 +1209,9 @@ def student_book_lesson():
                     available_teachers=available_teachers,
                     week_offset=week_offset,
                     form=form,
-                    remaining_lessons=student.remaining_lessons
+                    remaining_lessons=student.remaining_lessons,
+                    start_of_week=start_of_week,
+                    end_of_week=end_of_week
                 )
             
             # Fetch the lesson slot
@@ -1232,11 +1224,13 @@ def student_book_lesson():
                     available_teachers=available_teachers,
                     week_offset=week_offset,
                     form=form,
-                    remaining_lessons=student.remaining_lessons
+                    remaining_lessons=student.remaining_lessons,
+                    start_of_week=start_of_week,
+                    end_of_week=end_of_week
                 )
 
             # Convert lesson_slot.start_time to the student's timezone for comparison
-            lesson_start_time = lesson_slot.start_time.replace(tzinfo=timezone.utc).astimezone(user_timezone)
+            lesson_start_time = ensure_timezone_aware(lesson_slot.start_time, student.timezone)
             
             # Check if the lesson slot exists and is not already booked
             if lesson_slot.is_booked or lesson_start_time < current_time:
@@ -1247,7 +1241,9 @@ def student_book_lesson():
                     available_teachers=available_teachers,
                     week_offset=week_offset,
                     form=form,
-                    remaining_lessons=student.remaining_lessons
+                    remaining_lessons=student.remaining_lessons,
+                    start_of_week=start_of_week,
+                    end_of_week=end_of_week
                 )
 
             # Check if the student has enough lessons purchased
@@ -1261,7 +1257,9 @@ def student_book_lesson():
                     available_teachers=available_teachers,
                     week_offset=week_offset,
                     form=form,
-                    remaining_lessons=student.remaining_lessons
+                    remaining_lessons=student.remaining_lessons,
+                    start_of_week=start_of_week,
+                    end_of_week=end_of_week
                 )
 
             # Create a new lesson record
@@ -1301,20 +1299,25 @@ def student_book_lesson():
                     available_teachers=available_teachers,
                     week_offset=week_offset,
                     form=form,
-                    remaining_lessons=student.remaining_lessons
+                    remaining_lessons=student.remaining_lessons,
+                    start_of_week=start_of_week,
+                    end_of_week=end_of_week
                 )
 
         else:
             print('Form validation failed')
             print(form.errors)
-
+    
+    print(f"Book Lessons From {start_of_week.strftime('%A, %B %d, %Y %I:%M %p')} - {end_of_week.strftime('%A, %B %d, %Y %I:%M %p')}")
     return render_template(
         'student/book_lesson.html',
         available_slots=available_slots,
         available_teachers=available_teachers,
         week_offset=week_offset,
         form=form,
-        remaining_lessons=student.remaining_lessons
+        remaining_lessons=student.remaining_lessons,
+        start_of_week=start_of_week,
+        end_of_week=end_of_week
     )
 
 
@@ -1327,9 +1330,20 @@ def get_slots(teacher_id):
 
     # Get the student's timezone
     student = Student.query.get(session['user_id'])  # Use 'user_id' instead of 'student_id'
+
+    # Get the start and end of the week in the student's timezone
+    start_of_week, end_of_week = get_week_boundaries(student.timezone)
+    
     user_timezone = pytz.timezone(student.timezone)
 
-    slots = LessonSlot.query.filter_by(teacher_id=teacher_id, is_booked=False).all()
+    # Fetch the slots for the teacher that are within the current week
+    slots = LessonSlot.query.filter(
+        LessonSlot.teacher_id == teacher_id,
+        LessonSlot.is_booked == False,
+        LessonSlot.start_time >= start_of_week,
+        LessonSlot.start_time <= end_of_week
+    ).all()
+
     slots_dict = [{'id': slot.id, 'time': slot.start_time.replace(tzinfo=timezone.utc).astimezone(user_timezone).strftime('%Y-%m-%d %I:%M %p'), 'teacher': slot.teacher.username} for slot in slots]
     return jsonify(slots_dict)
 

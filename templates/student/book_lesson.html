@@ -5,20 +5,24 @@
 {% endblock %}
 
 {% block main %}
-<section class="bg-white dark:bg-gray-900">
-    <div class="max-w-screen-xl px-4 py-8 mx-auto lg:py-16">
-        <h1 class="text-3xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white mb-8">
-            Schedule Your Lesson
+<section class="bg-white dark:bg-gray-900 py-6">
+    <div class="max-w-screen-xl px-4 mx-auto lg:py-3">
+        <!-- Page Header with Date Range -->
+        <h1 class="text-6xl font-extrabold leading-none tracking-tight md:text-6xl xl:text-7xl dark:text-white mb-16 text-center">
+            Welcome, {{ session['user_name'] }}!
         </h1>
-
-        <div class="overflow-x-auto dark:text-gray-300 mb-8">
+        <h2 class="text-4xl font-extrabold leading-none tracking-tight md:text-6xl xl:text-7xl dark:text-white mb-8 text-center">
+            {{ start_of_week.strftime('%A, %B %d, %Y') }} - {{ end_of_week.strftime('%A, %B %d, %Y') }}
+        </h2>
+        
+        <div class="bg-gray-100 dark:bg-gray-800 rounded-lg shadow-lg p-8 mb-8">
             <p class="mb-4 text-lg font-medium text-gray-700 dark:text-gray-300">Lesson Points: {{ remaining_lessons }}</p>
             {% if available_slots %}
                 <form id="book-lesson-form" action="{{ url_for('student_book_lesson') }}" method="post">
                     {{ form.hidden_tag() }}  <!-- CSRF Token and other hidden fields -->
                     <div class="mb-4">
                         <label for="teacher" class="block text-lg font-medium text-gray-700 dark:text-gray-300">Select Teacher</label>
-                        <select id="teacher" name="teacher" class="block w-full mt-1" onchange="filterSlots()">
+                        <select id="teacher" name="teacher" class="block w-full mt-1 rounded-lg bg-gray-200 dark:bg-gray-700 dark:text-gray-300">
                             {% for teacher in available_teachers %}
                                 <option value="{{ teacher.id }}" {% if loop.first %}selected{% endif %}>{{ teacher.username }}</option>
                             {% endfor %}
@@ -26,7 +30,8 @@
                     </div>
                     <div class="mb-4">
                         <label for="lesson_slot" class="block text-lg font-medium text-gray-700 dark:text-gray-300">Select Lesson Slot</label>
-                        <select id="lesson_slot" name="lesson_slot" class="block w-full mt-1">
+                        <select id="lesson_slot" name="lesson_slot" class="block w-full mt-1 rounded-lg bg-gray-200 dark:bg-gray-700 dark:text-gray-300">
+                            <option value="" disabled selected>Fetching Lessons...</option>
                             {% for slot in available_slots %}
                                 <option data-teacher-id="{{ slot.teacher.id }}" value="{{ slot.id }}">{{ slot.start_time.strftime('%Y-%m-%d %I:%M %p') }} - {{ slot.end_time.strftime('%I:%M %p') }} with {{ slot.teacher.username }}</option>
                             {% endfor %}
@@ -36,8 +41,8 @@
                         <a href="{{ url_for('student_book_lesson', week_offset=week_offset - 1) }}" class="bg-gray-500 hover:bg-gray-700 text-white py-2 px-4 rounded">Previous Week</a>
                         <a href="{{ url_for('student_book_lesson', week_offset=week_offset + 1) }}" class="bg-gray-500 hover:bg-gray-700 text-white py-2 px-4 rounded">Next Week</a>
                     </div>
-                    <div>
-                        <input type="submit" value="Book Lesson" class="bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded">
+                    <div class="flex justify-center">
+                        <input id="book-lesson-button" type="submit" value="Book Lesson" class="bg-green-500 hover:bg-green-700 text-white py-4 px-8 rounded cursor-pointer text-xl font-bold">
                     </div>
                 </form>
             {% else %}
@@ -65,46 +70,57 @@
                 console.log('Returned data:', data);
                 var slotSelect = $('#lesson_slot');
                 slotSelect.empty();
+                slotSelect.append('<option value="" disabled selected>Fetching Lessons...</option>');
                 $.each(data, function(key, value) {
                     slotSelect.append('<option data-teacher-id="' + teacherId + '" value="' + value.id + '">' + value.time + ' with ' + value.teacher + '</option>');
                 });
                 console.log('New options:', $('#lesson_slot').html());
-                filterSlots()
+                filterSlots();
             }
         });
     });
-</script>
-<script>
+    
     function filterSlots() {
+        const teacherElement = document.getElementById('teacher');
+        const lessonSlotElement = document.getElementById('lesson_slot');
+    
+        // If either element doesn't exist, exit the function
+        if (!teacherElement || !lessonSlotElement) {
+            return;
+        }
+    
         const teacherId = Number(document.getElementById('teacher').value);
         const lessonSlotSelect = document.getElementById('lesson_slot');
         const options = Array.from(lessonSlotSelect.options);
-
-        console.log('Selected teacher ID:', teacherId);
-
+    
         // Reset display property of all options
         options.forEach(option => {
             option.style.display = '';
         });
-
+    
         // Filter slots by selected teacher
         options.forEach(option => {
             const optionTeacherId = Number(option.dataset.teacherId);
-            console.log('Option teacher ID:', optionTeacherId);
             if (teacherId !== '' && optionTeacherId !== teacherId) {
                 option.style.display = 'none';
             }
         });
-        
-        // Sort visible options by date
+    
+        // Check if there are any visible options left
         const visibleOptions = options.filter(option => option.style.display === '');
-        visibleOptions.sort((a, b) => new Date(a.text.split(' - ')[0]) - new Date(b.text.split(' - ')[0]));
-
-        // Clear and append sorted options
-        lessonSlotSelect.innerHTML = '';
-        visibleOptions.forEach(option => lessonSlotSelect.appendChild(option));
+        if (visibleOptions.length === 0) {
+            // If not, display a message to the user
+            console.log('No lessons available for the selected teacher. Please select a different teacher.');
+        } else {
+            // Sort visible options by date
+            visibleOptions.sort((a, b) => new Date(a.text.split(' - ')[0]) - new Date(b.text.split(' - ')[0]));
+    
+            // Clear and append sorted options
+            lessonSlotSelect.innerHTML = '';
+            visibleOptions.forEach(option => lessonSlotSelect.appendChild(option));
+        }
     }
-
+    
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('book-lesson-form');
         if (form) {
@@ -123,7 +139,28 @@
             });
         }
     
-        setTimeout(filterSlots, 1000);  // Call filterSlots after a delay of 1 second
+        setTimeout(filterSlots, 300);  // Call filterSlots after a delay
+    });
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const button = document.getElementById('book-lesson-button');
+        const teacherSelect = document.getElementById('teacher');
+        const slotSelect = document.getElementById('lesson_slot');
+    
+        if (button) {
+            button.addEventListener('click', function(event) {
+                const teacher = teacherSelect.options[teacherSelect.selectedIndex].text;
+                let slot = slotSelect.options[slotSelect.selectedIndex].text;
+    
+                // Split the slot text by "with" and take the first part
+                slot = slot.split(' with ')[0];
+    
+                const confirmation = confirm(`Confirm Lesson With ${teacher} on ${slot}?`);
+                if (!confirmation) {
+                    event.preventDefault();
+                }
+            });
+        }
     });
 </script>
 {% endblock %}

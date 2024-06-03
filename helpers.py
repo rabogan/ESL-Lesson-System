@@ -78,7 +78,19 @@ def ensure_timezone_aware(dt, timezone_str):
 # This is a WORKING way getting getting the start and end of the week in the user's timezone!
 # Called using: start_of_week_utc, end_of_week_utc = get_start_end_of_week(student.timezone, week_offset)
 # Used in book_lesson - can avoid DRY using it!
+# This is a WORKING way getting getting the start and end of the week in the user's timezone!
+# Called using: start_of_week_utc, end_of_week_utc = get_start_end_of_week(student.timezone, week_offset)
+# Used in book_lesson - can avoid DRY using it!
 def get_week_boundaries(user_timezone_str, week_offset=0):
+    """_summary_
+
+    Args:
+        user_timezone_str (_type_): _description_
+        week_offset (int, optional): _description_. Defaults to 0.
+
+    Returns:
+        _type_: _description_
+    """
     user_timezone = pytz.timezone(user_timezone_str)
     today = datetime.now(timezone.utc).astimezone(user_timezone)
     
