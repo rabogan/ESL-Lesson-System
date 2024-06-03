@@ -2,6 +2,9 @@ import os
 import secrets
 from flask import current_app, session
 from flask_login import current_user
+from datetime import datetime, timedelta, timezone
+import pytz
+
 
 def save_image_file(image_file):
     # Generate a random hex for the filename to ensure it's unique
@@ -34,3 +37,55 @@ def save_image_file(image_file):
             pass  # Ignore the permission error
 
     return new_filename
+
+
+def convert_to_timezone(dt, timezone_str):
+    """
+    Convert a datetime object to a specific timezone.
+    The line user_timezone = pytz.timezone(teacher.timezone) 
+    creates a timezone object representing the teacher's timezone, 
+    which can be used to convert datetime objects to that timezone.
+    Args:
+        dt (datetime): The datetime object to convert.
+        timezone_str (str): The timezone to convert to.
+
+    Returns:
+        datetime: The converted datetime object.
+    """
+    user_timezone = pytz.timezone(timezone_str)
+    return dt.replace(tzinfo=timezone.utc).astimezone(user_timezone)
+
+
+def ensure_timezone_aware(dt, timezone_str):
+    """
+    Ensure a datetime object is timezone-aware.
+    i.e. If the datetime object is not timezone-aware, 
+    it will be converted to the specified timezone of the teacher/student.
+
+    Args:
+        dt (datetime): The datetime object to check.
+        timezone_str (str): The timezone to use if dt is not timezone-aware.
+
+    Returns:
+        datetime: The timezone-aware datetime object.
+    """
+    user_timezone = pytz.timezone(timezone_str)
+    if dt.tzinfo is None:
+        dt = pytz.utc.localize(dt)
+    return dt.astimezone(user_timezone)
+
+
+# This is a WORKING way getting getting the start and end of the week in the user's timezone!
+# Called using: start_of_week_utc, end_of_week_utc = get_start_end_of_week(student.timezone, week_offset)
+# Used in book_lesson - can avoid DRY using it!
+def get_week_boundaries(user_timezone_str, week_offset=0):
+    user_timezone = pytz.timezone(user_timezone_str)
+    today = datetime.now(timezone.utc).astimezone(user_timezone)
+    
+    # Calculate the start and end of the current week in the user's timezone
+    start_of_week = today - timedelta(days=today.weekday(), hours=today.hour, minutes=today.minute, seconds=today.second, microseconds=today.microsecond) + timedelta(weeks=week_offset)
+    end_of_week = start_of_week + timedelta(days=7)
+    start_of_week_utc = start_of_week.astimezone(timezone.utc)
+    end_of_week_utc = end_of_week.astimezone(timezone.utc)
+
+    return start_of_week_utc, end_of_week_utc

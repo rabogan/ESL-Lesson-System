@@ -53,17 +53,49 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+    $('#teacher').change(function() {
+        var teacherId = $(this).val();
+        console.log('Changed teacher ID:', teacherId);
+        $.ajax({
+            url: '/get_slots/' + teacherId,
+            type: 'GET',
+            success: function(data) {
+                console.log('Returned data:', data);
+                var slotSelect = $('#lesson_slot');
+                slotSelect.empty();
+                $.each(data, function(key, value) {
+                    slotSelect.append('<option data-teacher-id="' + teacherId + '" value="' + value.id + '">' + value.time + ' with ' + value.teacher + '</option>');
+                });
+                console.log('New options:', $('#lesson_slot').html());
+                filterSlots()
+            }
+        });
+    });
+</script>
 <script>
     function filterSlots() {
-        const teacherId = document.getElementById('teacher').value;
+        const teacherId = Number(document.getElementById('teacher').value);
         const lessonSlotSelect = document.getElementById('lesson_slot');
         const options = Array.from(lessonSlotSelect.options);
 
-        // Filter slots by selected teacher
+        console.log('Selected teacher ID:', teacherId);
+
+        // Reset display property of all options
         options.forEach(option => {
-            option.style.display = (teacherId === '' || option.dataset.teacherId === teacherId) ? '' : 'none';
+            option.style.display = '';
         });
 
+        // Filter slots by selected teacher
+        options.forEach(option => {
+            const optionTeacherId = Number(option.dataset.teacherId);
+            console.log('Option teacher ID:', optionTeacherId);
+            if (teacherId !== '' && optionTeacherId !== teacherId) {
+                option.style.display = 'none';
+            }
+        });
+        
         // Sort visible options by date
         const visibleOptions = options.filter(option => option.style.display === '');
         visibleOptions.sort((a, b) => new Date(a.text.split(' - ')[0]) - new Date(b.text.split(' - ')[0]));
@@ -82,7 +114,7 @@
                 console.log('Form Submitted');
                 console.log('Teacher ID:', teacherId);
                 console.log('Lesson Slot ID:', lessonSlotId);
-
+    
                 if (!teacherId || !lessonSlotId) {
                     console.log('Validation failed: Teacher or Lesson Slot not selected.');
                     event.preventDefault();
@@ -90,8 +122,8 @@
                 }
             });
         }
-
-        filterSlots();
+    
+        setTimeout(filterSlots, 1000);  // Call filterSlots after a delay of 1 second
     });
 </script>
 {% endblock %}
