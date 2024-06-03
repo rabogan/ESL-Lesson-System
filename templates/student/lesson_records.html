@@ -15,18 +15,32 @@
         </h1>
         {% if lesson_records.items %}
             {% for record in lesson_records.items %}
-                <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+                <div class="relative bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6 {% if not record.lesson_summary %}border-l-4 border-red-500{% else %}border-l-4 border-green-500{% endif %}">
                     <div class="grid lg:grid-cols-12 gap-8">
                         <div class="lg:col-span-2 flex flex-col items-center">
-                            <img class="w-24 h-24 rounded-full mb-4" src="{{ url_for('static', filename='img/teacherImg/' + record.teacher.profile.image_file) if record.teacher.profile and record.teacher.profile.image_file else url_for('static', filename='img/teacherImg/default.jpg') }}" alt="Teacher's profile picture">
-                            <p class="text-gray-900 dark:text-gray-100">{{ record.teacher.username }}</p>
+                            <a href="{{ url_for('teacher_profile', teacher_id=record.teacher.id) }}">
+                                {% if record.teacher.profile and record.teacher.profile.image_file %}
+                                    <img class="w-24 h-24 rounded-full mb-4" src="{{ url_for('static', filename='img/teacherImg/' + record.teacher.profile.image_file) }}" alt="Teacher's profile picture">
+                                {% else %}
+                                    <img class="w-24 h-24 rounded-full mb-4" src="{{ url_for('static', filename='img/teacherImg/default.jpg') }}" alt="Default profile picture">
+                                {% endif %}
+                                <p class="text-gray-900 dark:text-gray-100 hover:underline">{{ record.teacher.username }}</p>
+                            </a>
                         </div>
                         <div class="lg:col-span-7">
+                            <div class="flex justify-between items-center mb-4">
+                                <div class="text-sm text-gray-500 dark:text-gray-400">
+                                    {% set lesson_slot = record.lesson_slot %}
+                                    {% if lesson_slot %}
+                                        Lesson with <a href="{{ url_for('teacher_profile', teacher_id=record.teacher.id) }}" class="text-blue-500 hover:underline dark:text-blue-400">{{ record.teacher.username }}</a> on {{ lesson_slot.start_time.strftime('%B %d') }} at {{ lesson_slot.start_time.strftime('%I:%M %p') }}
+                                    {% endif %}
+                                </div>
+                            </div>
                             <div class="p-6 bg-green-100 dark:bg-green-900 rounded-lg text-gray-900 dark:text-gray-100 mb-4">
                                 {% if record.lesson_summary %}
                                     <p>{{ record.lesson_summary.replace('\n', '<br>')|safe }}</p>
                                 {% else %}
-                                    <p>No summary provided.</p>
+                                    <p class="text-red-500">Lesson Summary Pending</p>
                                 {% endif %}
                             </div>
                             <small class="text-gray-900 dark:text-gray-100">Updated by {{ record.teacher.username }}: {{ record.lastEditTime.strftime('%Y-%m-%d %H:%M') }}</small>
@@ -62,12 +76,20 @@
                     </div>
                 </div>
             {% endfor %}
-            <div class="pagination flex justify-between mt-8">
+            <!-- Pagination links -->
+            <div class="mt-4">
                 {% if lesson_records.has_prev %}
-                    <a href="{{ url_for('student_lesson_records', page=lesson_records.prev_num) }}" class="text-blue-500 hover:underline dark:text-blue-400">Previous</a>
+                    <a class="btn btn-outline-primary" href="{{ url_for('student_lesson_records', page=lesson_records.prev_num) }}">Previous</a>
                 {% endif %}
+                {% for page_num in lesson_records.iter_pages() %}
+                    {% if lesson_records.page == page_num %}
+                        <a class="btn btn-primary" href="#">{{ page_num }}</a>
+                    {% else %}
+                        <a class="btn btn-outline-primary" href="{{ url_for('student_lesson_records', page=page_num) }}">{{ page_num }}</a>
+                    {% endif %}
+                {% endfor %}
                 {% if lesson_records.has_next %}
-                    <a href="{{ url_for('student_lesson_records', page=lesson_records.next_num) }}" class="text-blue-500 hover:underline dark:text-blue-400">Next</a>
+                    <a class="btn btn-outline-primary" href="{{ url_for('student_lesson_records', page=lesson_records.next_num) }}">Next</a>
                 {% endif %}
             </div>
         {% else %}

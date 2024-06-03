@@ -575,13 +575,18 @@ def teacher_lesson_records():
 
     # Fetch the teacher's timezone
     teacher = db.session.get(Teacher, session['user_id'])
+    if teacher is None:
+        app.logger.error(f"Teacher with ID {session['user_id']} not found.")
+        return render_template('404.html'), 404
+
     user_timezone = pytz.timezone(teacher.timezone)
 
     page = request.args.get('page', 1, type=int)
 
-    # Query all lesson records for the logged-in teacher, join with LessonSlot, and order by LessonSlot.start_time
+    # Query past lesson records for the logged-in teacher
     lesson_records = LessonRecord.query.join(LessonSlot).filter(
-        LessonRecord.teacher_id == session['user_id']
+        LessonRecord.teacher_id == session['user_id'],
+        LessonSlot.start_time <= datetime.now(timezone.utc)
     ).options(
         joinedload(LessonRecord.student).joinedload(Student.profile)
     ).order_by(LessonSlot.start_time.desc()).paginate(page=page, per_page=5)
@@ -593,7 +598,15 @@ def teacher_lesson_records():
         else:
             record.lastEditTime = record.lastEditTime.astimezone(user_timezone)
 
+        # Ensure lesson slot start_time is timezone-aware
+        if record.lesson_slot and record.lesson_slot.start_time:
+            if record.lesson_slot.start_time.tzinfo is None:
+                record.lesson_slot.start_time = pytz.utc.localize(record.lesson_slot.start_time).astimezone(user_timezone)
+            else:
+                record.lesson_slot.start_time = record.lesson_slot.start_time.astimezone(user_timezone)
+
     return render_template('teacher/teacher_lesson_records.html', lesson_records=lesson_records)
+
 
 
 @app.route('/teacher/edit_teacher_profile', methods=['GET', 'POST'])
@@ -791,7 +804,7 @@ def student_profile(student_id):
     """
     # Ensure the current user is a teacher
     if session['user_type'] != 'teacher':
-        return redirect(url_for('home'))
+        return redirect(url_for('index'))
 
     # Fetch the student's profile
     student = db.session.get(Student, student_id)
@@ -882,9 +895,26 @@ def student_dashboard():
     if session['user_type'] != 'student':
         return redirect(url_for('index'))
 
-    # Fetch the most recent lesson record for the logged-in student
-    most_recent_record = LessonRecord.query.filter_by(student_id=session['user_id']).options(
-        joinedload(LessonRecord.teacher).joinedload(Teacher.profile)
+    # Fetch the student's timezone
+    student = db.session.get(Student, session['user_id'])
+    if student is None:
+        app.logger.error(f"Student with ID {session['user_id']} not found.")
+        return render_template('404.html'), 404
+    
+    try:
+        user_timezone = pytz.timezone(student.timezone)
+    except pytz.UnknownTimeZoneError:
+        user_timezone = pytz.timezone('America/Los_Angeles')
+
+    current_time = datetime.now(timezone.utc).astimezone(user_timezone)
+
+    # Fetch the most recent past lesson record for the logged-in student
+    most_recent_record = LessonRecord.query.filter(
+        LessonRecord.student_id == session['user_id'],
+        LessonRecord.lesson_slot.has(LessonSlot.start_time <= datetime.now(timezone.utc))
+    ).options(
+        joinedload(LessonRecord.teacher).joinedload(Teacher.profile),
+        joinedload(LessonRecord.lesson_slot)
     ).order_by(LessonRecord.lastEditTime.desc()).first()
 
     # Fetch all upcoming lesson slots for the logged-in student
@@ -895,20 +925,24 @@ def student_dashboard():
         joinedload(LessonSlot.teacher).joinedload(Teacher.profile)
     ).order_by(LessonSlot.start_time.asc()).all()
 
-    # Convert lesson times to the user's timezone
-    student = db.session.get(Student, session['user_id'])
-    if student is None:
-        app.logger.error(f"Student with ID {session['user_id']} not found.")
-        return render_template('404.html'), 404
+    # Convert the lastEditTime of the most recent record to the user's timezone
+    if most_recent_record:
+        if most_recent_record.lastEditTime.tzinfo is None:
+            most_recent_record.lastEditTime = pytz.utc.localize(most_recent_record.lastEditTime)
+        most_recent_record.lastEditTime = most_recent_record.lastEditTime.astimezone(user_timezone)
 
-    user_timezone = pytz.timezone(student.timezone) if student.timezone else pytz.timezone('America/Los_Angeles')
-    try:
-        user_timezone = pytz.timezone(student.timezone)
-    except pytz.UnknownTimeZoneError:
-        user_timezone = pytz.timezone('America/Los_Angeles')
+        # Ensure lesson slot start_time is timezone-aware
+        if most_recent_record.lesson_slot and most_recent_record.lesson_slot.start_time:
+            if most_recent_record.lesson_slot.start_time.tzinfo is None:
+                most_recent_record.lesson_slot.start_time = pytz.utc.localize(most_recent_record.lesson_slot.start_time).astimezone(user_timezone)
+            else:
+                most_recent_record.lesson_slot.start_time = most_recent_record.lesson_slot.start_time.astimezone(user_timezone)
 
+    # Convert upcoming lesson times to the user's timezone
     for lesson in upcoming_lessons:
-        lesson.start_time = lesson.start_time.replace(tzinfo=timezone.utc).astimezone(user_timezone)
+        if lesson.start_time.tzinfo is None:
+            lesson.start_time = pytz.utc.localize(lesson.start_time)
+        lesson.start_time = lesson.start_time.astimezone(user_timezone)
 
     cancel_lesson_form = CancelLessonForm()  # Define the cancel lesson form
 
@@ -917,8 +951,10 @@ def student_dashboard():
         profile=current_user.profile,
         most_recent_record=most_recent_record,
         upcoming_lessons=upcoming_lessons,
-        cancel_lesson_form=cancel_lesson_form  # Pass the cancel lesson form
+        cancel_lesson_form=cancel_lesson_form,  # Pass the cancel lesson form
+        user_timezone=user_timezone  # Pass the timezone to the template
     )
+
 
 
 @app.route('/cancel_lesson/<int:lesson_id>', methods=['POST'])
@@ -1002,13 +1038,45 @@ def cancel_lesson(lesson_id):
 def student_lesson_records():
     if session.get('user_type') != 'student':
         return redirect(url_for('index'))
-    # Fetch all lesson records for the logged-in student
+    
+    # Fetch the student's timezone
+    student = db.session.get(Student, session['user_id'])
+    if student is None:
+        app.logger.error(f"Student with ID {session['user_id']} not found.")
+        return render_template('404.html'), 404
+    
+    try:
+        user_timezone = pytz.timezone(student.timezone)
+    except pytz.UnknownTimeZoneError:
+        user_timezone = pytz.timezone('America/Los_Angeles')
+
+    current_time = datetime.now(timezone.utc).astimezone(user_timezone)
+
+    # Fetch all past lesson records for the logged-in student
     page = request.args.get('page', 1, type=int)
-    lesson_records = LessonRecord.query.filter_by(student_id=session['user_id']).options(
-        joinedload(LessonRecord.teacher).joinedload(Teacher.profile)
+    lesson_records = LessonRecord.query.filter(
+        LessonRecord.student_id == session['user_id'],
+        LessonRecord.lesson_slot.has(LessonSlot.start_time <= datetime.now(timezone.utc))
+    ).options(
+        joinedload(LessonRecord.teacher).joinedload(Teacher.profile),
+        joinedload(LessonRecord.lesson_slot)
     ).order_by(LessonRecord.lastEditTime.desc()).paginate(page=page, per_page=5)
 
-    return render_template('student/lesson_records.html', lesson_records=lesson_records)
+    for record in lesson_records.items:
+        # Ensure record.lastEditTime is timezone-aware
+        if record.lastEditTime.tzinfo is None:
+            record.lastEditTime = pytz.utc.localize(record.lastEditTime).astimezone(user_timezone)
+        else:
+            record.lastEditTime = record.lastEditTime.astimezone(user_timezone)
+
+        # Ensure lesson slot start_time is timezone-aware
+        if record.lesson_slot and record.lesson_slot.start_time:
+            if record.lesson_slot.start_time.tzinfo is None:
+                record.lesson_slot.start_time = pytz.utc.localize(record.lesson_slot.start_time).astimezone(user_timezone)
+            else:
+                record.lesson_slot.start_time = record.lesson_slot.start_time.astimezone(user_timezone)
+
+    return render_template('student/lesson_records.html', lesson_records=lesson_records, user_timezone=user_timezone)
 
 
 @app.route('/student/edit_student_profile', methods=['GET', 'POST'])
