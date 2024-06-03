@@ -1132,7 +1132,7 @@ def student_book_lesson():
     """
     This allows a student to book a lesson with a teacher.
     They search for an open lesson_slot, and then book it.
-    Forms are used for CSRF!
+    Forms are used for CSRF! (Care taken with XSS)
     """
     
     form = StudentLessonSlotForm()
