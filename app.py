@@ -677,6 +677,7 @@ def manage_lesson_slots():
     form = LessonSlotsForm()
     teacher = db.session.get(Teacher, current_user.id)
     user_timezone = pytz.timezone(teacher.timezone)
+    print(f"User timezone: {user_timezone}")
 
     if request.method == 'POST':
         if form.validate_on_submit():
@@ -692,26 +693,22 @@ def manage_lesson_slots():
             app.logger.error('Invalid form data.')
             return jsonify({'status': 'error', 'message': 'Invalid form data.'}), 400
 
-    start_date_str = request.args.get('start_date')
-    if start_date_str:
-        try:
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%dT%H:%M:%S')
-        except ValueError:
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%dT%H:%M')
-        end_date = start_date + timedelta(days=6)
-    else:
-        today = datetime.now(user_timezone)
-        start_date = today - timedelta(days=today.weekday())
-        end_date = start_date + timedelta(days=6)
-    
-    start_date = start_date.replace(hour=7, minute=0, second=0, microsecond=0)
-    end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-    
+    week_offset = int(request.args.get('week_offset', 0))
+    today = datetime.now(user_timezone)
+    print(f"Today's date: {today}")
+
+    start_of_week = today - timedelta(days=today.weekday(), hours=today.hour, minutes=today.minute, seconds=today.second, microseconds=today.microsecond) + timedelta(weeks=week_offset)
+    end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59)
+    start_of_week_utc = start_of_week.astimezone(timezone.utc)
+    end_of_week_utc = end_of_week.astimezone(timezone.utc)
+    print(f"Start of week: {start_of_week}, End of week: {end_of_week}")
+    print(f"Start of week (UTC): {start_of_week_utc}, End of week (UTC): {end_of_week_utc}")
+
     with db.session.no_autoflush:
         lesson_slots = LessonSlot.query.filter(
             LessonSlot.teacher_id == current_user.id,
-            LessonSlot.start_time >= start_date.astimezone(pytz.UTC),
-            LessonSlot.start_time <= end_date.astimezone(pytz.UTC)
+            LessonSlot.start_time >= start_of_week_utc,
+            LessonSlot.start_time <= end_of_week_utc
         ).all()
 
     utc_now = datetime.now(pytz.UTC)
@@ -732,15 +729,20 @@ def manage_lesson_slots():
         # Handle standard GET request
         return render_template('teacher/lesson_slots.html', form=form)
 
-
 # Helper functions
-def manage_slot(start_time_str, end_time_str, teacher_id, timezone, action):
+def manage_slot(start_time_str, end_time_str, teacher_id, timezone_str, action):
+    # Convert the provided start and end time strings to datetime objects
     local_start_time = datetime.strptime(start_time_str, '%Y-%m-%dT%H:%M')
-    start_time = timezone.localize(local_start_time).astimezone(pytz.UTC)
     local_end_time = datetime.strptime(end_time_str, '%Y-%m-%dT%H:%M')
+
+    # Localize the times to the specified timezone and convert to UTC
+    timezone = pytz.timezone(timezone_str)
+    start_time = timezone.localize(local_start_time).astimezone(pytz.UTC)
     end_time = timezone.localize(local_end_time).astimezone(pytz.UTC)
 
+    # Query for an existing slot with the same start and end times
     existing_slot = LessonSlot.query.filter_by(teacher_id=teacher_id, start_time=start_time, end_time=end_time).first()
+
     if existing_slot and action == 'close':
         db.session.delete(existing_slot)
         return {'status': 'success', 'message': 'Lesson slot closed!'}
@@ -750,12 +752,11 @@ def manage_slot(start_time_str, end_time_str, teacher_id, timezone, action):
         return {'status': 'success', 'message': 'New lesson slot created!'}
     else:
         return {'status': 'error', 'message': 'Invalid action or lesson slot does not exist.'}
-
-
+    
     
 def open_slot(start_time, end_time, teacher_id, timezone):
-    start_time = ensure_timezone_aware(start_time, timezone)
-    end_time = ensure_timezone_aware(end_time, timezone)
+    start_time = ensure_timezone_aware(start_time, timezone).astimezone(pytz.UTC)
+    end_time = ensure_timezone_aware(end_time, timezone).astimezone(pytz.UTC)
     new_slot = LessonSlot(teacher_id=teacher_id, start_time=start_time, end_time=end_time, is_booked=False)
     db.session.add(new_slot)
     db.session.commit()
@@ -783,7 +784,9 @@ def update_lesson_slot():
     if action == 'open':
         local_start_time = datetime.strptime(data['start_time'], '%Y-%m-%dT%H:%M:%S')
         local_end_time = datetime.strptime(data['end_time'], '%Y-%m-%dT%H:%M:%S')
-        return jsonify(open_slot(local_start_time, local_end_time, current_user.id, user_timezone))
+        start_time = user_timezone.localize(local_start_time).astimezone(pytz.UTC)
+        end_time = user_timezone.localize(local_end_time).astimezone(pytz.UTC)
+        return jsonify(open_slot(start_time, end_time, current_user.id, user_timezone))
     elif action == 'close':
         return jsonify(close_slot(slot_id, current_user.id))
 
