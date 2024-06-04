@@ -1329,19 +1329,26 @@ def get_slots(teacher_id):
         return jsonify({'error': 'Not logged in'}), 401
 
     # Get the student's timezone
-    student = Student.query.get(session['user_id'])  # Use 'user_id' instead of 'student_id'
+    student = db.session.get(Student, session['user_id'])
+
+    if student is None:
+        return jsonify({'error': 'Student not found'}), 404
 
     # Get the start and end of the week in the student's timezone
     start_of_week, end_of_week = get_week_boundaries(student.timezone)
     
     user_timezone = pytz.timezone(student.timezone)
+    # Get the current time in the user's timezone
+    current_time = datetime.now(user_timezone)
+    current_time_utc = current_time.astimezone(pytz.UTC)
 
-    # Fetch the slots for the teacher that are within the current week
+    # Fetch the slots for the teacher that are within the current week and in the future
     slots = LessonSlot.query.filter(
         LessonSlot.teacher_id == teacher_id,
         LessonSlot.is_booked == False,
         LessonSlot.start_time >= start_of_week,
-        LessonSlot.start_time <= end_of_week
+        LessonSlot.start_time <= end_of_week,
+        LessonSlot.start_time >= current_time_utc  # Add this line
     ).all()
 
     slots_dict = [{'id': slot.id, 'time': slot.start_time.replace(tzinfo=timezone.utc).astimezone(user_timezone).strftime('%Y-%m-%d %I:%M %p'), 'teacher': slot.teacher.username} for slot in slots]
