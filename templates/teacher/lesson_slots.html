@@ -29,249 +29,217 @@
             <button id="unique-cancel-button" class="btn btn-danger hidden">Cancel</button>
         </div>
 
-        <table id="unique-schedule-grid" class="table-auto w-full border-collapse border border-gray-300 dark:border-gray-700 mt-8">
-            <thead>
-                <tr class="bg-gray-200 dark:bg-gray-700">
-                    <th class="border border-gray-300 dark:border-gray-600 p-2 dark:text-gray-100">Time</th>
-                    {% for i in range(7) %}
-                    <th class="border border-gray-300 dark:border-gray-600 p-2 dark:text-gray-100">
-                        {{ (start_date + timedelta(days=i)).strftime('%a %d %b') }}
-                    </th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for hour in range(7, 24) %}
-                <tr>
-                    <td class="border border-gray-300 dark:border-gray-600 dark:text-gray-100 p-2 text-center">{{ '%02d:00' % hour }}</td>
-                    {% for i in range(7) %}
-                    {% set slot = lesson_slots | selectattr('start_time.astimezone(user_timezone)', 'equalto', (start_date + timedelta(days=i, hours=hour)).astimezone(user_timezone)) | list | first %}
-                    <td data-time="{{ (start_date + timedelta(days=i, hours=hour)).astimezone(pytz.UTC).isoformat() }}" 
-                        class="slot border border-gray-300 dark:border-gray-600 p-2 text-center cursor-pointer {% if slot and slot.start_time < datetime.now(user_timezone) %}past-slot{% endif %}">
-                        {% if slot %}
-                            {% if slot.start_time < datetime.now(user_timezone) %}
-                                {% if slot.is_booked %}
-                                    <div class="bg-blue-500 text-white rounded p-1 h-full flex items-center justify-center" data-slot-id="{{ slot.id }}">BOOKED</div>
-                                {% else %}
-                                    <div class="bg-gray-300 dark:bg-gray-600 text-black dark:text-gray-100 rounded p-1 h-full flex items-center justify-center" data-slot-id="{{ slot.id }}">-</div>
-                                {% endif %}
-                            {% else %}
-                                <div class="h-full flex items-center justify-center {% if slot.is_booked %}bg-blue-500 text-white{% else %}bg-gold-300 text-black{% endif %} rounded p-1" data-slot-id="{{ slot.id }}">
-                                    {{ 'BOOKED' if slot.is_booked else 'OPEN LESSON' }}
-                                </div>
-                            {% endif %}
-                            <script>
-                                console.log('Slot ID:', '{{ slot.id }}', 'Is Open:', '{{ 'OPEN LESSON' if not slot.is_booked else 'BOOKED' }}', 'Start Time:', '{{ slot.start_time }}', 'End Time:', '{{ slot.end_time }}');
-                            </script>
-                        {% else %}
-                            {% if (start_date + timedelta(days=i, hours=hour)).astimezone(user_timezone) > datetime.now(user_timezone) %}
-                                <div class="bg-gray-300 dark:bg-gray-600 text-black dark:text-gray-100 rounded p-1 h-full flex items-center justify-center">-</div>
-                            {% endif %}
-                        {% endif %}
-                    </td>
-                    {% endfor %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div id="tableContainer"></div> <!-- Container for the generated table -->
     </div>
 </section>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script>
-window.onload = function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    console.log('URL Params:', urlParams);
-    if (!urlParams.has('start_date')) {
-        const currentDate = new Date();
-        const day = currentDate.getUTCDay();
-        const diff = currentDate.getUTCDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
-        const startDate = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), diff));
-        const startDateString = startDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
-        const newUrl = `${window.location.pathname}?start_date=${startDateString}`;
-        console.log(`Redirecting to: ${newUrl}`);
-        window.location.href = newUrl;
-    }
-};
+    $(document).ready(function() {
+        console.log("Document is ready!");
 
-document.addEventListener('DOMContentLoaded', function () {
-    console.log('DOM fully loaded and parsed');
-    let editMode = false;
-    const startDate = new Date('{{ start_date.strftime("%Y-%m-%d") }}');
-    const currentTime = new Date();
-    console.log('Start Date:', startDate);
-    console.log('Current Time:', currentTime);
+        let currentStartDate = new Date();
+        currentStartDate.setDate(currentStartDate.getDate() - (currentStartDate.getDay() === 0 ? 6 : currentStartDate.getDay() - 1));
+        currentStartDate.setHours(0, 0, 0, 0);
 
-    function updateTable() {
-        console.log('Updating table');
-        const url = `/teacher/lesson_slots?start_date=${startDate.toISOString().split('T')[0]}`;
-        console.log(`Redirecting to: ${url}`);
-        window.location.href = url;
-    }
+        let changes = [];
 
-    function initializeSlots() {
-        console.log('Initializing slots');
-        document.querySelectorAll('.slot').forEach(slot => {
-            const statusDiv = slot.querySelector('div');
-            let slotTime = new Date(slot.getAttribute('data-time'));
+        // Extract CSRF token from the hidden form field
+        const csrfToken = $('input[name="csrf_token"]').val();
 
-            console.log('Original Slot Time:', slot.getAttribute('data-time'));
-
-            // Convert slotTime to local time zone
-            slotTime = new Date(slotTime.getTime() - slotTime.getTimezoneOffset() * 60000);
-
-            console.log('Converted Slot Time:', slotTime, 'Current Time:', currentTime);
-
-            if (statusDiv) {
-                console.log('Updating existing div');
-                const slotId = statusDiv.getAttribute('data-slot-id');
-                const isOpen = statusDiv.classList.contains('bg-gold-300');
-                console.log('Slot ID:', slotId, 'Is Open:', isOpen);
-                statusDiv.textContent = isOpen ? 'OPEN LESSON' : '-';
-                statusDiv.classList.toggle('bg-gold-300', isOpen);
-                statusDiv.classList.toggle('bg-gray-300', !isOpen);
-                console.log('Status Div Text:', statusDiv.textContent);
-                console.log('Status Div Classes:', statusDiv.classList);
-            } else {
-                if (slotTime > currentTime) {
-                    console.log('Creating new div for future slot');
-                    const newDiv = document.createElement('div');
-                    newDiv.classList.add('bg-gray-300', 'dark:bg-gray-600', 'text-black', 'dark:text-gray-100', 'rounded', 'p-1', 'h-full', 'flex', 'items-center', 'justify-center');
-                    newDiv.textContent = '-';
-                    slot.appendChild(newDiv);
-                    console.log('New Div Created for future slot:', newDiv);
+        $.ajaxSetup({
+            beforeSend: function(xhr, settings) {
+                if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                    xhr.setRequestHeader("X-CSRFToken", csrfToken);
                 }
             }
         });
-    }
 
-    function handleSlotClick(event) {
-        if (!editMode) return;
-        const statusDiv = event.currentTarget.querySelector('div');
-        console.log('Slot clicked:', statusDiv);
+        // Function to update the table with received data
+        function updateTable(data) {
+            console.log('Data received in updateTable:', data);
+            const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            let headerRow = '<tr class="bg-gray-200 dark:bg-gray-700"><th class="border border-gray-300 dark:border-gray-600 p-2 dark:text-gray-100">Time</th>';
 
-        if (statusDiv.classList.contains('bg-blue-500') || event.currentTarget.classList.contains('past-slot')) {
-            return;
-        }
-        statusDiv.classList.toggle('bg-gold-300');
-        statusDiv.classList.toggle('bg-gray-300');
-        statusDiv.textContent = statusDiv.classList.contains('bg-gold-300') ? 'OPEN LESSON' : '-';
-        console.log('Toggled Slot:', statusDiv);
-    }
-
-    function handleFormSubmission() {
-        console.log('Submit button clicked');
-        const updates = [];
-        document.querySelectorAll('.slot').forEach(slot => {
-            const statusDiv = slot.querySelector('div');
-            if (!statusDiv) return;
-            const slotId = statusDiv.getAttribute('data-slot-id');
-            const startTime = new Date(slot.getAttribute('data-time')).toISOString().split('.')[0] + 'Z';
-            const isOpen = statusDiv.classList.contains('bg-gold-300');
-            console.log(`Processing slot with ID ${slotId}, Start time: ${startTime}, Is open: ${isOpen}`);
-            if (isOpen && !slotId) {
-                updates.push({ action: 'open', start_time: startTime, end_time: new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString().split('.')[0] + 'Z' });
-            } else if (!isOpen && slotId) {
-                updates.push({ action: 'close', slot_id: slotId });
+            // Create the header row for the dates
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(currentStartDate);
+                date.setDate(currentStartDate.getDate() + i);
+                headerRow += `<th class="border border-gray-300 dark:border-gray-600 p-2 dark:text-gray-100">${daysOfWeek[i]} ${date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</th>`;
             }
-        });
-        console.log('Payload:', JSON.stringify(updates));
+            headerRow += '</tr>';
 
-        const csrfToken = document.querySelector('input[name="csrf_token"]').value;
-        console.log('CSRF Token:', csrfToken);
+            // Create the body rows for each hour
+            let bodyRows = '';
+            for (let hour = 7; hour <= 23; hour++) {
+                bodyRows += `<tr><td class="border border-gray-300 dark:border-gray-600 dark:text-gray-100 p-2 text-center">${hour}:00</td>`;
+                for (let i = 0; i < 7; i++) {
+                    const cellTime = new Date(currentStartDate);
+                    cellTime.setDate(currentStartDate.getDate() + i);
+                    cellTime.setHours(hour, 0, 0, 0);
 
-        fetch('/teacher/update_slots', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify(updates)
-        })
-        .then(response => {
-            console.log('Response:', response);
-            return response.ok ? response.json() : Promise.reject(response.statusText);
-        })
-        .then(data => {
-            console.log('Data:', data);
-            if (data.status === 'success') {
-                data.updates.forEach(update => {
-                    console.log('Processing update:', update);
-                    if (update.action === 'open') {
-                        const slotElement = document.querySelector(`[data-time='${update.start_time.split('.')[0]}Z'] div`);
-                        if (slotElement) {
-                            slotElement.setAttribute('data-slot-id', update.slot_id);
-                            slotElement.classList.add('bg-gold-300');
-                            slotElement.classList.remove('bg-gray-300');
-                            slotElement.textContent = 'OPEN LESSON';
-                            console.log('Updated slot element for open:', slotElement);
+                    const slot = data.find(slot => new Date(slot.start_time).getTime() === cellTime.getTime());
+                    let cellClass = 'bg-gray-300 text-black text-center';
+                    let cellContent = '-';
+                    let dataSlotId = '';
+                    let clickHandler = '';
+                    let dataTime = `data-time="${cellTime.toISOString()}"`;
+
+                    if (slot) {
+                        if (slot.status === 'Booked') {
+                            cellClass = 'bg-blue-500 text-white text-center';
+                            cellContent = 'BOOKED';
+                        } else if (slot.status === 'Available') {
+                            cellClass = 'bg-gold-300 text-black text-center';
+                            cellContent = 'OPEN LESSON';
+                            dataSlotId = `data-slot-id="${slot.slot_id}"`;
+                            clickHandler = `onclick="toggleSlotStatus(this, 'close')"`;
                         }
-                    } else if (update.action === 'close') {
-                        const slotElement = document.querySelector(`[data-slot-id='${update.slot_id}']`);
-                        if (slotElement) {
-                            slotElement.classList.add('bg-gray-300');
-                            slotElement.classList.remove('bg-gold-300');
-                            slotElement.textContent = '-';
-                            slotElement.removeAttribute('data-slot-id');
-                            console.log('Updated slot element for close:', slotElement);
-                        }
+                    } else {
+                        clickHandler = `onclick="toggleSlotStatus(this, 'open')"`;
                     }
-                });
-                editMode = false;
-                toggleEditButtons();
-                initializeSlots();
-            } else {
-                alert('An error occurred: ' + data.message);
+
+                    // Disable past slots
+                    if (cellTime < new Date()) {
+                        cellClass = 'bg-gray-200 text-black text-center cursor-not-allowed';
+                        clickHandler = '';
+                    }
+
+                    bodyRows += `<td class="border border-gray-300 dark:border-gray-600 p-2 ${cellClass}" ${dataSlotId} ${clickHandler} ${dataTime}>${cellContent}</td>`;
+                }
+                bodyRows += '</tr>';
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred: ' + error.message);
+
+            const tableHtml = `<table class="table-auto w-full border-collapse border border-gray-300 dark:border-gray-700 mt-8"><thead>${headerRow}</thead><tbody>${bodyRows}</tbody></table>`;
+            document.getElementById('tableContainer').innerHTML = tableHtml;
+        }
+
+        // Function to toggle slot status
+        window.toggleSlotStatus = function(cell, action) {
+            const cellTime = new Date($(cell).data('time'));
+            let slotId = $(cell).data('slot-id');
+
+            // Do nothing if the slot is booked or in the past
+            if ($(cell).hasClass('bg-blue-500') || $(cell).hasClass('cursor-not-allowed')) {
+                return;
+            }
+
+            if (action === 'open') {
+                // Mark the cell as open lesson
+                $(cell).removeClass('bg-gray-300').addClass('bg-gold-300').text('OPEN LESSON');
+                changes.push({ action: 'open', start_time: cellTime.toISOString(), end_time: new Date(cellTime.getTime() + 60 * 60 * 1000).toISOString() });
+            } else if (action === 'close') {
+                // Mark the cell as closed
+                $(cell).removeClass('bg-gold-300').addClass('bg-orange-300').text('CLOSED');
+                changes.push({ action: 'close', slot_id: slotId });
+                $(cell).attr('onclick', "toggleSlotStatus(this, 'undo')");
+            } else if (action === 'undo') {
+                // Revert the cell back to open lesson
+                $(cell).removeClass('bg-orange-300').addClass('bg-gold-300').text('OPEN LESSON');
+                changes = changes.filter(change => change.slot_id !== slotId);
+                $(cell).attr('onclick', "toggleSlotStatus(this, 'close')");
+            }
+        };
+
+        // Function to send an AJAX request to get lesson slots
+        function sendDateRequest(offset) {
+            currentStartDate.setDate(currentStartDate.getDate() + offset);
+            let dataToSend = {
+                start_date: currentStartDate.toISOString().slice(0, 19)
+            };
+
+            console.log('Data being sent:', dataToSend);
+
+            $.ajax({
+                url: '/teacher/lesson_slots',
+                type: 'GET',
+                data: dataToSend,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                success: function(response) {
+                    console.log('AJAX success response:', response);
+                    updateTable(response); // Update the table even if the response is empty
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.error("AJAX request failed: " + textStatus + ", " + errorThrown);
+                    console.error("Response text:", jqXHR.responseText);
+                    // Revert the currentStartDate if the request fails
+                    currentStartDate.setDate(currentStartDate.getDate() - offset);
+                }
+            });
+        }
+
+        // Event listeners for the navigation buttons
+        $('#unique-prev-week').click(function() {
+            sendDateRequest(-7);
         });
-    }
 
-    function toggleEditButtons() {
-        console.log('Toggling edit buttons, edit mode:', editMode);
-        document.getElementById('unique-edit-button').classList.toggle('hidden', editMode);
-        document.getElementById('unique-submit-button').classList.toggle('hidden', !editMode);
-        document.getElementById('unique-cancel-button').classList.toggle('hidden', !editMode);
-        console.log('Edit buttons toggled:', editMode);
-    }
+        $('#unique-next-week').click(function() {
+            sendDateRequest(7);
+        });
 
-    document.querySelectorAll('.slot').forEach(slot => {
-        slot.addEventListener('click', handleSlotClick);
+        // Event listener for the edit button
+        $('#unique-edit-button').click(function() {
+            $('#unique-submit-button').removeClass('hidden');
+            $('#unique-cancel-button').removeClass('hidden');
+            $('#unique-edit-button').addClass('hidden');
+        });
+
+        // Event listener for the submit button
+        $('#unique-submit-button').click(function() {
+            if (changes.length === 0) {
+                alert('No changes to submit.');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to submit the changes?')) {
+                return;
+            }
+
+            $.ajax({
+                url: '/teacher/update_slots',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(changes),
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                success: function(response) {
+                    console.log('AJAX success response:', response);
+                    if (response.status === 'success') {
+                        alert('Changes submitted successfully.');
+                        changes = [];
+                        $('#unique-submit-button').addClass('hidden');
+                        $('#unique-cancel-button').addClass('hidden');
+                        $('#unique-edit-button').removeClass('hidden');
+                        sendDateRequest(0); // Reload the current week's schedule
+                    } else {
+                        alert('Error submitting changes: ' + response.message);
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.error("AJAX request failed: " + textStatus + ", " + errorThrown);
+                    console.error("Response text:", jqXHR.responseText);
+                    alert('Error submitting changes.');
+                }
+            });
+        });
+
+        // Event listener for the cancel button
+        $('#unique-cancel-button').click(function() {
+            changes = [];
+            $('#unique-submit-button').addClass('hidden');
+            $('#unique-cancel-button').addClass('hidden');
+            $('#unique-edit-button').removeClass('hidden');
+            sendDateRequest(0); // Reload the current week's schedule
+        });
+
+        // Initial load of the current week's schedule
+        sendDateRequest(0);
     });
-
-    document.getElementById('unique-submit-button').addEventListener('click', handleFormSubmission);
-
-    document.getElementById('unique-edit-button').addEventListener('click', () => {
-        console.log('Edit button clicked');
-        editMode = true;
-        toggleEditButtons();
-        initializeSlots();
-    });
-
-    document.getElementById('unique-cancel-button').addEventListener('click', () => {
-        console.log('Cancel button clicked');
-        editMode = false;
-        toggleEditButtons();
-        updateTable();
-    });
-
-    document.getElementById('unique-prev-week').addEventListener('click', () => {
-        console.log('Previous week button clicked');
-        startDate.setDate(startDate.getDate() - 7);
-        updateTable();
-    });
-
-    document.getElementById('unique-next-week').addEventListener('click', () => {
-        console.log('Next week button clicked');
-        startDate.setDate(startDate.getDate() + 7);
-        updateTable();
-    });
-
-    initializeSlots();
-});
 </script>
 {% endblock %}

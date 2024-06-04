@@ -22,6 +22,7 @@ app = Flask(__name__)
 app.secret_key = 'coolie_killer_huimin_himitsunakotogawaruidesune'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['DEBUG'] = True
+app.logger.setLevel(logging.INFO)
 
 
 # Initialize extensions
@@ -317,7 +318,6 @@ def internal_error(error):
     app.logger.error(f"Server Error: {error}")
     return render_template('500.html'), 500
 
-
 # Homepage Routes
 @app.route("/")
 def index():
@@ -335,6 +335,14 @@ def meet_your_teacher():
     page = request.args.get('page', 1, type=int)
     teachers = Teacher.query.paginate(page=page, per_page=6)
     return render_template('meetYourTeacher.html', teachers=teachers)
+
+
+class SimpleForm(FlaskForm):
+    submit = SubmitField('Submit')
+
+@app.route('/test_page')
+def test_page():
+    return render_template('minimal_test.html')
 
 
 @app.route('/ourLessons')
@@ -648,6 +656,20 @@ def edit_teacher_profile():
 
     return render_template('teacher/edit_teacher_profile.html', form=form, profile=current_user.profile, profile_updated=profile_updated)
 
+#    # Get the student's timezone
+#    user_timezone = pytz.timezone(student.timezone)
+#    week_offset = int(request.args.get('week_offset', 0))
+ #   today = datetime.now(timezone.utc)
+  #  today = datetime.now(timezone.utc).astimezone(user_timezone)
+    
+    # PERFECT WEEK OFFSET!
+    # Calculate the start and end of the current week in the student/teacher's timezone
+#    start_of_week = today - timedelta(days=today.weekday(), hours=today.hour, minutes=today.minute, seconds=today.second, microseconds=today.microsecond) + timedelta(weeks=week_offset)
+ #   end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59)
+  #  start_of_week_utc = start_of_week.astimezone(timezone.utc)
+   # end_of_week_utc = end_of_week.astimezone(timezone.utc)
+    #print(f"Book Lessons From {start_of_week.strftime('%A, %B %d, %Y %I:%M %p')} - {end_of_week.strftime('%A, %B %d, %Y %I:%M %p')}")
+
 
 @app.route('/teacher/lesson_slots', methods=['GET', 'POST'])
 @login_required
@@ -659,37 +681,32 @@ def manage_lesson_slots():
     if request.method == 'POST':
         if form.validate_on_submit():
             try:
-                local_start_time = datetime.strptime(request.form['start_time'], '%Y-%m-%dT%H:%M')
-                start_time = user_timezone.localize(local_start_time).astimezone(pytz.UTC)
-                local_end_time = datetime.strptime(request.form['end_time'], '%Y-%m-%dT%H:%M')
-                end_time = user_timezone.localize(local_end_time).astimezone(pytz.UTC)
-
-                existing_slot = LessonSlot.query.filter_by(teacher_id=current_user.id, start_time=start_time, end_time=end_time).first()
-                if existing_slot:
-                    db.session.delete(existing_slot)
-                    print('Lesson slot closed!')
-                else:
-                    new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time)
-                    db.session.add(new_slot)
-                    print('New lesson slot created!')
-
+                response = manage_slot(request.form['start_time'], request.form['end_time'], current_user.id, user_timezone, 'open' if form.open.data else 'close')
                 db.session.commit()
-                return jsonify({'status': 'success'})
+                return jsonify(response)
             except Exception as e:
                 db.session.rollback()
                 app.logger.error(f"Error creating or deleting lesson slot: {e}")
                 return jsonify({'status': 'error', 'message': 'An error occurred while creating or deleting the lesson slot.'}), 500
         else:
             app.logger.error('Invalid form data.')
-            return render_template("apology.html", top="400 Error", bottom="Invalid form data."), 400
+            return jsonify({'status': 'error', 'message': 'Invalid form data.'}), 400
 
     start_date_str = request.args.get('start_date')
     if start_date_str:
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%dT%H:%M:%S')
+        except ValueError:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%dT%H:%M')
+        end_date = start_date + timedelta(days=6)
     else:
-        start_date = datetime.now(user_timezone) - timedelta(days=datetime.now(user_timezone).weekday())
-
-    end_date = start_date + timedelta(days=6)
+        today = datetime.now(user_timezone)
+        start_date = today - timedelta(days=today.weekday())
+        end_date = start_date + timedelta(days=6)
+    
+    start_date = start_date.replace(hour=7, minute=0, second=0, microsecond=0)
+    end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+    
     with db.session.no_autoflush:
         lesson_slots = LessonSlot.query.filter(
             LessonSlot.teacher_id == current_user.id,
@@ -697,23 +714,61 @@ def manage_lesson_slots():
             LessonSlot.start_time <= end_date.astimezone(pytz.UTC)
         ).all()
 
-    for slot in lesson_slots:
-        print(f"Original start time: {slot.start_time}, Converted start time: {slot.start_time.astimezone(user_timezone)}")
-        print(f"Original end time: {slot.end_time}, Converted end time: {slot.end_time.astimezone(user_timezone)}")
-        slot.start_time = ensure_timezone_aware(slot.start_time, teacher.timezone)
-        slot.end_time = ensure_timezone_aware(slot.end_time, teacher.timezone)
+    utc_now = datetime.now(pytz.UTC)
+    lesson_slots_json = [{
+        'slot_id': slot.id,
+        'start_time': slot.start_time.astimezone(user_timezone).isoformat(),
+        'end_time': slot.end_time.astimezone(user_timezone).isoformat(),
+        'status': 'Booked' if slot.is_booked else 'Available' if slot.start_time.astimezone(pytz.UTC) > utc_now else 'Closed'
+    } for slot in lesson_slots]
 
-    print(f"Lesson Slots: {lesson_slots}")
-    return render_template('teacher/lesson_slots.html',
-                           lesson_slots=lesson_slots,
-                           start_date=start_date,
-                           end_date=end_date,
-                           datetime=datetime,
-                           timedelta=timedelta,
-                           pytz=pytz,
-                           user_timezone=user_timezone,
-                           form=form)
+    # Log the data being sent
+    app.logger.info(f"Returning lesson slots: {lesson_slots_json}")
 
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        # Handle AJAX request
+        return jsonify(lesson_slots_json)
+    else:
+        # Handle standard GET request
+        return render_template('teacher/lesson_slots.html', form=form)
+
+
+# Helper functions
+def manage_slot(start_time_str, end_time_str, teacher_id, timezone, action):
+    local_start_time = datetime.strptime(start_time_str, '%Y-%m-%dT%H:%M')
+    start_time = timezone.localize(local_start_time).astimezone(pytz.UTC)
+    local_end_time = datetime.strptime(end_time_str, '%Y-%m-%dT%H:%M')
+    end_time = timezone.localize(local_end_time).astimezone(pytz.UTC)
+
+    existing_slot = LessonSlot.query.filter_by(teacher_id=teacher_id, start_time=start_time, end_time=end_time).first()
+    if existing_slot and action == 'close':
+        db.session.delete(existing_slot)
+        return {'status': 'success', 'message': 'Lesson slot closed!'}
+    elif not existing_slot and action == 'open':
+        new_slot = LessonSlot(teacher_id=teacher_id, start_time=start_time, end_time=end_time)
+        db.session.add(new_slot)
+        return {'status': 'success', 'message': 'New lesson slot created!'}
+    else:
+        return {'status': 'error', 'message': 'Invalid action or lesson slot does not exist.'}
+
+
+    
+def open_slot(start_time, end_time, teacher_id, timezone):
+    start_time = ensure_timezone_aware(start_time, timezone)
+    end_time = ensure_timezone_aware(end_time, timezone)
+    new_slot = LessonSlot(teacher_id=teacher_id, start_time=start_time, end_time=end_time, is_booked=False)
+    db.session.add(new_slot)
+    db.session.commit()
+    return {'status': 'success', 'slot_id': new_slot.id}
+
+def close_slot(slot_id, teacher_id):
+    slot = LessonSlot.query.get(slot_id)
+    if slot and slot.teacher_id == teacher_id:
+        db.session.delete(slot)
+        db.session.commit()
+        return {'status': 'success'}
+    else:
+        return {'status': 'error'}
 
 @app.route('/teacher/update_slot', methods=['POST'])
 @login_required
@@ -727,22 +782,29 @@ def update_lesson_slot():
 
     if action == 'open':
         local_start_time = datetime.strptime(data['start_time'], '%Y-%m-%dT%H:%M:%S')
-        start_time = ensure_timezone_aware(local_start_time, teacher.timezone)
         local_end_time = datetime.strptime(data['end_time'], '%Y-%m-%dT%H:%M:%S')
-        end_time = ensure_timezone_aware(local_end_time, teacher.timezone)
-        new_slot = LessonSlot(teacher_id=current_user.id, start_time=start_time, end_time=end_time, is_booked=False)
-        db.session.add(new_slot)
-        db.session.commit()
-        return jsonify({'status': 'success', 'slot_id': new_slot.id})
+        return jsonify(open_slot(local_start_time, local_end_time, current_user.id, user_timezone))
     elif action == 'close':
-        slot = LessonSlot.query.get(slot_id)
-        if slot and slot.teacher_id == current_user.id:
-            db.session.delete(slot)
-            db.session.commit()
-            return jsonify({'status': 'success'})
+        return jsonify(close_slot(slot_id, current_user.id))
 
     return jsonify({'status': 'error'})
 
+@app.route('/update-slot-status', methods=['POST'])
+@login_required
+def update_slot_status():
+    data = request.get_json()
+    slot_id = data['slot_id']
+    is_open = data['is_open']
+
+    slot = LessonSlot.query.get(slot_id)
+    if slot and slot.teacher_id == current_user.id:
+        if slot.is_booked and is_open:
+            return jsonify({'status': 'error', 'message': 'Cannot open a slot that is already booked.'})
+        slot.is_booked = not is_open
+        db.session.commit()
+        return jsonify({'status': 'success'})
+
+    return jsonify({'status': 'error'})
 
 @app.route('/teacher/update_slots', methods=['POST'])
 @login_required
@@ -772,6 +834,8 @@ def update_slots():
                 slot_id = item['slot_id']
                 slot = LessonSlot.query.get(slot_id)
                 if slot and slot.teacher_id == current_user.id:
+                    if slot.is_booked:
+                        return jsonify({'status': 'error', 'message': 'Cannot close a slot that is already booked.'})
                     db.session.delete(slot)
                     db.session.commit()
                     updates.append({
