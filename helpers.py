@@ -39,23 +39,6 @@ def save_image_file(image_file):
     return new_filename
 
 
-def convert_to_timezone(dt, timezone_str):
-    """
-    Convert a datetime object to a specific timezone.
-    The line user_timezone = pytz.timezone(teacher.timezone) 
-    creates a timezone object representing the teacher's timezone, 
-    which can be used to convert datetime objects to that timezone.
-    Args:
-        dt (datetime): The datetime object to convert.
-        timezone_str (str): The timezone to convert to.
-
-    Returns:
-        datetime: The converted datetime object.
-    """
-    user_timezone = pytz.timezone(timezone_str)
-    return dt.replace(tzinfo=timezone.utc).astimezone(user_timezone)
-
-
 def ensure_timezone_aware(dt, timezone_str):
     """
     Ensure a datetime object is timezone-aware.

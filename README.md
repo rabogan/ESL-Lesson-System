@@ -14,3 +14,6 @@ CSRF protection is an important part of securing your web application, but it's 
 SQL Injection is prevented in Flask by using the SQLAlchemy ORM for database queries. SQLAlchemy automatically escapes any variables that are passed into a query, which prevents SQL Injection attacks.
 
 In your code, you're using SQLAlchemy, so as long as you're not manually constructing SQL queries with string concatenation or formatting, you should be safe from SQL Injection attacks.
+
+# Student Default Image: Photo by <a href="https://unsplash.com/@jjying?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">JJ Ying</a> on <a href="https://unsplash.com/photos/mt-fuji-japan-9Qwbfa_RM94?utm_content=creditCopyText&utm_medium=referral&utm_source=unsplash">Unsplash</a>
+  

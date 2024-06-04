@@ -1097,6 +1097,7 @@ def edit_student_profile():
 
     return render_template('student/edit_student_profile.html', form=form, profile=current_user.profile, profile_updated=request.args.get('updated', False))
 
+
 @app.route('/student/book_lesson', methods=['GET', 'POST'])
 @login_required
 def student_book_lesson():
@@ -1121,14 +1122,11 @@ def student_book_lesson():
     # PERFECT WEEK OFFSET!
     # Calculate the start and end of the current week in the student/teacher's timezone
     start_of_week = today - timedelta(days=today.weekday(), hours=today.hour, minutes=today.minute, seconds=today.second, microseconds=today.microsecond) + timedelta(weeks=week_offset)
-    end_of_week = start_of_week + timedelta(days=7)
-    start_of_week = today - timedelta(days=today.weekday(), hours=today.hour, minutes=today.minute, seconds=today.second, microseconds=today.microsecond) + timedelta(weeks=week_offset)
     end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59)
-    print(f"Book Lessons From {start_of_week.strftime('%A, %B %d, %Y %I:%M %p')} - {end_of_week.strftime('%A, %B %d, %Y %I:%M %p')}")
-
     start_of_week_utc = start_of_week.astimezone(timezone.utc)
     end_of_week_utc = end_of_week.astimezone(timezone.utc)
-    
+    print(f"Book Lessons From {start_of_week.strftime('%A, %B %d, %Y %I:%M %p')} - {end_of_week.strftime('%A, %B %d, %Y %I:%M %p')}")
+
     if request.method == 'POST':
         # Retrieve available slots from session
         available_slots_dict = session.get('available_slots', None)
@@ -1169,8 +1167,7 @@ def student_book_lesson():
             }
             for slot in available_slots
         ]
-
-        # Store the list of dictionaries in the session
+        # Store the list of dictionaries in the session for use later
         session['available_slots'] = available_slots_dict
 
     # Convert lesson times to the student's timezone
@@ -1191,134 +1188,101 @@ def student_book_lesson():
     available_teachers = [teacher for teacher in Teacher.query.all() if teacher.id in available_teacher_ids]
     form.teacher.choices = [(teacher.id, teacher.username) for teacher in available_teachers]
 
-    if request.method == 'POST':
-        if form.validate_on_submit():
-            lesson_slot_id = form.lesson_slot.data
-            teacher_id = form.teacher.data
+    if request.method == 'POST' and form.validate_on_submit():
+        lesson_slot_id = form.lesson_slot.data
+        teacher_id = form.teacher.data
 
-            # Debugging logs
-            print('Form Submitted')
-            print('Teacher ID:', teacher_id)
-            print('Lesson Slot ID:', lesson_slot_id)
+        if not lesson_slot_id or not teacher_id:
+            print('Please select a valid lesson slot and teacher.')
+            return render_template(
+                'student/book_lesson.html', 
+                form=form, 
+                available_slots=available_slots, 
+                available_teachers=available_teachers,
+                week_offset=week_offset, 
+                remaining_lessons=student.remaining_lessons, 
+                start_of_week=start_of_week, 
+                end_of_week=end_of_week)
 
-            if not lesson_slot_id or not teacher_id:
-                print('Please select a valid lesson slot and teacher.')
-                return render_template(
-                    'student/book_lesson.html',
-                    available_slots=available_slots,
-                    available_teachers=available_teachers,
-                    week_offset=week_offset,
-                    form=form,
-                    remaining_lessons=student.remaining_lessons,
-                    start_of_week=start_of_week,
-                    end_of_week=end_of_week
-                )
-            
-            # Fetch the lesson slot
-            lesson_slot = db.session.get(LessonSlot, lesson_slot_id)
-            if lesson_slot is None:
-                print('Invalid lesson slot selected')
-                return render_template(
-                    'student/book_lesson.html',
-                    available_slots=available_slots,
-                    available_teachers=available_teachers,
-                    week_offset=week_offset,
-                    form=form,
-                    remaining_lessons=student.remaining_lessons,
-                    start_of_week=start_of_week,
-                    end_of_week=end_of_week
-                )
+        lesson_slot = db.session.get(LessonSlot, lesson_slot_id)
+        if lesson_slot is None:
+            print('Invalid lesson slot selected')
+            return render_template(
+                'student/book_lesson.html', 
+                form=form, 
+                available_slots=available_slots, 
+                available_teachers=available_teachers, 
+                week_offset=week_offset, 
+                remaining_lessons=student.remaining_lessons, 
+                start_of_week=start_of_week, 
+                end_of_week=end_of_week)
 
-            # Convert lesson_slot.start_time to the student's timezone for comparison
-            lesson_start_time = ensure_timezone_aware(lesson_slot.start_time, student.timezone)
-            
-            # Check if the lesson slot exists and is not already booked
-            if lesson_slot.is_booked or lesson_start_time < current_time:
-                print('Lesson slot is not available')
-                return render_template(
-                    'student/book_lesson.html',
-                    available_slots=available_slots,
-                    available_teachers=available_teachers,
-                    week_offset=week_offset,
-                    form=form,
-                    remaining_lessons=student.remaining_lessons,
-                    start_of_week=start_of_week,
-                    end_of_week=end_of_week
-                )
+        if lesson_slot.is_booked or ensure_timezone_aware(lesson_slot.start_time, student.timezone) < current_time:
+            print('Lesson slot is not available')
+            return render_template(
+                'student/book_lesson.html', 
+                form=form, 
+                available_slots=available_slots, 
+                available_teachers=available_teachers, 
+                week_offset=week_offset, 
+                remaining_lessons=student.remaining_lessons, 
+                start_of_week=start_of_week, 
+                end_of_week=end_of_week)
 
-            # Check if the student has enough lessons purchased
-            if student.lessons_purchased <= student.number_of_lessons:
-                print('Not enough points to book a lesson')
-                print('Lessons purchased:', student.lessons_purchased)
-                print('Number of lessons taken:', student.number_of_lessons)
-                return render_template(
-                    'student/book_lesson.html',
-                    available_slots=available_slots,
-                    available_teachers=available_teachers,
-                    week_offset=week_offset,
-                    form=form,
-                    remaining_lessons=student.remaining_lessons,
-                    start_of_week=start_of_week,
-                    end_of_week=end_of_week
-                )
+        if student.lessons_purchased <= student.number_of_lessons:
+            print('Not enough points to book a lesson')
+            return render_template(
+                'student/book_lesson.html', 
+                form=form, 
+                available_slots=available_slots, 
+                available_teachers=available_teachers, 
+                week_offset=week_offset, 
+                remaining_lessons=student.remaining_lessons, 
+                start_of_week=start_of_week, 
+                end_of_week=end_of_week)
 
-            # Create a new lesson record
-            lesson_record = LessonRecord(
-                student_id=current_user.id,
-                teacher_id=teacher_id,
-                lesson_slot_id=lesson_slot.id,
-            )
-            db.session.add(lesson_record)
-            db.session.flush()  # Ensure the lesson_record.id is available
+        lesson_record = LessonRecord(student_id=current_user.id, teacher_id=teacher_id, lesson_slot_id=lesson_slot.id)
+        db.session.add(lesson_record)
+        db.session.flush()
 
-            # Create a new booking
-            booking = Booking(student_id=student.id, lesson_slot_id=lesson_slot.id, status='booked', lesson_record_id=lesson_record.id)
-            db.session.add(booking)
+        booking = Booking(student_id=student.id, lesson_slot_id=lesson_slot.id, status='booked', lesson_record_id=lesson_record.id)
+        db.session.add(booking)
 
-            # Update the lesson slot and student
-            lesson_slot.is_booked = True
-            student.number_of_lessons += 1
+        lesson_slot.is_booked = True
+        student.number_of_lessons += 1
 
-            # Remove the booked slot from session
-            available_slots_dict = session['available_slots']
-            available_slots_dict = [slot for slot in available_slots_dict if slot['id'] != lesson_slot_id]
-            session['available_slots'] = available_slots_dict
+        session['available_slots'] = [slot for slot in session['available_slots'] if slot['id'] != lesson_slot_id]
 
-            # Commit the changes to the database
-            try:
-                db.session.commit()
-                print('Lesson booked successfully')
-                # Reload the page to update available slots
-                return redirect(url_for('student_book_lesson', week_offset=week_offset))
-            except Exception as e:
-                db.session.rollback()
-                print(f'Error booking lesson: {e}')
-                return render_template(
-                    'student/book_lesson.html',
-                    available_slots=available_slots,
-                    available_teachers=available_teachers,
-                    week_offset=week_offset,
-                    form=form,
-                    remaining_lessons=student.remaining_lessons,
-                    start_of_week=start_of_week,
-                    end_of_week=end_of_week
-                )
+        try:
+            db.session.commit()
+            print('Lesson booked successfully')
+            return redirect(url_for('student_book_lesson', week_offset=week_offset))
+        except Exception as e:
+            db.session.rollback()
+            print(f'Error booking lesson: {e}')
+            return render_template(
+                'student/book_lesson.html', 
+                form=form, 
+                available_slots=available_slots, 
+                available_teachers=available_teachers, 
+                week_offset=week_offset, 
+                remaining_lessons=student.remaining_lessons, 
+                start_of_week=start_of_week, 
+                end_of_week=end_of_week)
 
-        else:
-            print('Form validation failed')
-            print(form.errors)
-    
-    print(f"Book Lessons From {start_of_week.strftime('%A, %B %d, %Y %I:%M %p')} - {end_of_week.strftime('%A, %B %d, %Y %I:%M %p')}")
+    elif request.method == 'POST':
+        print('Form validation failed')
+        print(form.errors)
+
     return render_template(
-        'student/book_lesson.html',
-        available_slots=available_slots,
-        available_teachers=available_teachers,
-        week_offset=week_offset,
-        form=form,
-        remaining_lessons=student.remaining_lessons,
-        start_of_week=start_of_week,
-        end_of_week=end_of_week
-    )
+        'student/book_lesson.html', 
+        form=form, 
+        available_slots=available_slots, 
+        available_teachers=available_teachers, 
+        week_offset=week_offset, 
+        remaining_lessons=student.remaining_lessons, 
+        start_of_week=start_of_week, 
+        end_of_week=end_of_week)
 
 
 # Flask route
