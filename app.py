@@ -1,4 +1,4 @@
-import json
+import json, html
 import pytz
 import logging
 from flask_limiter import Limiter
@@ -14,7 +14,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_wtf import FlaskForm, CSRFProtect
 from flask_wtf.file import FileAllowed
 from wtforms import ValidationError, SelectField, DateTimeField, StringField, PasswordField, SubmitField, BooleanField, HiddenField, IntegerField, FileField, TextAreaField, HiddenField
-from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional, NumberRange
+from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional, NumberRange, InputRequired
 
 
 # Initialize Flask app
@@ -99,22 +99,37 @@ class TeacherEditsStudentForm(FlaskForm):
     
 
 class LessonRecordForm(FlaskForm):
-    lesson_summary = TextAreaField('Lesson Summary')
-    strengths = TextAreaField('Strengths')
-    areas_to_improve = TextAreaField('Areas to Improve')
-    new_words = TextAreaField('New Words', validators=[Optional()])
-    new_phrases = TextAreaField('New Phrases', validators=[Optional()])
+    csrf_token = HiddenField('CSRF Token', validators=[InputRequired()])
+    lesson_summary = TextAreaField('Lesson Summary', validators=[Optional()])
+    strengths = TextAreaField('Strengths', validators=[Optional()])
+    areas_to_improve = TextAreaField('Areas to Improve', validators=[Optional()])
+    new_words = HiddenField('New Words', default='[]', validators=[Optional()])
+    new_phrases = HiddenField('New Phrases', default='[]', validators=[Optional()])
     submit = SubmitField('Update Lesson')
 
     def validate_new_words(form, field):
-        words = json.loads(field.data) if field.data else []
-        if len(words) > 40:
-            raise ValidationError('You can add a maximum of 40 new words.')
+        app.logger.info(f"Validating new_words: {field.data}")
+        if field.data and field.data != '[]':
+            try:
+                words = json.loads(field.data)
+                for word in words:
+                    if not isinstance(word, str):
+                        raise ValidationError('Each word must be a string.')
+            except json.JSONDecodeError:
+                app.logger.error(f"Failed to decode JSON for new_words: {field.data}")
+                raise ValidationError('Invalid JSON data for new_words.')
 
     def validate_new_phrases(form, field):
-        phrases = json.loads(field.data) if field.data else []
-        if len(phrases) > 20:
-            raise ValidationError('You can add a maximum of 20 new phrases.')
+        app.logger.info(f"Validating new_phrases: {field.data}")
+        if field.data and field.data != '[]':
+            try:
+                phrases = json.loads(field.data)
+                for phrase in phrases:
+                    if not isinstance(phrase, str):
+                        raise ValidationError('Each phrase must be a string.')
+            except json.JSONDecodeError:
+                app.logger.error(f"Failed to decode JSON for new_phrases: {field.data}")
+            raise ValidationError('Invalid JSON data for new_phrases.')
 
 
 class LessonSlotsForm(FlaskForm):
@@ -219,9 +234,8 @@ def __repr__(self):
     return f"TeacherProfile('{self.age}', '{self.hobbies}', '{self.motto}', '{self.blood_type}', '{self.image_file}', '{self.from_location}')"
 
 
-# Since I'm not using ProgreSQL, I need to create a custom type to store JSON data in SQLite
 class JsonEncodedDict(types.TypeDecorator):
-    impl = types.String
+    impl = types.Text
 
     def process_bind_param(self, value, dialect):
         if value is None:
@@ -236,7 +250,6 @@ class JsonEncodedDict(types.TypeDecorator):
             return json.loads(value)
 
 
-# LessonRecord model
 class LessonRecord(db.Model):
     __tablename__ = 'lesson_record'
     id = db.Column(db.Integer, primary_key=True)
@@ -642,6 +655,8 @@ def edit_teacher_profile():
     profile_updated = request.args.get('updated', False)
 
     if form.validate_on_submit():
+        print(form.new_words.data)
+        print(form.new_phrases.data)
         current_user.profile.age = form.age.data if form.age.data else None
         current_user.profile.hobbies = form.hobbies.data.strip() if form.hobbies.data else ''
         current_user.profile.motto = form.motto.data.strip() if form.motto.data else ''
@@ -894,13 +909,33 @@ def student_profile(student_id):
     return render_template('view_student_profile.html', form=form, student=student, profile_updated=profile_updated)
 
 
+def is_valid_json(json_data):
+    try:
+        json.loads(json_data)
+    except ValueError:
+        return False
+    return True
+
+def process_form_data(form_data):
+    if is_valid_json(form_data):
+        return [html.escape(item) for item in json.loads(form_data)]
+    elif form_data:
+        return [html.escape(item) for item in form_data.split(',')]
+    else:
+        return []
+
+def convert_to_utc(dt, timezone):
+    dt = ensure_timezone_aware(dt, timezone)
+    return dt.astimezone(pytz.utc)
+
+
 @app.route('/teacher/edit_lesson/<int:lesson_id>', methods=['GET', 'POST'])
 @login_required
 def edit_lesson(lesson_id):
-    """
-    Allow the teacher to edit a lesson record.
-    """
+    app.logger.info(f"Editing lesson with ID {lesson_id}")
+    
     if session['user_type'] != 'teacher':
+        app.logger.info("User is not a teacher")
         return redirect(url_for('index'))
 
     lesson = db.session.get(LessonRecord, lesson_id)
@@ -908,48 +943,35 @@ def edit_lesson(lesson_id):
         app.logger.error(f"Lesson with ID {lesson_id} not found.")
         return render_template('404.html'), 404
 
-
-    form = LessonRecordForm()  # Instantiate the updated form
-
+    form = LessonRecordForm(obj=lesson)
+    if request.method == 'GET':
+        form.new_words.data = json.dumps(lesson.new_words)
+        form.new_phrases.data = json.dumps(lesson.new_phrases)
+        app.logger.info(f"Pre-populated form data: new_words={form.new_words.data}, new_phrases={form.new_phrases.data}")
+    
     if form.validate_on_submit():
+        app.logger.info("Form validated successfully")
         lesson.lesson_summary = form.lesson_summary.data
         lesson.strengths = form.strengths.data
         lesson.areas_to_improve = form.areas_to_improve.data
+        lesson.new_words = process_form_data(form.new_words.data)
+        lesson.new_phrases = process_form_data(form.new_phrases.data)
 
-        try:
-            lesson.new_words = json.loads(form.new_words.data) if form.new_words.data else []
-            lesson.new_phrases = json.loads(form.new_phrases.data) if form.new_phrases.data else []
-        except json.JSONDecodeError:
-            flash('Invalid input for new words or new phrases. Please try again.', 'danger')
-            return render_template('teacher/edit_lesson.html', form=form, lesson=lesson)
-
-        # Update the lesson edit time to the current UTC time
-        lesson.lastEditTime = datetime.utcnow()
-
+        teacher = db.session.query(Teacher).get(session['user_id'])
+        lesson.lastEditTime = convert_to_utc(datetime.now(timezone.utc), teacher.timezone)
+        
         db.session.commit()
+        app.logger.info("Lesson updated successfully")
         flash('Lesson updated successfully!', 'success')
         return redirect(url_for('teacher_dashboard'))
-
-    # Pre-fill the form with existing data
-    if request.method == 'GET':
-        form.lesson_summary.data = lesson.lesson_summary
-        form.strengths.data = lesson.strengths
-        form.areas_to_improve.data = lesson.areas_to_improve
-        form.new_words.data = json.dumps(lesson.new_words)
-        form.new_phrases.data = json.dumps(lesson.new_phrases)
-
-    # Converting To Teacher's Timezone
-    teacher = db.session.get(Teacher, session['user_id'])
-    today = datetime.now(timezone.utc)
-    today = ensure_timezone_aware(today, teacher.timezone)
-    
-    # Convert the current time in the teacher's timezone to UTC
-    utc_now = today.astimezone(pytz.utc)
-
-    # Update the lesson edit time to the current UTC time
-    lesson.lastEditTime = utc_now
+    else:
+        app.logger.error(f"Form validation failed: {form.errors}")
+        app.logger.error(f"Form data: {form.data}")
+        app.logger.error(f"CSRF token: {form.csrf_token.data}")
+        flash('There was an error updating the lesson. Please check your input.', 'error')
 
     return render_template('teacher/edit_lesson.html', form=form, lesson=lesson)
+
 
 
 # Student Only Routes!

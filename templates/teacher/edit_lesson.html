@@ -7,11 +7,10 @@
 {% block main %}
 <section class="bg-white dark:bg-gray-900">
     <div class="max-w-screen-xl px-4 py-8 mx-auto lg:py-16">
-        <!-- Breadcrumb Navigation -->
         <h1 class="text-3xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white mb-8">
             Edit Lesson for {{ lesson.student.username }}
         </h1>
-        <form method="POST" id="edit-lesson-form">
+        <form method="POST" action="{{ url_for('edit_lesson', lesson_id=lesson.id) }}" id="edit-lesson-form">
             {{ form.hidden_tag() }}
             <div class="mb-4">
                 {{ form.lesson_summary.label(class="block text-sm font-medium text-gray-700 dark:text-gray-300") }}
@@ -30,7 +29,9 @@
                 <input type="text" id="new_word" class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-100" placeholder="Type a new word and hit Enter">
                 <div id="new_words_list" class="mt-2">
                     {% for word in lesson.new_words %}
-                    <span class="inline-block bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium mr-2 mb-2 px-3 py-1 rounded">{{ word }}</span>
+                    <span class="inline-block bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium mr-2 mb-2 px-3 py-1 rounded">
+                        {{ word }}<span class="remove-tag cursor-pointer"> x</span>
+                    </span>
                     {% endfor %}
                 </div>
             </div>
@@ -39,7 +40,9 @@
                 <input type="text" id="new_phrase" class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-100" placeholder="Type a new phrase and hit Enter">
                 <div id="new_phrases_list" class="mt-2">
                     {% for phrase in lesson.new_phrases %}
-                    <span class="inline-block bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium mr-2 mb-2 px-3 py-1 rounded">{{ phrase }}</span>
+                    <span class="inline-block bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium mr-2 mb-2 px-3 py-1 rounded">
+                        {{ phrase }}<span class="remove-tag cursor-pointer"> x</span>
+                    </span>
                     {% endfor %}
                 </div>
             </div>
@@ -57,65 +60,68 @@
 <script>
     document.addEventListener('DOMContentLoaded', (event) => {
         const newWordInput = document.getElementById('new_word');
-        const newWordsList = document.getElementById('new_words_list');
-        const hiddenNewWords = document.getElementById('{{ form.new_words.id }}');
-        const newWords = {{ lesson.new_words | tojson }};
-    
         const newPhraseInput = document.getElementById('new_phrase');
+        const newWordsList = document.getElementById('new_words_list');
         const newPhrasesList = document.getElementById('new_phrases_list');
-        const hiddenNewPhrases = document.getElementById('{{ form.new_phrases.id }}');
-        const newPhrases = {{ lesson.new_phrases | tojson }};
     
-        function updateHiddenFields() {
-            hiddenNewWords.value = JSON.stringify(newWords);
-            hiddenNewPhrases.value = JSON.stringify(newPhrases);
+        function addTag(value, list) {
+            const span = document.createElement('span');
+            span.textContent = value;
+            span.className = 'inline-block bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium mr-2 mb-2 px-3 py-1 rounded';
+            const closeBtn = document.createElement('span');
+            closeBtn.textContent = ' x';
+            closeBtn.className = 'remove-tag cursor-pointer';
+            closeBtn.addEventListener('click', () => {
+                list.removeChild(span);
+                updateHiddenField(list, document.querySelector(`input[name="${list.id.replace('_list', '')}"]`));
+            });
+            span.appendChild(closeBtn);
+            list.appendChild(span);
         }
     
-        function addTag(tag, list, array) {
-            array.push(tag);
-            const span = document.createElement('span');
-            span.textContent = tag;
-            span.classList.add('inline-block', 'bg-gray-200', 'dark:bg-gray-600', 'text-gray-800', 'dark:text-gray-200', 'text-sm', 'font-medium', 'mr-2', 'mb-2', 'px-3', 'py-1', 'rounded');
-            list.appendChild(span);
-            updateHiddenFields();
+        function updateHiddenField(list, hiddenField) {
+            const values = Array.from(list.children).map(child => child.textContent.replace(' x', ''));
+            hiddenField.value = JSON.stringify(values);
+            console.log(`Updated ${hiddenField.name}: ${hiddenField.value}`);
         }
     
         newWordInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
                 event.preventDefault();
                 if (newWordInput.value.trim() !== '') {
-                    addTag(newWordInput.value.trim(), newWordsList, newWords);
+                    addTag(newWordInput.value.trim(), newWordsList);
                     newWordInput.value = '';
+                    updateHiddenField(newWordsList, document.querySelector('input[name="new_words"]'));
                 }
             }
         });
-        
+    
         newPhraseInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
                 event.preventDefault();
                 if (newPhraseInput.value.trim() !== '') {
-                    addTag(newPhraseInput.value.trim(), newPhrasesList, newPhrases);
+                    addTag(newPhraseInput.value.trim(), newPhrasesList);
                     newPhraseInput.value = '';
+                    updateHiddenField(newPhrasesList, document.querySelector('input[name="new_phrases"]'));
                 }
             }
         });
     
-        document.getElementById('edit-lesson-form').addEventListener('keydown', (event) => {
-            if ((event.target === newWordInput || event.target === newPhraseInput) && event.key === 'Enter') {
+        // Initial setup for existing tags
+        document.querySelectorAll('.remove-tag').forEach(tag => {
+            tag.addEventListener('click', function(event) {
                 event.preventDefault();
-            }
-        });
-
-        document.getElementById('edit-lesson-form').addEventListener('submit', (event) => {
-            if (newWordInput.value.trim() !== '' || newPhraseInput.value.trim() !== '') {
-                event.preventDefault();
-                alert('Please press Enter after adding new words or phrases.');
-            } else {
-                updateHiddenFields();
-            }
+                const wordOrPhrase = tag.parentNode;
+                wordOrPhrase.parentNode.removeChild(wordOrPhrase);
+                updateHiddenField(wordOrPhrase.parentNode, document.querySelector(`input[name="${wordOrPhrase.parentNode.id.replace('_list', '')}"]`));
+            });
         });
     
-        updateHiddenFields();
+        // Update hidden fields on form submission
+        document.getElementById('edit-lesson-form').addEventListener('submit', function(event) {
+            updateHiddenField(newWordsList, document.querySelector('input[name="new_words"]'));
+            updateHiddenField(newPhrasesList, document.querySelector('input[name="new_phrases"]'));
+        });
     });
 </script>
 {% endblock %}
