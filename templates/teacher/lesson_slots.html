@@ -5,31 +5,25 @@
 {% endblock %}
 
 {% block main %}
-<section class="bg-white dark:bg-gray-900">
-    <div class="max-w-screen-xl px-4 py-8 mx-auto lg:py-16">
-        <h1 class="text-3xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white mb-8 text-center">
-            Manage Lesson Slots
-        </h1>
-
-        <form id="unique-lessonSlotsForm" method="POST">
+<section class="bg-white dark:bg-gray-900 flex-grow flex items-center justify-center">
+    <div class="max-w-screen-2xl px-4 py-1 mx-auto lg:gap-8 xl:gap-0 lg:py-4 flex flex-col items-center">
+        <h1 class="max-w-2xl mt-4 text-3xl font-extrabold leading-none tracking-tight md:text-4xl xl:text-5xl dark:text-white text-center">Manage Lesson Slots</h1>
+        
+        <form id="unique-lessonSlotsForm" method="POST" class="w-full">
             {{ form.hidden_tag() }}
         </form>
         
-        <div class="flex dark:text-white justify-center my-4 space-x-4">
-            <button id="unique-prev-week" class="btn btn-secondary">Previous Week</button>
-            <button id="unique-next-week" class="btn btn-secondary">Next Week</button>
-        </div>
-        
-        <div class="flex dark:text-white justify-center my-4">
-            <button id="unique-edit-button" class="btn btn-primary">Edit Slots</button>
-        </div>
-        
-        <div class="flex justify-center dark:text-white my-4 space-x-4">
-            <button id="unique-submit-button" class="btn btn-success hidden">Submit Changes</button>
-            <button id="unique-cancel-button" class="btn btn-danger hidden">Cancel</button>
+        <div class="w-full flex justify-between items-center mt-4">
+            <button id="unique-prev-week" class="btn btn-secondary transition duration-500 ease-in-out px-4 py-2 font-semibold rounded-lg shadow-md text-white bg-gray-500 hover:bg-gray-700">Previous Week</button>
+            <div class="flex space-x-4">
+                <button id="unique-edit-button" class="btn btn-primary px-4 py-2 font-semibold rounded-lg shadow-md text-white bg-blue-500 hover:bg-blue-700 transition duration-500 ease-in-out">Edit Slots</button>
+                <button id="unique-submit-button" class="btn btn-success px-4 py-2 font-semibold rounded-lg shadow-md text-white bg-green-500 hover:bg-green-700 transition duration-500 ease-in-out hidden">Submit Changes</button>
+                <button id="unique-cancel-button" class="btn btn-danger px-4 py-2 font-semibold rounded-lg shadow-md text-white bg-red-500 hover:bg-red-700 transition duration-500 ease-in-out hidden">Cancel</button>
+            </div>
+            <button id="unique-next-week" class="btn btn-secondary transition duration-500 ease-in-out px-4 py-2 font-semibold rounded-lg shadow-md text-white bg-gray-500 hover:bg-gray-700">Next Week</button>
         </div>
 
-        <div id="tableContainer"></div> <!-- Container for the generated table -->
+        <div id="tableContainer" class="w-full xl:w-4/5 px-4 mt-4 overflow-x-auto"></div>
     </div>
 </section>
 {% endblock %}
@@ -45,6 +39,7 @@
         currentStartDate.setHours(0, 0, 0, 0);
 
         let changes = [];
+        let editEnabled = false;
 
         // Extract CSRF token from the hidden form field
         const csrfToken = $('input[name="csrf_token"]').val();
@@ -56,32 +51,31 @@
                 }
             }
         });
+
         // Function to update the table with received data
 function updateTable(data) {
     console.log('Data received in updateTable:', data);
     const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    let headerRow = '<tr class="bg-gray-200 dark:bg-gray-700"><th class="border border-gray-300 dark:border-gray-600 p-2 dark:text-gray-100">Time</th>';
+    let headerRow = '<tr class="bg-gray-200 dark:bg-gray-700"><th class="border border-gray-300 dark:border-gray-600 py-1 dark:text-gray-100">Time</th>';
 
     // Create the header row for the dates
     for (let i = 0; i < 7; i++) {
         const date = new Date(currentStartDate);
         date.setDate(currentStartDate.getDate() + i);
-        headerRow += `<th class="border border-gray-300 dark:border-gray-600 p-2 dark:text-gray-100">${daysOfWeek[i]} ${date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</th>`;
+        headerRow += `<th class="border border-gray-300 dark:border-gray-600 py-1 dark:text-gray-100">${daysOfWeek[i]} ${date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</th>`;
     }
     headerRow += '</tr>';
 
     // Create the body rows for each hour
     let bodyRows = '';
     for (let hour = 7; hour <= 23; hour++) {
-        console.log(`Processing hour: ${hour}`);
-        bodyRows += `<tr><td class="border border-gray-300 dark:border-gray-600 dark:text-gray-100 p-2 text-center">${hour}:00</td>`;
+        bodyRows += `<tr><td class="border border-gray-300 dark:border-gray-600 dark:text-gray-100 py-1 text-center">${hour}:00</td>`;
         for (let i = 0; i < 7; i++) {
             const cellTime = new Date(currentStartDate);
             cellTime.setDate(currentStartDate.getDate() + i);
             cellTime.setHours(hour, 0, 0, 0);
             const cellTimeInUTC = new Date(cellTime.getTime() + cellTime.getTimezoneOffset() * 60 * 1000);
             const slot = data.find(slot => new Date(slot.start_time).getTime() === cellTimeInUTC.getTime());
-            console.log(`Slot for cellTime ${cellTimeInUTC}:`, slot);
             let cellClass = 'bg-gray-300 text-black text-center';
             let cellContent = '-';
             let dataSlotId = '';
@@ -91,18 +85,18 @@ function updateTable(data) {
             if (slot) {
                 // Convert the start_time to the user's local timezone
                 const localStartTime = new Date(slot.start_time);
-    const userLocalStartTime = new Date(localStartTime.getTime() + localStartTime.getTimezoneOffset() * 60 * 1000);
-    const localStartTimeString = userLocalStartTime.toLocaleTimeString();
+                const userLocalStartTime = new Date(localStartTime.getTime() + localStartTime.getTimezoneOffset() * 60 * 1000);
+                const localStartTimeString = userLocalStartTime.toLocaleTimeString();
 
-    if (slot.status === 'Booked') {
-        cellClass = 'bg-blue-500 text-white text-center';
-        cellContent = 'BOOKED';
-    } else if (slot.status === 'Available') {
-        cellClass = 'bg-gold-300 text-black text-center';
-        cellContent = `OPEN LESSON ${localStartTimeString}`;
-        dataSlotId = `data-slot-id="${slot.slot_id}"`;
-        clickHandler = `onclick="toggleSlotStatus(this, 'close')"`;
-    }
+                if (slot.status === 'Booked') {
+                    cellClass = 'bg-blue-500 text-white text-center';
+                    cellContent = 'BOOKED';
+                } else if (slot.status === 'Available') {
+                    cellClass = 'bg-yellow-500 text-black text-center';
+                    cellContent = 'OPEN LESSON';
+                    dataSlotId = `data-slot-id="${slot.slot_id}"`;
+                    clickHandler = `onclick="toggleSlotStatus(this, 'close')"`;
+                }
             } else {
                 clickHandler = `onclick="toggleSlotStatus(this, 'open')"`;
             }
@@ -113,49 +107,55 @@ function updateTable(data) {
                 clickHandler = '';
             }
 
-            bodyRows += `<td class="border border-gray-300 dark:border-gray-600 p-2 ${cellClass}" ${dataSlotId} ${clickHandler} ${dataTime}>${cellContent}</td>`;
+            bodyRows += `<td class="border border-gray-300 dark:border-gray-600 py-1 ${cellClass} hover:bg-gray-400 dark:hover:bg-gray-600" ${dataSlotId} ${clickHandler} ${dataTime}>${cellContent}</td>`;
         }
         bodyRows += '</tr>';
     }
-
-    const tableHtml = `<table class="table-auto w-full border-collapse border border-gray-300 dark:border-gray-700 mt-8"><thead>${headerRow}</thead><tbody>${bodyRows}</tbody></table>`;
+    
+    const tableHtml = `<table class="table-fixed w-full border-collapse border border-gray-300 dark:border-gray-700 mb-4"><thead>${headerRow}</thead><tbody>${bodyRows}</tbody></table>`;
     document.getElementById('tableContainer').innerHTML = tableHtml;
 }
 
         // Function to toggle slot status
-        // Function to toggle slot status
-window.toggleSlotStatus = function(cell, action) {
-    console.log('toggleSlotStatus cell:', cell);
-    console.log('toggleSlotStatus action:', action);
-    const cellTime = new Date($(cell).data('time'));
-    let slotId = $(cell).data('slot-id');
+        window.toggleSlotStatus = function(cell, action) {
+            if (!editEnabled) return; // Prevent cell toggling if edit is not enabled
 
-    // Do nothing if the slot is booked or in the past
-    if ($(cell).hasClass('bg-blue-500') || $(cell).hasClass('cursor-not-allowed')) {
-        return;
-    }
+            console.log('toggleSlotStatus cell:', cell);
+            console.log('toggleSlotStatus action:', action);
+            const cellTime = new Date($(cell).data('time'));
+            let slotId = $(cell).data('slot-id');
 
-    if (action === 'open') {
-        // Convert cellTime to UTC before sending it to the server
-        const utcCellTime = new Date(cellTime.getTime() + cellTime.getTimezoneOffset() * 60 * 1000);
-        const utcEndTime = new Date(utcCellTime.getTime() + 60 * 60 * 1000);
+            // Do nothing if the slot is booked or in the past
+            if ($(cell).hasClass('bg-blue-500') || $(cell).hasClass('cursor-not-allowed')) {
+                return;
+            }
 
-        // Mark the cell as open lesson
-        $(cell).removeClass('bg-gray-300').addClass('bg-gold-300').text('OPEN LESSON');
-        changes.push({ action: 'open', start_time: utcCellTime.toISOString(), end_time: utcEndTime.toISOString() });
-    } else if (action === 'close') {
-        // Mark the cell as closed
-        $(cell).removeClass('bg-gold-300').addClass('bg-orange-300').text('CLOSED');
-        changes.push({ action: 'close', slot_id: slotId });
-        $(cell).attr('onclick', "toggleSlotStatus(this, 'undo')");
-    } else if (action === 'undo') {
-        // Revert the cell back to open lesson
-        $(cell).removeClass('bg-orange-300').addClass('bg-gold-300').text('OPEN LESSON');
-        changes = changes.filter(change => change.slot_id !== slotId);
-        $(cell).attr('onclick', "toggleSlotStatus(this, 'close')");
-    }
-};
+            if (action === 'open') {
+                if ($(cell).hasClass('bg-yellow-500')) {
+                    // Revert the cell to its initial state
+                    $(cell).removeClass('bg-yellow-500').addClass('bg-gray-300').text('-');
+                    changes = changes.filter(change => change.start_time !== cellTime.toISOString());
+                } else {
+                    // Convert cellTime to UTC before sending it to the server
+                    const utcCellTime = new Date(cellTime.getTime() + cellTime.getTimezoneOffset() * 60 * 1000);
+                    const utcEndTime = new Date(utcCellTime.getTime() + 60 * 60 * 1000);
 
+                    // Mark the cell as open lesson
+                    $(cell).removeClass('bg-gray-300').addClass('bg-yellow-500').text('OPEN LESSON');
+                    changes.push({ action: 'open', start_time: utcCellTime.toISOString(), end_time: utcEndTime.toISOString() });
+                }
+            } else if (action === 'close') {
+                // Mark the cell as closed
+                $(cell).removeClass('bg-yellow-500').addClass('bg-red-500').text('CLOSED');
+                changes.push({ action: 'close', slot_id: slotId });
+                $(cell).attr('onclick', "toggleSlotStatus(this, 'undo')");
+            } else if (action === 'undo') {
+                // Revert the cell back to open lesson
+                $(cell).removeClass('bg-red-500').addClass('bg-yellow-500').text('OPEN LESSON');
+                changes = changes.filter(change => change.slot_id !== slotId);
+                $(cell).attr('onclick', "toggleSlotStatus(this, 'close')");
+            }
+        };
 
         // Function to send an AJAX request to get lesson slots
         function sendDateRequest(offset) {
@@ -197,6 +197,7 @@ window.toggleSlotStatus = function(cell, action) {
 
         // Event listener for the edit button
         $('#unique-edit-button').click(function() {
+            editEnabled = true;
             $('#unique-submit-button').removeClass('hidden');
             $('#unique-cancel-button').removeClass('hidden');
             $('#unique-edit-button').addClass('hidden');
@@ -230,6 +231,7 @@ window.toggleSlotStatus = function(cell, action) {
                         $('#unique-submit-button').addClass('hidden');
                         $('#unique-cancel-button').addClass('hidden');
                         $('#unique-edit-button').removeClass('hidden');
+                        editEnabled = false;
                         sendDateRequest(0); // Reload the current week's schedule
                     } else {
                         alert('Error submitting changes: ' + response.message);
@@ -249,6 +251,7 @@ window.toggleSlotStatus = function(cell, action) {
             $('#unique-submit-button').addClass('hidden');
             $('#unique-cancel-button').addClass('hidden');
             $('#unique-edit-button').removeClass('hidden');
+            editEnabled = false;
             sendDateRequest(0); // Reload the current week's schedule
         });
 

@@ -1233,6 +1233,10 @@ input:checked + .toggle-bg {
   margin-top: 2rem;
 }
 
+.mt-\[-10px\] {
+  margin-top: -10px;
+}
+
 .mt-auto {
   margin-top: auto;
 }
@@ -1369,6 +1373,10 @@ input:checked + .toggle-bg {
   max-width: 80rem;
 }
 
+.max-w-screen-2xl {
+  max-width: 1536px;
+}
+
 .max-w-screen-lg {
   max-width: 1024px;
 }
@@ -1393,8 +1401,8 @@ input:checked + .toggle-bg {
   flex-grow: 1;
 }
 
-.table-auto {
-  table-layout: auto;
+.table-fixed {
+  table-layout: fixed;
 }
 
 .border-collapse {
@@ -1770,11 +1778,6 @@ input:checked + .toggle-bg {
   background-color: rgb(4 108 78 / var(--tw-bg-opacity));
 }
 
-.bg-orange-300 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(253 186 140 / var(--tw-bg-opacity));
-}
-
 .bg-red-500 {
   --tw-bg-opacity: 1;
   background-color: rgb(240 82 82 / var(--tw-bg-opacity));
@@ -1792,6 +1795,11 @@ input:checked + .toggle-bg {
 
 .bg-white\/50 {
   background-color: rgb(255 255 255 / 0.5);
+}
+
+.bg-yellow-500 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(194 120 3 / var(--tw-bg-opacity));
 }
 
 .object-contain {
@@ -1830,6 +1838,11 @@ input:checked + .toggle-bg {
 
 .p-8 {
   padding: 2rem;
+}
+
+.px-1 {
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
 }
 
 .px-2 {
@@ -2202,6 +2215,11 @@ input:checked + .toggle-bg {
 .hover\:bg-gray-200:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(229 231 235 / var(--tw-bg-opacity));
+}
+
+.hover\:bg-gray-400:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(156 163 175 / var(--tw-bg-opacity));
 }
 
 .hover\:bg-gray-600:hover {
@@ -2650,6 +2668,11 @@ input:checked + .toggle-bg {
     line-height: 2rem;
   }
 
+  .md\:text-4xl {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+  }
+
   .md\:text-5xl {
     font-size: 3rem;
     line-height: 1;
@@ -2757,6 +2780,11 @@ input:checked + .toggle-bg {
     padding-bottom: 0.75rem;
   }
 
+  .lg\:py-4 {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
   .lg\:py-8 {
     padding-top: 2rem;
     padding-bottom: 2rem;
@@ -2774,12 +2802,21 @@ input:checked + .toggle-bg {
 }
 
 @media (min-width: 1280px) {
+  .xl\:w-4\/5 {
+    width: 80%;
+  }
+
   .xl\:gap-0 {
     gap: 0px;
   }
 
   .xl\:p-0 {
     padding: 0px;
+  }
+
+  .xl\:text-5xl {
+    font-size: 3rem;
+    line-height: 1;
   }
 
   .xl\:text-6xl {
