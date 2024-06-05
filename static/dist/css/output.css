@@ -1233,10 +1233,6 @@ input:checked + .toggle-bg {
   margin-top: 2rem;
 }
 
-.mt-\[-10px\] {
-  margin-top: -10px;
-}
-
 .mt-auto {
   margin-top: auto;
 }
@@ -1838,11 +1834,6 @@ input:checked + .toggle-bg {
 
 .p-8 {
   padding: 2rem;
-}
-
-.px-1 {
-  padding-left: 0.25rem;
-  padding-right: 0.25rem;
 }
 
 .px-2 {
