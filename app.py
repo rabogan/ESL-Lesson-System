@@ -12,7 +12,7 @@ from helpers.auth_helpers import authenticate_user, create_user, create_profile,
 from helpers.date_helpers import convert_to_utc, ensure_timezone_aware, get_week_boundaries
 from helpers.file_helpers import save_image_file
 from helpers.form_helpers import process_form_data
-from helpers.teacher_helpers import get_teacher_by_id, get_teacher_profile_by_id
+from helpers.teacher_helpers import get_outstanding_lessons, get_teacher_by_id, get_teacher_profile_by_id, get_most_recent_lesson_record, get_upcoming_lessons
 from models import db, Student, StudentProfile, Teacher, TeacherProfile, LessonRecord, LessonSlot, Booking
 from forms import RegistrationForm, LoginForm, EditTeacherProfileForm, StudentProfileForm, TeacherEditsStudentForm, LessonRecordForm, LessonSlotsForm, StudentLessonSlotForm, CancelLessonForm
 from database import db, migrate
@@ -183,22 +183,18 @@ def student_login():
         password = form.password.data
         remember = form.remember.data
 
-        # Check the validity of the input
         if not username or not password:
             return render_template("apology.html", top="Error", bottom="Please provide a valid username and password"), 400
 
-        # Authenticate the student
         student = authenticate_user(Student, username, password)
         if student is None:
             return render_template("apology.html", top="Error", bottom="Invalid username or password"), 400
 
-        # Log in the user and store their ID and type in the session
         login_new_user(student, 'student')
         login_user(student, remember)
 
         return redirect(url_for("student_dashboard"))
     return render_template("student_login.html", form=form)
-
 
 @app.route("/teacher/register", methods=["GET", "POST"])
 @limiter.limit("5/minute")
@@ -239,16 +235,13 @@ def teacher_login():
         password = form.password.data
         remember = form.remember.data
 
-        # Check the validity of the input
         if not username or not password:
             return render_template("apology.html", top="Error", bottom="Please provide a valid username and password"), 400
 
-        # Authenticate the teacher
         teacher = authenticate_user(Teacher, username, password)
         if teacher is None:
             return render_template("apology.html", top="Error", bottom="Invalid username or password"), 400
 
-        # Log in the user and store their info in the session
         login_new_user(teacher, 'teacher')
         login_user(teacher, remember=remember)
 
@@ -257,6 +250,7 @@ def teacher_login():
 
 
 @app.route('/logout')
+@login_required
 def logout():
     """
     Log out the user and clear the session
@@ -264,7 +258,6 @@ def logout():
     logout_user()
     session.pop('user_id', None)
     session.pop('user_type', None)
-    flash('You were logged out')
     return redirect(url_for('index'))
 
 
@@ -272,56 +265,28 @@ def logout():
 @app.route('/teacher/teacher_dashboard')
 @login_required
 def teacher_dashboard():
+    """
+    A means of allowing easy schedule management: showing teachers their upcoming lessons and outstanding lesson records.
+    """
     # Ensure the current user is a teacher
     if session['user_type'] != 'teacher':
         return redirect(url_for('index'))
 
-    # Fetch the most recent lesson record for the logged-in teacher
-    most_recent_record = LessonRecord.query.filter(
-        and_(
-            LessonRecord.teacher_id == session['user_id'],
-            LessonRecord.lastEditTime <= datetime.now(timezone.utc),
-            LessonRecord.lesson_summary.isnot(None)
-        )
-    ).options(
-        joinedload(LessonRecord.student).joinedload(Student.profile)
-    ).order_by(LessonRecord.lastEditTime.desc()).first()
-
-    # Fetch all upcoming booked lesson slots for the logged-in teacher
-    upcoming_lessons = LessonSlot.query.filter(
-        and_(
-            LessonSlot.teacher_id == session['user_id'],
-            LessonSlot.start_time >= datetime.now(timezone.utc),
-            LessonSlot.is_booked == True
-        )
-    ).options(
-        joinedload(LessonSlot.booking).joinedload(Booking.student).joinedload(Student.profile)
-    ).order_by(LessonSlot.start_time.asc()).all()
-
-    # Debugging: Print the upcoming lessons
-    print(upcoming_lessons)
-
-    # Convert lesson times to the teacher's timezone
-    teacher = db.session.get(Teacher, session['user_id'])
+    teacher_id = session['user_id']
+    teacher = Teacher.query.get(teacher_id)
     if teacher is None:
-        app.logger.error(f"Teacher with ID {session['user_id']} not found.")
+        app.logger.error(f"Teacher with ID {teacher_id} not found.")
         return render_template('404.html'), 404
 
-    user_timezone = pytz.timezone(teacher.timezone)
-    
-    if most_recent_record:
-    # Ensure most_recent_record.lastEditTime and start_time are timezone-aware
-        most_recent_record.lastEditTime = ensure_timezone_aware(most_recent_record.lastEditTime, teacher.timezone)
-        most_recent_record.lesson_slot.start_time = ensure_timezone_aware(most_recent_record.lesson_slot.start_time, teacher.timezone)
-    # Ensure start_time of each upcoming lesson is timezone-aware
-    for lesson in upcoming_lessons:
-        lesson.start_time = ensure_timezone_aware(lesson.start_time, teacher.timezone)
-        
-    for lesson in upcoming_lessons:
-        print(lesson.start_time)
+    user_timezone = teacher.timezone
 
+    # Fetch the most recent lesson record and upcoming lessons
+    most_recent_record = get_most_recent_lesson_record(teacher_id, user_timezone)
+    upcoming_lessons = get_upcoming_lessons(teacher_id, user_timezone)
+    outstanding_lessons = get_outstanding_lessons(teacher_id, user_timezone)
+    
     # Pass the user_timezone to the template
-    return render_template('teacher/teacher_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record, upcoming_lessons=upcoming_lessons, user_timezone=user_timezone)
+    return render_template('teacher/teacher_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record, upcoming_lessons=upcoming_lessons, outstanding_lessons=outstanding_lessons, user_timezone=user_timezone)
 
 
 @app.route('/teacher/lesson_records')

@@ -63,6 +63,41 @@
             {% endif %}
         </div>
 
+        <!-- Outstanding Lesson Records Section -->
+        <div class="mb-16 text-center">
+            <h2 class="text-3xl font-bold dark:text-gray-300 mb-12">Outstanding Lesson Records</h2>
+            {% if outstanding_lessons %}
+            <div class="overflow-x-auto dark:text-gray-300 mb-16">
+                <table class="min-w-full bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                    <thead>
+                        <tr class="bg-gray-200 dark:bg-gray-700">
+                            <th class="py-3 px-4 text-center">Student</th>
+                            <th class="py-3 px-4 text-center">Date</th>
+                            <th class="py-3 px-4 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lesson in outstanding_lessons %}
+                        <tr class="border-b dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150">
+                            <td class="py-3 px-4 text-center">
+                                <a href="{{ url_for('student_profile', student_id=lesson.student.id) }}" class="text-blue-500 hover:underline dark:text-blue-400">
+                                    {{ lesson.student.username }}
+                                </a>
+                            </td>
+                            <td class="py-3 px-4 text-center">{{ lesson.lesson_slot.start_time.strftime('%B %d at %H:%M') }}</td>
+                            <td class="py-3 px-4 text-center">
+                                <a href="{{ url_for('edit_lesson', lesson_id=lesson.id) }}" class="text-blue-500 hover:underline dark:text-blue-400"><i class="fas fa-edit"></i> Edit Lesson</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-gray-900 dark:text-gray-100">No outstanding lesson records.</p>
+            {% endif %}
+        </div>
+
         <!-- Most Recent Lesson Record Section -->
         {% if most_recent_record %}
         <h2 class="text-3xl font-bold dark:text-gray-300 mb-12 text-center">Most Recent Lesson Record</h2>
@@ -134,8 +169,6 @@
                 </a>
             </div>
         </div>
-        {% else %}
-        <p class="text-gray-900 dark:text-gray-100">No lessons taken yet!</p>
         {% endif %}
     </div>
 </section>
