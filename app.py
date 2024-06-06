@@ -1,20 +1,20 @@
 import json
-import pytz
 import logging
+import pytz
+from datetime import datetime, timedelta, timezone
 from flask import Flask, session, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from sqlalchemy.orm import joinedload
-from datetime import datetime, timedelta, timezone
 from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
 from helpers.auth_helpers import authenticate_user, create_user, create_profile, login_new_user, is_username_taken
-from helpers.time_helpers import convert_to_utc, ensure_timezone_aware, get_week_boundaries, get_user_timezone
+from helpers.dashboard_helpers import get_most_recent_lesson_record, get_upcoming_lessons
+from helpers.edit_lesson_record import get_lesson_by_id, initialize_lesson_form, update_lesson_from_form, update_last_edit_time
 from helpers.file_helpers import save_image_file
-from helpers.form_helpers import process_form_data
 from helpers.lesson_record_helpers import get_paginated_lesson_records, make_times_timezone_aware
-from helpers.student_helpers import update_student_profile, get_student_by_id
-from helpers.teacher_helpers import get_outstanding_lessons, get_teacher_by_id, get_teacher_profile_by_id, get_most_recent_lesson_record, get_upcoming_lessons, update_teacher_profile
-from models import db, Student, StudentProfile, Teacher, TeacherProfile, LessonRecord, LessonSlot, Booking
+from helpers.student_helpers import update_student_profile, get_student_by_id, cancel_student_lesson
+from helpers.teacher_helpers import get_outstanding_lessons, get_teacher_by_id, get_teacher_profile_by_id, update_teacher_profile, update_student_profile_from_form
+from helpers.time_helpers import ensure_timezone_aware, get_week_boundaries, get_user_timezone
+from models import Student, StudentProfile, Teacher, TeacherProfile, LessonRecord, LessonSlot, Booking
 from forms import RegistrationForm, LoginForm, EditTeacherProfileForm, StudentProfileForm, TeacherEditsStudentForm, LessonRecordForm, LessonSlotsForm, StudentLessonSlotForm, CancelLessonForm
 from database import db, migrate
 
@@ -266,27 +266,20 @@ def logout():
 @app.route('/teacher/teacher_dashboard')
 @login_required
 def teacher_dashboard():
-    """
-    A means of allowing easy schedule management: showing teachers their upcoming lessons and outstanding lesson records.
-    """
-    # Ensure the current user is a teacher
-    if session['user_type'] != 'teacher':
+    if session.get('user_type') != 'teacher':
         return redirect(url_for('index'))
 
-    teacher_id = session['user_id']
-    teacher = Teacher.query.get(teacher_id)
-    if teacher is None:
-        app.logger.error(f"Teacher with ID {teacher_id} not found.")
+    teacher = get_teacher_by_id(session['user_id'])
+    if not teacher:
+        app.logger.error(f"Teacher with ID {session['user_id']} not found.")
         return render_template('404.html'), 404
 
     user_timezone = teacher.timezone
 
-    # Fetch the most recent lesson record and upcoming lessons
-    most_recent_record = get_most_recent_lesson_record(teacher_id, user_timezone)
-    upcoming_lessons = get_upcoming_lessons(teacher_id, user_timezone)
-    outstanding_lessons = get_outstanding_lessons(teacher_id, user_timezone)
-    
-    # Pass the user_timezone to the template
+    most_recent_record = get_most_recent_lesson_record(teacher.id, 'teacher', user_timezone)
+    upcoming_lessons = get_upcoming_lessons(teacher.id, 'teacher', user_timezone)
+    outstanding_lessons = get_outstanding_lessons(teacher.id, user_timezone)
+
     return render_template('teacher/teacher_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record, upcoming_lessons=upcoming_lessons, outstanding_lessons=outstanding_lessons, user_timezone=user_timezone)
 
 
@@ -503,38 +496,25 @@ def update_slots():
 @app.route('/student_profile/<int:student_id>', methods=['GET', 'POST'])
 @login_required 
 def student_profile(student_id):
-    """
-    This route lets a teacher view and edit a student's profile.
-    Non-teachers are redirected to the home page.
-    On a POST request, the student's profile is updated with form data and saved to the database,
-    then the updated profile is displayed.
-    On a GET request, the student's profile is passed to the 'view_student_profile.html'
-    template for display.
-    """
-    # Ensure the current user is a teacher
     if session['user_type'] != 'teacher':
         return redirect(url_for('index'))
 
-    # Fetch the student's profile
     student = db.session.get(Student, student_id)
     if student is None:
-        app.logger.error(f"Student with ID {student_id} not found.")
+        flash('Student not found', 'error')
         return render_template('404.html'), 404
 
     form = TeacherEditsStudentForm(obj=student.profile)
     profile_updated = request.args.get('updated', False)
 
     if form.validate_on_submit():
-        student.profile.hometown = form.hometown.data.strip() if form.hometown.data else ''
-        student.profile.goal = form.goal.data.strip() if form.goal.data else ''
-        student.profile.hobbies = form.hobbies.data.strip() if form.hobbies.data else ''
-        student.profile.correction_style = form.correction_style.data.strip() if form.correction_style.data else ''
-        student.profile.english_weakness = form.english_weakness.data.strip() if form.english_weakness.data else ''
-
-        db.session.commit()
+        success = update_student_profile_from_form(student.profile, form)
+        if success:
+            flash('Profile updated successfully', 'success')
+        else:
+            flash('Error updating profile', 'error')
         return redirect(url_for('student_profile', student_id=student.id, updated=True))
 
-    # Pass the student's profile to the template
     return render_template('view_student_profile.html', form=form, student=student, profile_updated=profile_updated)
 
 
@@ -547,32 +527,27 @@ def edit_lesson(lesson_id):
         app.logger.info("User is not a teacher")
         return redirect(url_for('index'))
 
-    lesson = db.session.query(LessonRecord).get(lesson_id)
+    lesson = get_lesson_by_id(lesson_id)
     if lesson is None:
         app.logger.error(f"Lesson with ID {lesson_id} not found.")
         return render_template('404.html'), 404
 
     form = LessonRecordForm(obj=lesson)
     if request.method == 'GET':
-        form.new_words.data = json.dumps(lesson.new_words)
-        form.new_phrases.data = json.dumps(lesson.new_phrases)
+        initialize_lesson_form(form, lesson)
         app.logger.info(f"Pre-populated form data: new_words={form.new_words.data}, new_phrases={form.new_phrases.data}")
-    
+
     app.logger.info(f"CSRF token when rendering form: {form.csrf_token.data}")
     if form.validate_on_submit():
         app.logger.info("Form validated successfully")
-        lesson.lesson_summary = form.lesson_summary.data
-        lesson.strengths = form.strengths.data
-        lesson.areas_to_improve = form.areas_to_improve.data
-        lesson.new_words = process_form_data(form.new_words.data)
-        lesson.new_phrases = process_form_data(form.new_phrases.data)
-
-        teacher = db.session.get(Teacher, session['user_id'])
-        if teacher is None:
-            app.logger.error(f"Teacher with ID {session['user_id']} not found.")
+        update_lesson_from_form(lesson, form)
+        
+        try:
+            update_last_edit_time(lesson, session['user_id'])
+        except ValueError as e:
+            app.logger.error(e)
             return render_template('404.html'), 404
-        lesson.lastEditTime = convert_to_utc(datetime.now(timezone.utc), teacher.timezone)
-    
+
         db.session.commit()
         app.logger.info("Lesson updated successfully")
         flash('Lesson updated successfully!', 'success')
@@ -590,57 +565,17 @@ def edit_lesson(lesson_id):
 @app.route('/student/dashboard')
 @login_required
 def student_dashboard():
-    if session['user_type'] != 'student':
+    if session.get('user_type') != 'student':
         return redirect(url_for('index'))
 
-    # Fetch the student's timezone
-    student = db.session.get(Student, session['user_id'])
-    if student is None:
+    student = get_student_by_id(session['user_id'])
+    if not student:
         app.logger.error(f"Student with ID {session['user_id']} not found.")
         return render_template('404.html'), 404
     
-    try:
-        user_timezone = pytz.timezone(student.timezone)
-    except pytz.UnknownTimeZoneError:
-        user_timezone = pytz.timezone('America/Los_Angeles')
-
-    current_time = datetime.now(timezone.utc).astimezone(user_timezone)
-
-    # Fetch the most recent past lesson record for the logged-in student
-    most_recent_record = LessonRecord.query.filter(
-        LessonRecord.student_id == session['user_id'],
-        LessonRecord.lesson_slot.has(LessonSlot.start_time <= datetime.now(timezone.utc))
-    ).options(
-        joinedload(LessonRecord.teacher).joinedload(Teacher.profile),
-        joinedload(LessonRecord.lesson_slot)
-    ).order_by(LessonRecord.lastEditTime.desc()).first()
-
-    # Fetch all upcoming lesson slots for the logged-in student
-    upcoming_lessons = LessonSlot.query.join(Booking).filter(
-        Booking.student_id == session['user_id'],
-        LessonSlot.start_time >= datetime.now(timezone.utc)
-    ).options(
-        joinedload(LessonSlot.teacher).joinedload(Teacher.profile)
-    ).order_by(LessonSlot.start_time.asc()).all()
-
-    # Convert the lastEditTime of the most recent record to the user's timezone
-    if most_recent_record:
-        if most_recent_record.lastEditTime.tzinfo is None:
-            most_recent_record.lastEditTime = pytz.utc.localize(most_recent_record.lastEditTime)
-        most_recent_record.lastEditTime = most_recent_record.lastEditTime.astimezone(user_timezone)
-
-        # Ensure lesson slot start_time is timezone-aware
-        if most_recent_record.lesson_slot and most_recent_record.lesson_slot.start_time:
-            if most_recent_record.lesson_slot.start_time.tzinfo is None:
-                most_recent_record.lesson_slot.start_time = pytz.utc.localize(most_recent_record.lesson_slot.start_time).astimezone(user_timezone)
-            else:
-                most_recent_record.lesson_slot.start_time = most_recent_record.lesson_slot.start_time.astimezone(user_timezone)
-
-    # Convert upcoming lesson times to the user's timezone
-    for lesson in upcoming_lessons:
-        if lesson.start_time.tzinfo is None:
-            lesson.start_time = pytz.utc.localize(lesson.start_time)
-        lesson.start_time = lesson.start_time.astimezone(user_timezone)
+    user_timezone = get_user_timezone(student.timezone)
+    most_recent_record = get_most_recent_lesson_record(student.id, 'student', student.timezone)
+    upcoming_lessons = get_upcoming_lessons(student.id, 'student', student.timezone)
 
     cancel_lesson_form = CancelLessonForm()  # Define the cancel lesson form
 
@@ -657,75 +592,16 @@ def student_dashboard():
 @app.route('/cancel_lesson/<int:lesson_id>', methods=['POST'])
 @login_required
 def cancel_lesson(lesson_id):
-    logging.debug("cancel_lesson route called")
     form = CancelLessonForm()
-    logging.debug(f"Form data before validation: {request.form}")
 
     # Set lesson_id in the form's data
     form.lesson_id.data = lesson_id
-    logging.debug(f"Lesson ID from URL: {lesson_id}")
-    logging.debug(f"Lesson ID from form: {form.lesson_id.data}")
 
     if form.validate_on_submit():
-        lesson_id = form.lesson_id.data
-        logging.debug(f"Form validated. Lesson ID: {lesson_id}")
-
-        # Fetch the booking from the database
-        booking = Booking.query.filter_by(lesson_slot_id=lesson_id, student_id=current_user.id).first()
-        if booking is None:
-            logging.debug("Booking not found or invalid booking ID")
-            flash('Invalid booking ID', 'error')
-            return redirect(url_for('student_dashboard'))
-        logging.debug(f"Booking found: {booking}")
-
-        # Fetch the associated lesson slot
-        lesson_slot = db.session.get(LessonSlot, lesson_id)
-        if lesson_slot is None:
-            logging.debug("Associated lesson slot not found")
-            flash('Associated lesson slot not found', 'error')
-            return redirect(url_for('student_dashboard'))
-        logging.debug(f"Lesson slot found: {lesson_slot}")
-
-        # Fetch the lesson record from the database
-        lesson_record = LessonRecord.query.filter_by(id=booking.lesson_record_id).first()
-        if lesson_record is not None:
-            # Delete the lesson record entry
-            db.session.delete(lesson_record)
-            logging.debug("Lesson record deleted")
-        else:
-            logging.debug("Lesson record not found")
-
-        # Delete the booking entry
-        db.session.delete(booking)
-        logging.debug("Booking deleted")
-
-        # Update the lesson slot to set is_booked to False
-        lesson_slot.is_booked = False
-        logging.debug("Lesson slot updated")
-
-        # Update the student's lesson counts
-        student = db.session.get(Student, current_user.id)
-        if student is not None:
-            student.number_of_lessons -= 1
-            logging.debug("Student lesson counts updated")
-        else:
-            logging.debug("Student not found")
-            flash('Student not found', 'error')
-            return redirect(url_for('student_dashboard'))
-
-        # Commit the changes to the database
-        try:
-            db.session.commit()
-            logging.debug("Changes committed to the database")
-            flash('Lesson cancelled successfully', 'success')
-        except Exception as e:
-            db.session.rollback()
-            logging.error(f"Error cancelling lesson: {e}")
-            flash(f'Error cancelling lesson: {e}', 'error')
-
+        success, message = cancel_student_lesson(lesson_id, current_user.id)
+        flash(message, 'success' if success else 'error')
         return redirect(url_for('student_dashboard'))
 
-    logging.debug(f"Form submission error: {form.errors}")
     flash('Form submission error. Please try again.', 'error')
     return redirect(url_for('student_dashboard'))
 

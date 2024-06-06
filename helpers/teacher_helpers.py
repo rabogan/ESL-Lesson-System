@@ -5,7 +5,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy import and_
 from helpers.file_helpers import save_image_file
 from helpers.time_helpers import ensure_timezone_aware
-from models import Teacher, TeacherProfile, LessonRecord, LessonSlot, Student, Booking
+from models import Teacher, TeacherProfile, LessonRecord, LessonSlot, Student, Booking, StudentProfile
 
 def get_teacher_by_id(teacher_id):
     return db.session.query(Teacher).filter(Teacher.id == teacher_id).first()
@@ -65,7 +65,8 @@ def get_outstanding_lessons(teacher_id, timezone_str):
     outstanding_lessons = LessonRecord.query.filter(
         and_(
             LessonRecord.teacher_id == teacher_id,
-            LessonRecord.lesson_summary == None
+            LessonRecord.lesson_summary == None,
+            LessonRecord.lesson_slot.has(LessonSlot.start_time <= datetime.now(timezone.utc))
         )
     ).options(
         joinedload(LessonRecord.student).joinedload(Student.profile),
@@ -76,3 +77,26 @@ def get_outstanding_lessons(teacher_id, timezone_str):
         lesson.lesson_slot.start_time = ensure_timezone_aware(lesson.lesson_slot.start_time, timezone_str)
 
     return outstanding_lessons
+
+def update_student_profile_from_form(student_profile, form):
+    """
+    Update the student's profile with data from the form.
+    
+    Args:
+        student_profile (StudentProfile): The student's profile object.
+        form (TeacherEditsStudentForm): The form with updated data.
+
+    Returns:
+        bool: Whether the update was successful.
+    """
+    try:
+        student_profile.hometown = form.hometown.data.strip() if form.hometown.data else ''
+        student_profile.goal = form.goal.data.strip() if form.goal.data else ''
+        student_profile.hobbies = form.hobbies.data.strip() if form.hobbies.data else ''
+        student_profile.correction_style = form.correction_style.data.strip() if form.correction_style.data else ''
+        student_profile.english_weakness = form.english_weakness.data.strip() if form.english_weakness.data else ''
+        db.session.commit()
+        return True
+    except Exception as e:
+        db.session.rollback()
+        return False
