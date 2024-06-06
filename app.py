@@ -1,12 +1,14 @@
-import json, html
+import json
 import pytz
 import logging
 from flask_limiter import Limiter
-from helpers import save_image_file, ensure_timezone_aware, get_week_boundaries
+from forms import FileMaxSizeMB
+from helpers import convert_to_utc, is_valid_json, process_form_data, save_image_file, ensure_timezone_aware, get_week_boundaries, strip_whitespace
 from flask import Flask, session, render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import types, and_
+from sqlalchemy import and_
+from models import JsonEncodedDict
 from sqlalchemy.orm import joinedload
 from flask_migrate import Migrate
 from datetime import datetime, timedelta, timezone
@@ -38,20 +40,6 @@ limiter = Limiter(app)
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 
-
-def strip_whitespace(form, field):
-    if field.data:
-        field.data = field.data.strip()
-
-class FileMaxSizeMB(object):
-    def __init__(self, max_size_mb):
-        self.max_size_mb = max_size_mb
-
-    def __call__(self, form, field):
-        file_size = len(field.data.read())
-        field.data.seek(0)  # Reset file pointer to beginning
-        if file_size > self.max_size_mb * 1024 * 1024:
-            raise ValidationError(f'File size must be less than {self.max_size_mb}MB')
 
 # Forms
 class RegistrationForm(FlaskForm):
@@ -253,22 +241,6 @@ def __repr__(self):
     return f"TeacherProfile('{self.age}', '{self.hobbies}', '{self.motto}', '{self.blood_type}', '{self.image_file}', '{self.from_location}')"
 
 
-class JsonEncodedDict(types.TypeDecorator):
-    impl = types.Text
-
-    def process_bind_param(self, value, dialect):
-        if value is None:
-            return '{}'
-        else:
-            return json.dumps(value)
-
-    def process_result_value(self, value, dialect):
-        if value is None:
-            return {}
-        else:
-            return json.loads(value)
-
-
 class LessonRecord(db.Model):
     __tablename__ = 'lesson_record'
     id = db.Column(db.Integer, primary_key=True)
@@ -350,6 +322,7 @@ def internal_error(error):
     app.logger.error(f"Server Error: {error}")
     return render_template('500.html'), 500
 
+
 # Homepage Routes
 @app.route("/")
 def index():
@@ -369,14 +342,6 @@ def meet_your_teacher():
     return render_template('meetYourTeacher.html', teachers=teachers)
 
 
-class SimpleForm(FlaskForm):
-    submit = SubmitField('Submit')
-
-@app.route('/test_page')
-def test_page():
-    return render_template('minimal_test.html')
-
-
 @app.route('/ourLessons')
 def our_lessons():
     """
@@ -391,7 +356,6 @@ def contact_school():
     This page provides contact information for the school.
     """
     return render_template('contactSchool.html')
-
 
 
 @app.route('/teacher_profile/<int:teacher_id>', methods=['GET'])
@@ -414,7 +378,6 @@ def teacher_profile(teacher_id):
 
     # Pass the teacher's profile to the template
     return render_template('view_teacher_profile.html', teacher=teacher, profile=profile)
-
 
 
 @app.route('/portal_choice')
@@ -899,28 +862,6 @@ def student_profile(student_id):
     return render_template('view_student_profile.html', form=form, student=student, profile_updated=profile_updated)
 
 
-def convert_to_utc(dt, timezone):
-    dt = ensure_timezone_aware(dt, timezone)
-    return dt.astimezone(pytz.utc)
-
-
-def is_valid_json(json_data):
-    try:
-        json.loads(json_data)
-    except ValueError:
-        return False
-    return True
-
-
-def process_form_data(form_data):
-    if is_valid_json(form_data):
-        return [html.escape(item) for item in json.loads(form_data)]
-    elif form_data:
-        return [html.escape(item) for item in form_data.split(',')]
-    else:
-        return []
-
-
 @app.route('/teacher/edit_lesson/<int:lesson_id>', methods=['GET', 'POST'])
 @login_required
 def edit_lesson(lesson_id):
@@ -967,8 +908,6 @@ def edit_lesson(lesson_id):
         flash('There was an error updating the lesson. Please check your input.', 'error')
         
     return render_template('teacher/edit_lesson.html', form=form, lesson=lesson)
-
-
 
 
 # Student Only Routes!
@@ -1037,7 +976,6 @@ def student_dashboard():
         cancel_lesson_form=cancel_lesson_form,  # Pass the cancel lesson form
         user_timezone=user_timezone  # Pass the timezone to the template
     )
-
 
 
 @app.route('/cancel_lesson/<int:lesson_id>', methods=['POST'])
@@ -1397,7 +1335,7 @@ def get_slots(teacher_id):
         LessonSlot.is_booked == False,
         LessonSlot.start_time >= start_of_week,
         LessonSlot.start_time <= end_of_week,
-        LessonSlot.start_time >= current_time_utc  # Add this line
+        LessonSlot.start_time >= current_time_utc
     ).all()
 
     slots_dict = [{'id': slot.id, 'time': slot.start_time.replace(tzinfo=timezone.utc).astimezone(user_timezone).strftime('%Y-%m-%d %I:%M %p'), 'teacher': slot.teacher.username} for slot in slots]
@@ -1407,6 +1345,7 @@ def get_slots(teacher_id):
 @app.teardown_appcontext
 def shutdown_session(exception=None):
     db.session.remove()
+
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,4 +1,6 @@
 import os
+import json
+import html
 import secrets
 from flask import current_app, session
 from flask_login import current_user
@@ -84,3 +86,30 @@ def get_week_boundaries(user_timezone_str, week_offset=0):
     end_of_week_utc = end_of_week.astimezone(timezone.utc)
 
     return start_of_week_utc, end_of_week_utc
+
+
+def strip_whitespace(form, field):
+    if field.data:
+        field.data = field.data.strip()
+        
+        
+def convert_to_utc(dt, timezone):
+    dt = ensure_timezone_aware(dt, timezone)
+    return dt.astimezone(pytz.utc)
+
+
+def is_valid_json(json_data):
+    try:
+        json.loads(json_data)
+    except ValueError:
+        return False
+    return True
+
+
+def process_form_data(form_data):
+    if is_valid_json(form_data):
+        return [html.escape(item) for item in json.loads(form_data)]
+    elif form_data:
+        return [html.escape(item) for item in form_data.split(',')]
+    else:
+        return []
