@@ -15,6 +15,13 @@
             <div class="mb-4">
                 {{ form.lesson_summary.label(class="block text-sm font-medium text-gray-700 dark:text-gray-300") }}
                 {{ form.lesson_summary(class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-100") }}
+                {% if form.lesson_summary.errors %}
+                    <ul class="mt-2 text-sm text-red-600 list-disc list-inside">
+                        {% for error in form.lesson_summary.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
             </div>
             <div class="mb-4">
                 {{ form.strengths.label(class="block text-sm font-medium text-gray-700 dark:text-gray-300") }}
@@ -38,6 +45,13 @@
             <div class="mb-4">
                 <label for="new_phrase" class="block text-sm font-medium text-gray-700 dark:text-gray-300">New Phrases</label>
                 <input type="text" id="new_phrase" class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-100" placeholder="Type a new phrase and hit Enter">
+                {% if form.new_phrases.errors %}
+                    <ul class="mt-2 text-sm text-red-600 list-disc list-inside">
+                        {% for error in form.new_phrases.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
                 <div id="new_phrases_list" class="mt-2">
                     {% for phrase in lesson.new_phrases %}
                     <span class="inline-block bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium mr-2 mb-2 px-3 py-1 rounded">
@@ -82,7 +96,6 @@
         function updateHiddenField(list, hiddenField) {
             const values = Array.from(list.children).map(child => child.textContent.replace(' x', ''));
             hiddenField.value = JSON.stringify(values);
-            console.log(`Updated ${hiddenField.name}: ${hiddenField.value}`);
         }
     
         newWordInput.addEventListener('keydown', (event) => {
@@ -107,7 +120,6 @@
             }
         });
     
-        // Initial setup for existing tags
         document.querySelectorAll('.remove-tag').forEach(tag => {
             tag.addEventListener('click', function(event) {
                 event.preventDefault();
@@ -117,11 +129,11 @@
             });
         });
     
-        // Update hidden fields on form submission
         document.getElementById('edit-lesson-form').addEventListener('submit', function(event) {
             updateHiddenField(newWordsList, document.querySelector('input[name="new_words"]'));
             updateHiddenField(newPhrasesList, document.querySelector('input[name="new_phrases"]'));
         });
     });
+    
 </script>
 {% endblock %}

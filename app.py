@@ -129,7 +129,17 @@ class LessonRecordForm(FlaskForm):
                         raise ValidationError('Each phrase must be a string.')
             except json.JSONDecodeError:
                 app.logger.error(f"Failed to decode JSON for new_phrases: {field.data}")
-            raise ValidationError('Invalid JSON data for new_phrases.')
+                raise ValidationError('Invalid JSON data for new_phrases.')
+
+    def validate(self, extra_validators=None):
+        rv = FlaskForm.validate(self)
+        if not rv:
+            return False
+        if self.new_words.data == '[]' and self.new_phrases.data == '[]':
+            self.new_words.errors.append('At least one of New Words or New Phrases must be filled.')
+            return False
+        return True
+
 
 
 class LessonSlotsForm(FlaskForm):
@@ -940,7 +950,7 @@ def edit_lesson(lesson_id):
         app.logger.info("User is not a teacher")
         return redirect(url_for('index'))
 
-    lesson = db.session.get(LessonRecord, lesson_id)
+    lesson = db.session.query(LessonRecord).get(lesson_id)
     if lesson is None:
         app.logger.error(f"Lesson with ID {lesson_id} not found.")
         return render_template('404.html'), 404
@@ -951,6 +961,7 @@ def edit_lesson(lesson_id):
         form.new_phrases.data = json.dumps(lesson.new_phrases)
         app.logger.info(f"Pre-populated form data: new_words={form.new_words.data}, new_phrases={form.new_phrases.data}")
     
+    app.logger.info(f"CSRF token when rendering form: {form.csrf_token.data}")
     if form.validate_on_submit():
         app.logger.info("Form validated successfully")
         lesson.lesson_summary = form.lesson_summary.data
@@ -959,9 +970,12 @@ def edit_lesson(lesson_id):
         lesson.new_words = process_form_data(form.new_words.data)
         lesson.new_phrases = process_form_data(form.new_phrases.data)
 
-        teacher = db.session.query(Teacher).get(session['user_id'])
+        teacher = db.session.get(Teacher, session['user_id'])
+        if teacher is None:
+            app.logger.error(f"Teacher with ID {session['user_id']} not found.")
+            return render_template('404.html'), 404
         lesson.lastEditTime = convert_to_utc(datetime.now(timezone.utc), teacher.timezone)
-        
+    
         db.session.commit()
         app.logger.info("Lesson updated successfully")
         flash('Lesson updated successfully!', 'success')
@@ -971,8 +985,9 @@ def edit_lesson(lesson_id):
         app.logger.error(f"Form data: {form.data}")
         app.logger.error(f"CSRF token: {form.csrf_token.data}")
         flash('There was an error updating the lesson. Please check your input.', 'error')
-
+        
     return render_template('teacher/edit_lesson.html', form=form, lesson=lesson)
+
 
 
 
