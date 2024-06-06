@@ -3,7 +3,7 @@ from database import db
 from datetime import datetime, timezone
 from sqlalchemy.orm import joinedload
 from sqlalchemy import and_
-from helpers.date_helpers import ensure_timezone_aware
+from helpers.time_helpers import ensure_timezone_aware
 from models import Teacher, TeacherProfile, LessonRecord, LessonSlot, Student, Booking
 
 def get_teacher_by_id(teacher_id):

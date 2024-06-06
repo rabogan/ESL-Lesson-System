@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
 from helpers.auth_helpers import authenticate_user, create_user, create_profile, login_new_user, is_username_taken
-from helpers.date_helpers import convert_to_utc, ensure_timezone_aware, get_week_boundaries
+from helpers.time_helpers import convert_to_utc, ensure_timezone_aware, get_week_boundaries
 from helpers.file_helpers import save_image_file
 from helpers.form_helpers import process_form_data
 from helpers.teacher_helpers import get_outstanding_lessons, get_teacher_by_id, get_teacher_profile_by_id, get_most_recent_lesson_record, get_upcoming_lessons
