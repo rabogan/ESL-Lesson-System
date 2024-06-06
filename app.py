@@ -909,12 +909,18 @@ def student_profile(student_id):
     return render_template('view_student_profile.html', form=form, student=student, profile_updated=profile_updated)
 
 
+def convert_to_utc(dt, timezone):
+    dt = ensure_timezone_aware(dt, timezone)
+    return dt.astimezone(pytz.utc)
+
+
 def is_valid_json(json_data):
     try:
         json.loads(json_data)
     except ValueError:
         return False
     return True
+
 
 def process_form_data(form_data):
     if is_valid_json(form_data):
@@ -923,10 +929,6 @@ def process_form_data(form_data):
         return [html.escape(item) for item in form_data.split(',')]
     else:
         return []
-
-def convert_to_utc(dt, timezone):
-    dt = ensure_timezone_aware(dt, timezone)
-    return dt.astimezone(pytz.utc)
 
 
 @app.route('/teacher/edit_lesson/<int:lesson_id>', methods=['GET', 'POST'])
