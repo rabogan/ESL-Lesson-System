@@ -1,6 +1,14 @@
 import pytz
 from datetime import datetime, timedelta, timezone
 
+def get_user_timezone(timezone_str):
+    """Fetch a valid timezone for the user, defaulting to 'America/Los_Angeles' if invalid."""
+    try:
+        return pytz.timezone(timezone_str)
+    except pytz.UnknownTimeZoneError:
+        return pytz.timezone('America/Los_Angeles')
+    
+
 def ensure_timezone_aware(dt, timezone_str):
     """
     Ensure a datetime object is timezone-aware.

@@ -3,6 +3,7 @@ from database import db
 from datetime import datetime, timezone
 from sqlalchemy.orm import joinedload
 from sqlalchemy import and_
+from helpers.file_helpers import save_image_file
 from helpers.time_helpers import ensure_timezone_aware
 from models import Teacher, TeacherProfile, LessonRecord, LessonSlot, Student, Booking
 
@@ -11,6 +12,21 @@ def get_teacher_by_id(teacher_id):
 
 def get_teacher_profile_by_id(teacher_id):
     return db.session.query(TeacherProfile).filter(TeacherProfile.teacher_id == teacher_id).first()
+
+def update_teacher_profile(profile, form):
+    """
+    Update the teacher's profile with data from the form.
+    """
+    profile.age = form.age.data if form.age.data else None
+    profile.hobbies = form.hobbies.data.strip() if form.hobbies.data else ''
+    profile.motto = form.motto.data.strip() if form.motto.data else ''
+    profile.blood_type = form.blood_type.data.strip() if form.blood_type.data else ''
+
+    # Handle the image file separately because it's not a simple text field.
+    if form.image_file.data:
+        profile.image_file = save_image_file(form.image_file.data)
+
+    db.session.commit()
 
 def get_most_recent_lesson_record(teacher_id, timezone_str):
     most_recent_record = LessonRecord.query.filter(

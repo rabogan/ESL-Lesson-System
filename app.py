@@ -3,16 +3,17 @@ import pytz
 import logging
 from flask import Flask, session, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timedelta, timezone
 from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
 from helpers.auth_helpers import authenticate_user, create_user, create_profile, login_new_user, is_username_taken
-from helpers.time_helpers import convert_to_utc, ensure_timezone_aware, get_week_boundaries
+from helpers.time_helpers import convert_to_utc, ensure_timezone_aware, get_week_boundaries, get_user_timezone
 from helpers.file_helpers import save_image_file
 from helpers.form_helpers import process_form_data
-from helpers.teacher_helpers import get_outstanding_lessons, get_teacher_by_id, get_teacher_profile_by_id, get_most_recent_lesson_record, get_upcoming_lessons
+from helpers.lesson_record_helpers import get_paginated_lesson_records, make_times_timezone_aware
+from helpers.student_helpers import update_student_profile, get_student_by_id
+from helpers.teacher_helpers import get_outstanding_lessons, get_teacher_by_id, get_teacher_profile_by_id, get_most_recent_lesson_record, get_upcoming_lessons, update_teacher_profile
 from models import db, Student, StudentProfile, Teacher, TeacherProfile, LessonRecord, LessonSlot, Booking
 from forms import RegistrationForm, LoginForm, EditTeacherProfileForm, StudentProfileForm, TeacherEditsStudentForm, LessonRecordForm, LessonSlotsForm, StudentLessonSlotForm, CancelLessonForm
 from database import db, migrate
@@ -295,28 +296,14 @@ def teacher_lesson_records():
     if session['user_type'] != 'teacher':
         return redirect(url_for('home'))
 
-    # Fetch the teacher's timezone
-    teacher = db.session.get(Teacher, session['user_id'])
-    if teacher is None:
+    teacher = get_teacher_by_id(session['user_id'])
+    if not teacher:
         app.logger.error(f"Teacher with ID {session['user_id']} not found.")
         return render_template('404.html'), 404
-
+    
     page = request.args.get('page', 1, type=int)
-
-    # Query past lesson records for the logged-in teacher
-    lesson_records = LessonRecord.query.join(LessonSlot).filter(
-        LessonRecord.teacher_id == session['user_id'],
-        LessonSlot.start_time <= datetime.now(timezone.utc)
-    ).options(
-        joinedload(LessonRecord.student).joinedload(Student.profile)
-    ).order_by(LessonSlot.start_time.desc()).paginate(page=page, per_page=5)
-
-    for record in lesson_records.items:
-        # Ensure record.lastEditTime is timezone-aware (helper function!)
-        record.lastEditTime = ensure_timezone_aware(record.lastEditTime, teacher.timezone)
-        # Ensure lesson slot start_time is timezone-aware
-        if record.lesson_slot and record.lesson_slot.start_time:
-            record.lesson_slot.start_time = ensure_timezone_aware(record.lesson_slot.start_time, teacher.timezone)
+    lesson_records = get_paginated_lesson_records(teacher.id, page, 'teacher')
+    lesson_records = make_times_timezone_aware(lesson_records, teacher.timezone)
 
     return render_template('teacher/teacher_lesson_records.html', lesson_records=lesson_records)
 
@@ -336,16 +323,7 @@ def edit_teacher_profile():
     profile_updated = request.args.get('updated', False)
 
     if form.validate_on_submit():
-        current_user.profile.age = form.age.data if form.age.data else None
-        current_user.profile.hobbies = form.hobbies.data.strip() if form.hobbies.data else ''
-        current_user.profile.motto = form.motto.data.strip() if form.motto.data else ''
-        current_user.profile.blood_type = form.blood_type.data.strip() if form.blood_type.data else ''
-
-        # Handle the image file separately because it's not a simple text field.
-        if form.image_file.data:
-            current_user.profile.image_file = save_image_file(form.image_file.data)
-
-        db.session.commit()
+        update_teacher_profile(current_user.profile, form)
         return redirect(url_for('edit_teacher_profile', updated=True))
 
     return render_template('teacher/edit_teacher_profile.html', form=form, profile=current_user.profile, profile_updated=profile_updated)
@@ -759,33 +737,18 @@ def student_lesson_records():
         return redirect(url_for('index'))
     
     # Fetch the student's timezone
-    student = db.session.get(Student, session['user_id'])
+    student = get_student_by_id(session['user_id'])
+
     if student is None:
         app.logger.error(f"Student with ID {session['user_id']} not found.")
         return render_template('404.html'), 404
     
-    try:
-        user_timezone = pytz.timezone(student.timezone)
-    except pytz.UnknownTimeZoneError:
-        user_timezone = pytz.timezone('America/Los_Angeles')
+    user_timezone = get_user_timezone(student.timezone)
 
     # Fetch all past lesson records for the logged-in student
     page = request.args.get('page', 1, type=int)
-    lesson_records = LessonRecord.query.filter(
-        LessonRecord.student_id == session['user_id'],
-        LessonRecord.lesson_slot.has(LessonSlot.start_time <= datetime.now(timezone.utc))
-    ).options(
-        joinedload(LessonRecord.teacher).joinedload(Teacher.profile),
-        joinedload(LessonRecord.lesson_slot)
-    ).order_by(LessonRecord.lastEditTime.desc()).paginate(page=page, per_page=5)
-
-    for record in lesson_records.items:
-        # Ensure record.lastEditTime is timezone-aware
-        record.lastEditTime = ensure_timezone_aware(record.lastEditTime, student.timezone)
-
-        # Ensure lesson slot start_time is timezone-aware
-        if record.lesson_slot and record.lesson_slot.start_time:
-            record.lesson_slot.start_time = ensure_timezone_aware(record.lesson_slot.start_time, student.timezone)
+    lesson_records = get_paginated_lesson_records(student.id, page, 'student')
+    lesson_records = make_times_timezone_aware(lesson_records, student.timezone)
             
     return render_template('student/lesson_records.html', lesson_records=lesson_records, user_timezone=user_timezone)
 
@@ -793,9 +756,10 @@ def student_lesson_records():
 @app.route('/student/edit_student_profile', methods=['GET', 'POST'])
 @login_required
 def edit_student_profile():
-    if 'user_type' not in session or session['user_type'] != 'student':
+    if session.get('user_type') != 'student':
         return redirect(url_for('login'))
     
+    # Ensure the student profile exists
     if current_user.profile is None:
         profile = StudentProfile(student_id=current_user.id, image_file='default1.png')
         db.session.add(profile)
@@ -803,20 +767,17 @@ def edit_student_profile():
         current_user.profile = profile
     
     form = StudentProfileForm(obj=current_user.profile)
+    
     if form.validate_on_submit():
-        current_user.profile.hometown = form.hometown.data.strip() if form.hometown.data else ''
-        current_user.profile.goal = form.goal.data.strip() if form.goal.data else ''
-        current_user.profile.hobbies = form.hobbies.data.strip() if form.hobbies.data else ''
-        current_user.profile.correction_style = form.correction_style.data.strip() if form.correction_style.data else ''
-        current_user.profile.english_weakness = form.english_weakness.data.strip() if form.english_weakness.data else ''
-
+        update_student_profile(form, current_user.profile)
         if form.image_file.data:
             current_user.profile.image_file = save_image_file(form.image_file.data)
-
+        
         db.session.commit()
         return redirect(url_for('edit_student_profile', updated=True))
-
-    return render_template('student/edit_student_profile.html', form=form, profile=current_user.profile, profile_updated=request.args.get('updated', False))
+    
+    profile_updated = request.args.get('updated', False)
+    return render_template('student/edit_student_profile.html', form=form, profile=current_user.profile, profile_updated=profile_updated)
 
 
 @app.route('/student/book_lesson', methods=['GET', 'POST'])
