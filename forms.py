@@ -3,10 +3,10 @@ from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed
 from wtforms import ValidationError, SelectField, DateTimeField, StringField, PasswordField, SubmitField, BooleanField, HiddenField, IntegerField, FileField, TextAreaField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional, NumberRange, InputRequired
-from helpers import strip_whitespace
 import json
 from wtforms import ValidationError
 from models import Student, Teacher, LessonSlot
+from helpers.form_helpers import strip_whitespace
 
 class FileMaxSizeMB(object):
     def __init__(self, max_size_mb):

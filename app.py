@@ -6,10 +6,13 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timedelta, timezone
-from werkzeug.security import generate_password_hash, check_password_hash
 from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
-from helpers import convert_to_utc, process_form_data, save_image_file, ensure_timezone_aware, get_week_boundaries
+from helpers.auth_helpers import authenticate_user, create_user, create_profile, login_new_user, is_username_taken
+from helpers.date_helpers import convert_to_utc, ensure_timezone_aware, get_week_boundaries
+from helpers.file_helpers import save_image_file
+from helpers.form_helpers import process_form_data
+from helpers.teacher_helpers import get_teacher_by_id, get_teacher_profile_by_id
 from models import db, Student, StudentProfile, Teacher, TeacherProfile, LessonRecord, LessonSlot, Booking
 from forms import RegistrationForm, LoginForm, EditTeacherProfileForm, StudentProfileForm, TeacherEditsStudentForm, LessonRecordForm, LessonSlotsForm, StudentLessonSlotForm, CancelLessonForm
 from database import db, migrate
@@ -104,17 +107,19 @@ def contact_school():
 @app.route('/teacher_profile/<int:teacher_id>', methods=['GET'])
 def teacher_profile(teacher_id):
     """
-    This route displays a teacher's profile.
+    This route (GET /teacher_profile/<int:teacher_id>) displays a teacher's profile.
     It is a public view and not editable.
+    The route expects an integer `teacher_id` as a parameter in the URL.
+    It returns an HTML response with the teacher's profile, or a 404 error if the teacher or profile is not found.
     """
     # Fetch the teacher
-    teacher = db.session.query(Teacher).filter(Teacher.id == teacher_id).first()
+    teacher = get_teacher_by_id(teacher_id)
     if teacher is None:
         app.logger.error(f"Teacher with ID {teacher_id} not found.")
         return render_template('404.html'), 404
 
     # Fetch the teacher's profile
-    profile = db.session.query(TeacherProfile).filter(TeacherProfile.teacher_id == teacher_id).first()
+    profile = get_teacher_profile_by_id(teacher_id)
     if profile is None:
         app.logger.error(f"Profile for teacher with ID {teacher_id} not found.")
         return render_template('404.html'), 404
@@ -135,7 +140,16 @@ def portal_choice():
 @limiter.limit("5/minute")
 def student_register():
     """
-    Register a new student here
+    Handles the registration of a new student, rate-limited to 5 requests per minute to prevent abuse.
+    It uses a RegistrationForm to validate the submitted data. If the form data is valid,
+    it checks if a student with the submitted username already exists. If the username is taken,
+    it adds an error to the form and re-renders the registration page with a 400 status.
+
+    If the username is not taken, it creates a new Student with the submitted data and a hashed password,
+    and adds it to the database. It then creates a new StudentProfile for the newly registered student
+    with a default image, and adds it to the database.
+
+    If the form data is not valid, it simply renders the registration page with the form.
     """
     form = RegistrationForm()
     
@@ -144,26 +158,13 @@ def student_register():
         email = form.email.data
         password = form.password.data
 
-        # Check if the username already exists
-        existing_student = Student.query.filter_by(username=username).first()
-        if existing_student:
+        if is_username_taken(Student, username):
             form.username.errors.append("Username already exists")
             return render_template("student_register.html", form=form), 400
 
-        hashed_password = generate_password_hash(password)
-        new_student = Student(username=username, email=email, password=hashed_password)
-        db.session.add(new_student)
-        db.session.commit()
-        
-        # Create a new StudentProfile for the newly registered student
-        profile = StudentProfile(student_id=new_student.id, image_file='default1.jpg')
-        db.session.add(profile)
-        db.session.commit()
-
-        # Store the user_ID/user_type/user_name in the session
-        session['user_id'] = new_student.id
-        session['user_type'] = 'student'
-        session['user_name'] = new_student.username 
+        new_student = create_user(Student, username, email, password)
+        create_profile(StudentProfile, new_student.id, 'default1.jpg')
+        login_new_user(new_student, 'student')
 
         return redirect(url_for("student_login"))
     
@@ -186,16 +187,14 @@ def student_login():
         if not username or not password:
             return render_template("apology.html", top="Error", bottom="Please provide a valid username and password"), 400
 
-        # Check if the username exists and the password is correct
-        student = Student.query.filter_by(username=username).first()
-        if student is None or not check_password_hash(student.password, password):
+        # Authenticate the student
+        student = authenticate_user(Student, username, password)
+        if student is None:
             return render_template("apology.html", top="Error", bottom="Invalid username or password"), 400
 
         # Log in the user and store their ID and type in the session
-        login_user(student, remember=remember)
-        session['user_id'] = student.id
-        session['user_type'] = 'student'
-        session['user_name'] = student.username
+        login_new_user(student, 'student')
+        login_user(student, remember)
 
         return redirect(url_for("student_dashboard"))
     return render_template("student_login.html", form=form)
@@ -204,32 +203,27 @@ def student_login():
 @app.route("/teacher/register", methods=["GET", "POST"])
 @limiter.limit("5/minute")
 def teacher_register():
+    """
+    Creates a new teacher account and profile, then logs in the new teacher.
+    See /student/register for more details on how this works, as it's very similar.
+    This obeys the DRY principle in that regard!
+    """
     form = RegistrationForm()
+    
     if form.validate_on_submit():
-        hashed_password = generate_password_hash(form.password.data)
-        new_teacher = Teacher(username=form.username.data, email=form.email.data, password=hashed_password)
-        
-        # Check if the username or email already exists
-        existing_teacher = Teacher.query.filter((Teacher.username == form.username.data) | (Teacher.email == form.email.data)).first()
-        if existing_teacher is not None:
+        username = form.username.data
+        email = form.email.data
+        password = form.password.data
+
+        if is_username_taken(Teacher, username) or is_username_taken(Teacher, email):
             return render_template("apology.html", top="Error", bottom="Registration error"), 400
 
+        new_teacher = create_user(Teacher, username, email, password)
+        create_profile(TeacherProfile, new_teacher.id, 'default.jpg')
+        login_new_user(new_teacher, 'teacher')
 
-        db.session.add(new_teacher)
-        db.session.commit()
-
-        profile = TeacherProfile(teacher_id=new_teacher.id, image_file='default.jpg')
-        db.session.add(profile)
-        db.session.commit()
-
-        login_user(new_teacher)  # Use Flask-Login to manage the session
-        
-        # Store the new teacher's info in the session
-        session['user_id'] = new_teacher.id
-        session['user_type'] = 'teacher'
-        session['user_name'] = new_teacher.username
-
-        return redirect(url_for("teacher_dashboard"))  # Redirect to a different page
+        return redirect(url_for("teacher_dashboard"))
+    
     return render_template("teacher_register.html", form=form)
 
 
@@ -249,17 +243,14 @@ def teacher_login():
         if not username or not password:
             return render_template("apology.html", top="Error", bottom="Please provide a valid username and password"), 400
 
-        # Check if the username exists and the password is correct
-        teacher = Teacher.query.filter_by(username=username).first()
-        if teacher is None or not check_password_hash(teacher.password, password):
+        # Authenticate the teacher
+        teacher = authenticate_user(Teacher, username, password)
+        if teacher is None:
             return render_template("apology.html", top="Error", bottom="Invalid username or password"), 400
 
-
         # Log in the user and store their info in the session
+        login_new_user(teacher, 'teacher')
         login_user(teacher, remember=remember)
-        session['user_id'] = teacher.id
-        session['user_type'] = 'teacher'  # Add this line
-        session['user_name'] = teacher.username  # If you need the username in the session
 
         return redirect(url_for("teacher_dashboard"))
     return render_template("teacher_login.html", form=form)
@@ -567,8 +558,7 @@ def update_slots():
 
 
 @app.route('/student_profile/<int:student_id>', methods=['GET', 'POST'])
-@login_required
-@limiter.limit("5/minute") 
+@login_required 
 def student_profile(student_id):
     """
     This route lets a teacher view and edit a student's profile.
