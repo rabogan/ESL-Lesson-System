@@ -43,6 +43,15 @@ def strip_whitespace(form, field):
     if field.data:
         field.data = field.data.strip()
 
+class FileMaxSizeMB(object):
+    def __init__(self, max_size_mb):
+        self.max_size_mb = max_size_mb
+
+    def __call__(self, form, field):
+        file_size = len(field.data.read())
+        field.data.seek(0)  # Reset file pointer to beginning
+        if file_size > self.max_size_mb * 1024 * 1024:
+            raise ValidationError(f'File size must be less than {self.max_size_mb}MB')
 
 # Forms
 class RegistrationForm(FlaskForm):
@@ -75,7 +84,7 @@ class EditTeacherProfileForm(FlaskForm):
     hobbies = StringField('Hobbies', validators=[Optional(), Length(max=500), strip_whitespace])
     motto = StringField('Motto', validators=[Optional(), Length(max=500), strip_whitespace])
     blood_type = StringField('Blood Type', validators=[Optional(), Length(max=5), strip_whitespace])
-    image_file = FileField('Profile Image', validators=[Optional(), FileAllowed(['jpg', 'png'])])
+    image_file = FileField('Profile Image', validators=[Optional(), FileAllowed(['jpg', 'png', 'gif', 'jpeg']), FileMaxSizeMB(5)])
     submit = SubmitField('Update Profile')
 
 
@@ -85,7 +94,7 @@ class StudentProfileForm(FlaskForm):
     hobbies = StringField('Hobbies', validators=[Optional(), Length(max=1000), strip_whitespace])
     correction_style = StringField('Correction Style', validators=[Optional(), Length(max=1000), strip_whitespace])
     english_weakness = StringField('English Weakness', validators=[Optional(), Length(max=1000), strip_whitespace])
-    image_file = FileField('Profile Image', validators=[Optional(), FileAllowed(['jpg', 'png'])])
+    image_file = FileField('Profile Image', validators=[Optional(), FileAllowed(['jpg', 'png', 'gif', 'jpeg']), FileMaxSizeMB(5)])
     submit = SubmitField('Update Profile')
 
 
@@ -665,8 +674,6 @@ def edit_teacher_profile():
     profile_updated = request.args.get('updated', False)
 
     if form.validate_on_submit():
-        print(form.new_words.data)
-        print(form.new_phrases.data)
         current_user.profile.age = form.age.data if form.age.data else None
         current_user.profile.hobbies = form.hobbies.data.strip() if form.hobbies.data else ''
         current_user.profile.motto = form.motto.data.strip() if form.motto.data else ''
@@ -681,42 +688,14 @@ def edit_teacher_profile():
 
     return render_template('teacher/edit_teacher_profile.html', form=form, profile=current_user.profile, profile_updated=profile_updated)
 
-#    # Get the student's timezone
-#    user_timezone = pytz.timezone(student.timezone)
-#    week_offset = int(request.args.get('week_offset', 0))
- #   today = datetime.now(timezone.utc)
-  #  today = datetime.now(timezone.utc).astimezone(user_timezone)
-    
-    # PERFECT WEEK OFFSET!
-    # Calculate the start and end of the current week in the student/teacher's timezone
-#    start_of_week = today - timedelta(days=today.weekday(), hours=today.hour, minutes=today.minute, seconds=today.second, microseconds=today.microsecond) + timedelta(weeks=week_offset)
- #   end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59)
-  #  start_of_week_utc = start_of_week.astimezone(timezone.utc)
-   # end_of_week_utc = end_of_week.astimezone(timezone.utc)
-    #print(f"Book Lessons From {start_of_week.strftime('%A, %B %d, %Y %I:%M %p')} - {end_of_week.strftime('%A, %B %d, %Y %I:%M %p')}")
 
-
-@app.route('/teacher/lesson_slots', methods=['GET', 'POST'])
+@app.route('/teacher/lesson_slots', methods=['GET'])
 @login_required
 def manage_lesson_slots():
     form = LessonSlotsForm()
     teacher = db.session.get(Teacher, current_user.id)
     user_timezone = pytz.timezone(teacher.timezone)
     print(f"User timezone: {user_timezone}")
-
-    if request.method == 'POST':
-        if form.validate_on_submit():
-            try:
-                response = manage_slot(request.form['start_time'], request.form['end_time'], current_user.id, user_timezone, 'open' if form.open.data else 'close')
-                db.session.commit()
-                return jsonify(response)
-            except Exception as e:
-                db.session.rollback()
-                app.logger.error(f"Error creating or deleting lesson slot: {e}")
-                return jsonify({'status': 'error', 'message': 'An error occurred while creating or deleting the lesson slot.'}), 500
-        else:
-            app.logger.error('Invalid form data.')
-            return jsonify({'status': 'error', 'message': 'Invalid form data.'}), 400
 
     week_offset = int(request.args.get('week_offset', 0))
     today = datetime.now(user_timezone)
@@ -753,6 +732,7 @@ def manage_lesson_slots():
     else:
         # Handle standard GET request
         return render_template('teacher/lesson_slots.html', form=form)
+
 
 # Helper functions
 def manage_slot(start_time_str, end_time_str, teacher_id, timezone_str, action):
@@ -1176,7 +1156,6 @@ def student_lesson_records():
 
 @app.route('/student/edit_student_profile', methods=['GET', 'POST'])
 @login_required
-@limiter.limit("5/minute") 
 def edit_student_profile():
     if 'user_type' not in session or session['user_type'] != 'student':
         return redirect(url_for('login'))

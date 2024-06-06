@@ -33,17 +33,18 @@
 <script>
     $(document).ready(function() {
         console.log("Document is ready!");
-
+    
         let currentStartDate = new Date();
         currentStartDate.setDate(currentStartDate.getDate() - (currentStartDate.getDay() === 0 ? 6 : currentStartDate.getDay() - 1));
         currentStartDate.setHours(0, 0, 0, 0);
-
+    
+        let weekOffset = 0;
         let changes = [];
         let editEnabled = false;
-
+    
         // Extract CSRF token from the hidden form field
         const csrfToken = $('input[name="csrf_token"]').val();
-
+    
         $.ajaxSetup({
             beforeSend: function(xhr, settings) {
                 if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
@@ -51,95 +52,95 @@
                 }
             }
         });
-
-        // Function to update the table with received data
-function updateTable(data) {
-    console.log('Data received in updateTable:', data);
-    const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    let headerRow = '<tr class="bg-gray-200 dark:bg-gray-700"><th class="border border-gray-300 dark:border-gray-600 py-1 dark:text-gray-100">Time</th>';
-
-    // Create the header row for the dates
-    for (let i = 0; i < 7; i++) {
-        const date = new Date(currentStartDate);
-        date.setDate(currentStartDate.getDate() + i);
-        headerRow += `<th class="border border-gray-300 dark:border-gray-600 py-1 dark:text-gray-100">${daysOfWeek[i]} ${date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</th>`;
-    }
-    headerRow += '</tr>';
-
-    // Create the body rows for each hour
-    let bodyRows = '';
-    for (let hour = 7; hour <= 23; hour++) {
-        bodyRows += `<tr><td class="border border-gray-300 dark:border-gray-600 dark:text-gray-100 py-1 text-center">${hour}:00</td>`;
-        for (let i = 0; i < 7; i++) {
-            const cellTime = new Date(currentStartDate);
-            cellTime.setDate(currentStartDate.getDate() + i);
-            cellTime.setHours(hour, 0, 0, 0);
-            const cellTimeInUTC = new Date(cellTime.getTime() + cellTime.getTimezoneOffset() * 60 * 1000);
-            const slot = data.find(slot => new Date(slot.start_time).getTime() === cellTimeInUTC.getTime());
-            let cellClass = 'bg-gray-300 text-black text-center';
-            let cellContent = '-';
-            let dataSlotId = '';
-            let clickHandler = '';
-            let dataTime = `data-time="${cellTime.toISOString()}"`;
-
-            if (slot) {
-                // Convert the start_time to the user's local timezone
-                const localStartTime = new Date(slot.start_time);
-                const userLocalStartTime = new Date(localStartTime.getTime() + localStartTime.getTimezoneOffset() * 60 * 1000);
-                const localStartTimeString = userLocalStartTime.toLocaleTimeString();
-
-                if (slot.status === 'Booked') {
-                    cellClass = 'bg-blue-500 text-white text-center';
-                    cellContent = 'BOOKED';
-                } else if (slot.status === 'Available') {
-                    cellClass = 'bg-yellow-500 text-black text-center';
-                    cellContent = 'OPEN LESSON';
-                    dataSlotId = `data-slot-id="${slot.slot_id}"`;
-                    clickHandler = `onclick="toggleSlotStatus(this, 'close')"`;
-                }
-            } else {
-                clickHandler = `onclick="toggleSlotStatus(this, 'open')"`;
-            }
-
-            // Disable past slots
-            if (cellTime < new Date()) {
-                cellClass = 'bg-gray-200 text-black text-center cursor-not-allowed';
-                clickHandler = '';
-            }
-
-            bodyRows += `<td class="border border-gray-300 dark:border-gray-600 py-1 ${cellClass} hover:bg-gray-400 dark:hover:bg-gray-600" ${dataSlotId} ${clickHandler} ${dataTime}>${cellContent}</td>`;
-        }
-        bodyRows += '</tr>';
-    }
     
-    const tableHtml = `<table class="table-fixed w-full border-collapse border border-gray-300 dark:border-gray-700 mb-4"><thead>${headerRow}</thead><tbody>${bodyRows}</tbody></table>`;
-    document.getElementById('tableContainer').innerHTML = tableHtml;
-}
-
+        // Function to update the table with received data
+        function updateTable(data) {
+            console.log('Data received in updateTable:', data);
+            const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            let headerRow = '<tr class="bg-gray-200 dark:bg-gray-700"><th class="border border-gray-300 dark:border-gray-600 py-1 dark:text-gray-100">Time</th>';
+    
+            // Create the header row for the dates
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(currentStartDate);
+                date.setDate(currentStartDate.getDate() + i);
+                headerRow += `<th class="border border-gray-300 dark:border-gray-600 py-1 dark:text-gray-100">${daysOfWeek[i]} ${date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</th>`;
+            }
+            headerRow += '</tr>';
+    
+            // Create the body rows for each hour
+            let bodyRows = '';
+            for (let hour = 7; hour <= 23; hour++) {
+                bodyRows += `<tr><td class="border border-gray-300 dark:border-gray-600 dark:text-gray-100 py-1 text-center">${hour}:00</td>`;
+                for (let i = 0; i < 7; i++) {
+                    const cellTime = new Date(currentStartDate);
+                    cellTime.setDate(currentStartDate.getDate() + i);
+                    cellTime.setHours(hour, 0, 0, 0);
+                    const cellTimeInUTC = new Date(cellTime.getTime() + cellTime.getTimezoneOffset() * 60 * 1000);
+                    const slot = data.find(slot => new Date(slot.start_time).getTime() === cellTimeInUTC.getTime());
+                    let cellClass = 'bg-gray-300 text-black text-center';
+                    let cellContent = '-';
+                    let dataSlotId = '';
+                    let clickHandler = '';
+                    let dataTime = `data-time="${cellTime.toISOString()}"`;
+    
+                    if (slot) {
+                        // Convert the start_time to the user's local timezone
+                        const localStartTime = new Date(slot.start_time);
+                        const userLocalStartTime = new Date(localStartTime.getTime() + localStartTime.getTimezoneOffset() * 60 * 1000);
+                        const localStartTimeString = userLocalStartTime.toLocaleTimeString();
+    
+                        if (slot.status === 'Booked') {
+                            cellClass = 'bg-blue-500 text-white text-center';
+                            cellContent = 'BOOKED';
+                        } else if (slot.status === 'Available') {
+                            cellClass = 'bg-yellow-500 text-black text-center';
+                            cellContent = 'OPEN LESSON';
+                            dataSlotId = `data-slot-id="${slot.slot_id}"`;
+                            clickHandler = `onclick="toggleSlotStatus(this, 'close')"`;
+                        }
+                    } else {
+                        clickHandler = `onclick="toggleSlotStatus(this, 'open')"`;
+                    }
+    
+                    // Disable past slots
+                    if (cellTime < new Date()) {
+                        cellClass = 'bg-gray-200 text-black text-center cursor-not-allowed';
+                        clickHandler = '';
+                    }
+    
+                    bodyRows += `<td class="border border-gray-300 dark:border-gray-600 py-1 ${cellClass} hover:bg-gray-400 dark:hover:bg-gray-600" ${dataSlotId} ${clickHandler} ${dataTime}>${cellContent}</td>`;
+                }
+                bodyRows += '</tr>';
+            }
+            
+            const tableHtml = `<table class="table-fixed w-full border-collapse border border-gray-300 dark:border-gray-700 mb-4"><thead>${headerRow}</thead><tbody>${bodyRows}</tbody></table>`;
+            document.getElementById('tableContainer').innerHTML = tableHtml;
+        }
+    
         // Function to toggle slot status
         window.toggleSlotStatus = function(cell, action) {
             if (!editEnabled) return; // Prevent cell toggling if edit is not enabled
-
+    
             console.log('toggleSlotStatus cell:', cell);
             console.log('toggleSlotStatus action:', action);
             const cellTime = new Date($(cell).data('time'));
             let slotId = $(cell).data('slot-id');
-
+    
             // Do nothing if the slot is booked or in the past
             if ($(cell).hasClass('bg-blue-500') || $(cell).hasClass('cursor-not-allowed')) {
                 return;
             }
-
+    
             if (action === 'open') {
                 if ($(cell).hasClass('bg-yellow-500')) {
                     // Revert the cell to its initial state
                     $(cell).removeClass('bg-yellow-500').addClass('bg-gray-300').text('-');
-                    changes = changes.filter(change => change.start_time !== cellTime.toISOString());
+                    changes = changes.filter(change => !(change.start_time === cellTime.toISOString() && change.action === 'open'));
                 } else {
                     // Convert cellTime to UTC before sending it to the server
                     const utcCellTime = new Date(cellTime.getTime() + cellTime.getTimezoneOffset() * 60 * 1000);
                     const utcEndTime = new Date(utcCellTime.getTime() + 60 * 60 * 1000);
-
+    
                     // Mark the cell as open lesson
                     $(cell).removeClass('bg-gray-300').addClass('bg-yellow-500').text('OPEN LESSON');
                     changes.push({ action: 'open', start_time: utcCellTime.toISOString(), end_time: utcEndTime.toISOString() });
@@ -156,16 +157,18 @@ function updateTable(data) {
                 $(cell).attr('onclick', "toggleSlotStatus(this, 'close')");
             }
         };
-
+    
         // Function to send an AJAX request to get lesson slots
         function sendDateRequest(offset) {
-            currentStartDate.setDate(currentStartDate.getDate() + offset);
+            weekOffset += offset;
+            currentStartDate.setDate(currentStartDate.getDate() + offset * 7);
             let dataToSend = {
-                start_date: currentStartDate.toISOString().slice(0, 19)
+                start_date: currentStartDate.toISOString().slice(0, 19),
+                week_offset: weekOffset
             };
-
+    
             console.log('Data being sent:', dataToSend);
-
+    
             $.ajax({
                 url: '/teacher/lesson_slots',
                 type: 'GET',
@@ -181,20 +184,21 @@ function updateTable(data) {
                     console.error("AJAX request failed: " + textStatus + ", " + errorThrown);
                     console.error("Response text:", jqXHR.responseText);
                     // Revert the currentStartDate if the request fails
-                    currentStartDate.setDate(currentStartDate.getDate() - offset);
+                    currentStartDate.setDate(currentStartDate.getDate() - offset * 7);
+                    weekOffset -= offset;
                 }
             });
         }
-
+    
         // Event listeners for the navigation buttons
         $('#unique-prev-week').click(function() {
-            sendDateRequest(-7);
+            sendDateRequest(-1);
         });
-
+    
         $('#unique-next-week').click(function() {
-            sendDateRequest(7);
+            sendDateRequest(1);
         });
-
+    
         // Event listener for the edit button
         $('#unique-edit-button').click(function() {
             editEnabled = true;
@@ -202,18 +206,18 @@ function updateTable(data) {
             $('#unique-cancel-button').removeClass('hidden');
             $('#unique-edit-button').addClass('hidden');
         });
-
+    
         // Event listener for the submit button
         $('#unique-submit-button').click(function() {
             if (changes.length === 0) {
                 alert('No changes to submit.');
                 return;
             }
-
+    
             if (!confirm('Are you sure you want to submit the changes?')) {
                 return;
             }
-
+    
             $.ajax({
                 url: '/teacher/update_slots',
                 type: 'POST',
@@ -244,7 +248,7 @@ function updateTable(data) {
                 }
             });
         });
-
+    
         // Event listener for the cancel button
         $('#unique-cancel-button').click(function() {
             changes = [];
@@ -254,9 +258,10 @@ function updateTable(data) {
             editEnabled = false;
             sendDateRequest(0); // Reload the current week's schedule
         });
-
+    
         // Initial load of the current week's schedule
         sendDateRequest(0);
     });
+    
 </script>
 {% endblock %}
