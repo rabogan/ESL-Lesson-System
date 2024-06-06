@@ -120,8 +120,8 @@
         const fileInput = document.querySelector('[name=image_file]');
         const filePath = fileInput.value;
         const allowedExtensions = /(\.jpg|\.jpeg|\.png|\.gif)$/i;
-        if (!allowedExtensions.exec(filePath)) {
-            alert('Please upload file having extensions .jpeg/.jpg/.png/.gif only.');
+        if (filePath && !allowedExtensions.exec(filePath)) {
+            alert('Please upload a file with extensions .jpeg/.jpg/.png/.gif only.');
             fileInput.value = '';
             event.preventDefault(); // prevent form from being submitted
         }

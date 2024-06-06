@@ -1,22 +1,18 @@
 import json
 import pytz
 import logging
-from flask_limiter import Limiter
-from forms import FileMaxSizeMB
-from helpers import convert_to_utc, is_valid_json, process_form_data, save_image_file, ensure_timezone_aware, get_week_boundaries, strip_whitespace
-from flask import Flask, session, render_template, request, redirect, url_for, flash, jsonify, abort
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, session, render_template, request, redirect, url_for, flash, jsonify
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from sqlalchemy import and_
-from models import JsonEncodedDict
 from sqlalchemy.orm import joinedload
-from flask_migrate import Migrate
 from datetime import datetime, timedelta, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_wtf import FlaskForm, CSRFProtect
-from flask_wtf.file import FileAllowed
-from wtforms import ValidationError, SelectField, DateTimeField, StringField, PasswordField, SubmitField, BooleanField, HiddenField, IntegerField, FileField, TextAreaField, HiddenField
-from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional, NumberRange, InputRequired
+from flask_wtf import CSRFProtect
+from flask_limiter import Limiter
+from helpers import convert_to_utc, process_form_data, save_image_file, ensure_timezone_aware, get_week_boundaries
+from models import db, Student, StudentProfile, Teacher, TeacherProfile, LessonRecord, LessonSlot, Booking
+from forms import RegistrationForm, LoginForm, EditTeacherProfileForm, StudentProfileForm, TeacherEditsStudentForm, LessonRecordForm, LessonSlotsForm, StudentLessonSlotForm, CancelLessonForm
+from database import db, migrate
 
 
 # Initialize Flask app
@@ -28,8 +24,8 @@ app.logger.setLevel(logging.INFO)
 
 
 # Initialize extensions
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
+db.init_app(app)
+migrate.init_app(app, db)
 login_manager = LoginManager()
 login_manager.init_app(app)
 csrf = CSRFProtect(app)
@@ -41,264 +37,11 @@ limiter = Limiter(app)
 logging.basicConfig(level=logging.DEBUG)
 
 
-# Forms
-class RegistrationForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
-    email = StringField('Email', validators=[DataRequired(), Email()])
-    password = PasswordField('Password', validators=[DataRequired()])
-    confirmation = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
-    submit = SubmitField('Register')
-
-    def validate_username(self, username):
-        user = Student.query.filter_by(username=username.data).first()
-        if user:
-            raise ValidationError('That username is taken. Please choose a different one.')
-
-    def validate_email(self, email):
-        user = Student.query.filter_by(email=email.data).first()
-        if user:
-            raise ValidationError('That email is taken. Please choose a different one.')
-
-
-class LoginForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
-    password = PasswordField('Password', validators=[DataRequired()])
-    remember = BooleanField('Remember Me')
-    submit = SubmitField('Login')
-
-
-class EditTeacherProfileForm(FlaskForm):
-    age = IntegerField('Age', validators=[Optional(), NumberRange(min=0)])
-    hobbies = StringField('Hobbies', validators=[Optional(), Length(max=500), strip_whitespace])
-    motto = StringField('Motto', validators=[Optional(), Length(max=500), strip_whitespace])
-    blood_type = StringField('Blood Type', validators=[Optional(), Length(max=5), strip_whitespace])
-    image_file = FileField('Profile Image', validators=[Optional(), FileAllowed(['jpg', 'png', 'gif', 'jpeg']), FileMaxSizeMB(5)])
-    submit = SubmitField('Update Profile')
-
-
-class StudentProfileForm(FlaskForm):
-    hometown = StringField('Hometown', validators=[Optional(), Length(max=500), strip_whitespace])
-    goal = StringField('Goal', validators=[Optional(), Length(max=1000), strip_whitespace])
-    hobbies = StringField('Hobbies', validators=[Optional(), Length(max=1000), strip_whitespace])
-    correction_style = StringField('Correction Style', validators=[Optional(), Length(max=1000), strip_whitespace])
-    english_weakness = StringField('English Weakness', validators=[Optional(), Length(max=1000), strip_whitespace])
-    image_file = FileField('Profile Image', validators=[Optional(), FileAllowed(['jpg', 'png', 'gif', 'jpeg']), FileMaxSizeMB(5)])
-    submit = SubmitField('Update Profile')
-
-
-class TeacherEditsStudentForm(FlaskForm):
-    hometown = StringField('Hometown', validators=[Optional(), Length(max=500), strip_whitespace])
-    goal = StringField('Goal', validators=[Optional(), Length(max=1000), strip_whitespace])
-    hobbies = StringField('Hobbies', validators=[Optional(), Length(max=1000), strip_whitespace])
-    correction_style = StringField('Correction Style', validators=[Optional(), Length(max=1000), strip_whitespace])
-    english_weakness = StringField('English Weakness', validators=[Optional(), Length(max=1000), strip_whitespace])
-    submit = SubmitField('Update Profile')
-    
-
-class LessonRecordForm(FlaskForm):
-    csrf_token = HiddenField('CSRF Token', validators=[InputRequired()])
-    lesson_summary = TextAreaField('Lesson Summary', validators=[Optional()])
-    strengths = TextAreaField('Strengths', validators=[Optional()])
-    areas_to_improve = TextAreaField('Areas to Improve', validators=[Optional()])
-    new_words = HiddenField('New Words', default='[]', validators=[Optional()])
-    new_phrases = HiddenField('New Phrases', default='[]', validators=[Optional()])
-    submit = SubmitField('Update Lesson')
-
-    def validate_new_words(form, field):
-        app.logger.info(f"Validating new_words: {field.data}")
-        if field.data and field.data != '[]':
-            try:
-                words = json.loads(field.data)
-                for word in words:
-                    if not isinstance(word, str):
-                        raise ValidationError('Each word must be a string.')
-            except json.JSONDecodeError:
-                app.logger.error(f"Failed to decode JSON for new_words: {field.data}")
-                raise ValidationError('Invalid JSON data for new_words.')
-
-    def validate_new_phrases(form, field):
-        app.logger.info(f"Validating new_phrases: {field.data}")
-        if field.data and field.data != '[]':
-            try:
-                phrases = json.loads(field.data)
-                for phrase in phrases:
-                    if not isinstance(phrase, str):
-                        raise ValidationError('Each phrase must be a string.')
-            except json.JSONDecodeError:
-                app.logger.error(f"Failed to decode JSON for new_phrases: {field.data}")
-                raise ValidationError('Invalid JSON data for new_phrases.')
-
-    def validate(self, extra_validators=None):
-        rv = FlaskForm.validate(self)
-        if not rv:
-            return False
-        if self.new_words.data == '[]' and self.new_phrases.data == '[]':
-            self.new_words.errors.append('At least one of New Words or New Phrases must be filled.')
-            return False
-        return True
-
-
-
-class LessonSlotsForm(FlaskForm):
-    start_time = DateTimeField('Start Time', validators=[DataRequired()])
-    end_time = DateTimeField('End Time', validators=[DataRequired()])
-    is_booked = BooleanField('Is Booked', default=False)
-    submit = SubmitField('Submit')
-    
-
-class StudentLessonSlotForm(FlaskForm):
-    teacher = SelectField('Teacher', coerce=int, validators=[DataRequired()])
-    lesson_slot = SelectField('Lesson Slot', coerce=int, validators=[DataRequired()])
-    submit = SubmitField('Submit')
-
-
-class CancelLessonForm(FlaskForm):
-    lesson_id = HiddenField('Lesson ID', validators=[DataRequired()])
-    csrf_token = HiddenField()
-
-    def validate_lesson_id(self, lesson_id):
-        lesson = LessonSlot.query.get(lesson_id.data)
-        if not lesson:
-            raise ValidationError('Invalid lesson ID.')
-
-    def validate_on_submit(self):
-        if not super().validate_on_submit():
-            app.logger.debug(f"Validation errors: {self.errors}")
-            return False
-        app.logger.debug(f"Lesson ID in form: {self.lesson_id.data}")
-        return True
-
-
-# User model
-class User(UserMixin):
-    def __init__(self, id):
-        self.id = id
-
-
-# Student model
-class Student(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(20), unique=True, nullable=False)
-    password = db.Column(db.String(60), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    number_of_lessons = db.Column(db.Integer, default=0)
-    lessons_purchased = db.Column(db.Integer, default=30) 
-    timezone = db.Column(db.String(50), default='America/Los_Angeles')
-    profile = db.relationship('StudentProfile', uselist=False, back_populates='student')
-    lesson_records = db.relationship('LessonRecord', back_populates='student')
-    bookings = db.relationship('Booking', back_populates='student')
-
-    @property
-    def remaining_lessons(self):
-        return self.lessons_purchased - self.number_of_lessons
-
-    def __repr__(self):
-        return f"Student('{self.username}', '{self.email}', '{self.number_of_lessons}')"
-
-
-class StudentProfile(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    hometown = db.Column(db.String(500))
-    goal = db.Column(db.String(500))
-    hobbies = db.Column(db.String(500))
-    correction_style = db.Column(db.String(500))
-    english_weakness = db.Column(db.String(500))
-    image_file = db.Column(db.String(20), nullable=False, default='default1.png')
-    student_id = db.Column(db.Integer, db.ForeignKey('student.id'))
-    student = db.relationship('Student', back_populates='profile')
-
-    def __repr__(self):
-        return f"StudentProfile('{self.hometown}', '{self.goal}', '{self.hobbies}', '{self.correction_style}', '{self.english_weakness}', '{self.image_file}')"
-
-
-# Teacher model
-class Teacher(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(20), unique=True, nullable=False)
-    password = db.Column(db.String(60), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    timezone = db.Column(db.String(50), default='America/Los_Angeles')
-    profile = db.relationship('TeacherProfile', uselist=False, back_populates='teacher')
-    lesson_records = db.relationship('LessonRecord', back_populates='teacher')
-    lesson_slots = db.relationship('LessonSlot', back_populates='teacher')
-
-    def __repr__(self):
-        return f"Teacher('{self.username}', '{self.email}')"
-
-
-# TeacherProfile model
-class TeacherProfile(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    age = db.Column(db.Integer)
-    hobbies = db.Column(db.String(500))
-    motto = db.Column(db.String(500))
-    blood_type = db.Column(db.String(3))
-    image_file = db.Column(db.String(20), nullable=False, default='default.jpg')
-    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'))
-    teacher = db.relationship('Teacher', back_populates='profile')
-
-def __repr__(self):
-    return f"TeacherProfile('{self.age}', '{self.hobbies}', '{self.motto}', '{self.blood_type}', '{self.image_file}', '{self.from_location}')"
-
-
-class LessonRecord(db.Model):
-    __tablename__ = 'lesson_record'
-    id = db.Column(db.Integer, primary_key=True)
-    student_id = db.Column(db.Integer, db.ForeignKey('student.id'))
-    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'))
-    lesson_slot_id = db.Column(db.Integer, db.ForeignKey('lesson_slot.id'), nullable=False)
-    strengths = db.Column(db.String(1000))
-    areas_to_improve = db.Column(db.String(1000))
-    new_words = db.Column(JsonEncodedDict)
-    new_phrases = db.Column(JsonEncodedDict)
-    lesson_summary = db.Column(db.String(1000))
-    lastEditTime = db.Column(db.DateTime, default=datetime.utcnow)
-    student = db.relationship('Student', back_populates='lesson_records')
-    teacher = db.relationship('Teacher', back_populates='lesson_records')
-    lesson_slot = db.relationship('LessonSlot', back_populates='lesson_records')
-    booking = db.relationship('Booking', back_populates='lesson_record', uselist=False)
-
-    def __repr__(self):
-        return f"LessonRecord('{self.strengths}', '{self.areas_to_improve}', '{self.lesson_summary}', '{self.lastEditTime}')"
-
-
-# Representing the time slot that a teacher is available for a lesson
-class LessonSlot(db.Model):
-    __tablename__ = 'lesson_slot'
-    id = db.Column(db.Integer, primary_key=True)
-    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
-    start_time = db.Column(db.DateTime, nullable=False, index=True)
-    end_time = db.Column(db.DateTime, nullable=False)
-    is_booked = db.Column(db.Boolean, default=False)
-    teacher = db.relationship('Teacher', back_populates='lesson_slots')
-    booking = db.relationship('Booking', uselist=False, back_populates='lesson_slot')
-    lesson_records = db.relationship('LessonRecord', back_populates='lesson_slot')
-
-    def __repr__(self):
-        return f"LessonSlot('{self.teacher_id}', '{self.start_time}', '{self.end_time}', '{self.is_booked}')"
-
-
-class Booking(db.Model):
-    __tablename__ = 'booking'
-    id = db.Column(db.Integer, primary_key=True)
-    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
-    lesson_slot_id = db.Column(db.Integer, db.ForeignKey('lesson_slot.id'), nullable=False)
-    lesson_record_id = db.Column(db.Integer, db.ForeignKey('lesson_record.id'), nullable=True)
-    status = db.Column(db.String(20), nullable=False, default='booked')
-    student = db.relationship('Student', back_populates='bookings')
-    lesson_slot = db.relationship('LessonSlot', back_populates='booking')
-    lesson_record = db.relationship('LessonRecord', back_populates='booking', uselist=False)
-
-    def __repr__(self):
-        return f"Booking('{self.student_id}', '{self.lesson_slot_id}', '{self.status}', '{self.lesson_record_id}')"
-
-
 # Ensure database tables are created
 with app.app_context():
-    # Ensure database tables are created
     db.create_all()
     print("Tables created")
-        
+
 
 # This handles whether a student or teacher is logging in
 @login_manager.user_loader
