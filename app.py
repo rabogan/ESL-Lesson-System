@@ -1,7 +1,6 @@
-import json
 import logging
 import pytz
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from flask import Flask, session, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, logout_user, login_required, current_user
 from flask_wtf import CSRFProtect
@@ -76,7 +75,7 @@ def internal_error(error):
 @app.route("/")
 def index():
     """
-    Just the index page of the web app
+    Displays the index page of our web app, 
     """
     return render_template("display.html")
 
@@ -84,7 +83,7 @@ def index():
 @app.route('/meetYourTeacher')
 def meet_your_teacher():
     """
-    Shows a rogue's gallery of all the teachers in the system.
+    Shows a rogue's gallery of all the teachers present in the system
     """
     page = request.args.get('page', 1, type=int)
     teachers = Teacher.query.paginate(page=page, per_page=6)
@@ -310,6 +309,7 @@ def update_lesson_slot():
         return jsonify(close_slot(slot_id, current_user.id))
 
     return jsonify({'status': 'error'})
+
 
 @app.route('/update-slot-status', methods=['POST'])
 @login_required
