@@ -6,7 +6,7 @@ from flask import Flask, session, render_template, request, redirect, url_for, f
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
-from helpers.auth_helpers import authenticate_user, create_user, create_profile, login_new_user, is_username_taken
+from helpers.auth_helpers import authenticate_user, create_user, create_profile, login_new_user, is_username_taken, register_user, login_user_helper
 from helpers.dashboard_helpers import get_most_recent_lesson_record, get_upcoming_lessons
 from helpers.edit_lesson_record import get_lesson_by_id, initialize_lesson_form, update_lesson_from_form, update_last_edit_time
 from helpers.file_helpers import save_image_file
@@ -14,7 +14,7 @@ from helpers.lesson_record_helpers import get_paginated_lesson_records, make_tim
 from helpers.student_helpers import update_student_profile, get_student_by_id, cancel_student_lesson
 from helpers.teacher_helpers import get_outstanding_lessons, get_teacher_by_id, get_teacher_profile_by_id, update_teacher_profile, update_student_profile_from_form
 from helpers.time_helpers import ensure_timezone_aware, get_week_boundaries, get_user_timezone
-from models import Student, StudentProfile, Teacher, TeacherProfile, LessonRecord, LessonSlot, Booking
+from models import Student, StudentProfile, Teacher, LessonRecord, LessonSlot, Booking
 from forms import RegistrationForm, LoginForm, EditTeacherProfileForm, StudentProfileForm, TeacherEditsStudentForm, LessonRecordForm, LessonSlotsForm, StudentLessonSlotForm, CancelLessonForm
 from database import db, migrate
 
@@ -140,85 +140,37 @@ def portal_choice():
 @app.route("/student/register", methods=["GET", "POST"])
 @limiter.limit("5/minute")
 def student_register():
-    """
-    Handles the registration of a new student, rate-limited to 5 requests per minute to prevent abuse.
-    It uses a RegistrationForm to validate the submitted data. If the form data is valid,
-    it checks if a student with the submitted username already exists. If the username is taken,
-    it adds an error to the form and re-renders the registration page with a 400 status.
-
-    If the username is not taken, it creates a new Student with the submitted data and a hashed password,
-    and adds it to the database. It then creates a new StudentProfile for the newly registered student
-    with a default image, and adds it to the database.
-
-    If the form data is not valid, it simply renders the registration page with the form.
-    """
     form = RegistrationForm()
     
     if form.validate_on_submit():
-        username = form.username.data
-        email = form.email.data
-        password = form.password.data
-
-        if is_username_taken(Student, username):
-            form.username.errors.append("Username already exists")
+        new_user, error_message = register_user(form, 'student')
+        if error_message:
+            form.username.errors.append(error_message)
             return render_template("student_register.html", form=form), 400
-
-        new_student = create_user(Student, username, email, password)
-        create_profile(StudentProfile, new_student.id, 'default1.jpg')
-        login_new_user(new_student, 'student')
-
-        return redirect(url_for("student_login"))
+        return redirect(url_for("student_dashboard"))
     
     return render_template("student_register.html", form=form)
-
 
 @app.route("/student/login", methods=["GET", "POST"])
 @limiter.limit("5/minute")
 def student_login():
-    """
-    Allow existing students to log in (or redirect them!)
-    """
     form = LoginForm()
     if form.validate_on_submit():
-        username = form.username.data
-        password = form.password.data
-        remember = form.remember.data
-
-        if not username or not password:
-            return render_template("apology.html", top="Error", bottom="Please provide a valid username and password"), 400
-
-        student = authenticate_user(Student, username, password)
-        if student is None:
-            return render_template("apology.html", top="Error", bottom="Invalid username or password"), 400
-
-        login_new_user(student, 'student')
-        login_user(student, remember)
-
+        user, error_message = login_user_helper(form, Student, 'student')
+        if error_message:
+            return render_template("apology.html", top="Error", bottom=error_message), 400
         return redirect(url_for("student_dashboard"))
     return render_template("student_login.html", form=form)
+
 
 @app.route("/teacher/register", methods=["GET", "POST"])
 @limiter.limit("5/minute")
 def teacher_register():
-    """
-    Creates a new teacher account and profile, then logs in the new teacher.
-    See /student/register for more details on how this works, as it's very similar.
-    This obeys the DRY principle in that regard!
-    """
     form = RegistrationForm()
-    
     if form.validate_on_submit():
-        username = form.username.data
-        email = form.email.data
-        password = form.password.data
-
-        if is_username_taken(Teacher, username) or is_username_taken(Teacher, email):
-            return render_template("apology.html", top="Error", bottom="Registration error"), 400
-
-        new_teacher = create_user(Teacher, username, email, password)
-        create_profile(TeacherProfile, new_teacher.id, 'default.jpg')
-        login_new_user(new_teacher, 'teacher')
-
+        new_user, error_message = register_user(form, 'teacher')
+        if error_message:
+            return render_template("apology.html", top="Error", bottom=error_message), 400
         return redirect(url_for("teacher_dashboard"))
     
     return render_template("teacher_register.html", form=form)
@@ -227,25 +179,11 @@ def teacher_register():
 @app.route("/teacher/login", methods=["GET", "POST"])
 @limiter.limit("5/minute")
 def teacher_login():
-    """
-    Allow existing teachers to log in!
-    """
     form = LoginForm()
     if form.validate_on_submit():
-        username = form.username.data
-        password = form.password.data
-        remember = form.remember.data
-
-        if not username or not password:
-            return render_template("apology.html", top="Error", bottom="Please provide a valid username and password"), 400
-
-        teacher = authenticate_user(Teacher, username, password)
-        if teacher is None:
-            return render_template("apology.html", top="Error", bottom="Invalid username or password"), 400
-
-        login_new_user(teacher, 'teacher')
-        login_user(teacher, remember=remember)
-
+        user, error_message = login_user_helper(form, Teacher, 'teacher')
+        if error_message:
+            return render_template("apology.html", top="Error", bottom=error_message), 400
         return redirect(url_for("teacher_dashboard"))
     return render_template("teacher_login.html", form=form)
 
