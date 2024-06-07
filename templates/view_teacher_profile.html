@@ -12,12 +12,12 @@
         </nav>
         <h1 class="text-3xl md:text-5xl font-extrabold text-center text-gray-900 dark:text-gray-100 mb-8">Teacher Profile: {{ teacher.username }}</h1>
 
-        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 max-w-2xl mx-auto">
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 max-w-2xl mx-auto hover:shadow-lg transition-shadow duration-300">
             <div class="flex items-center space-x-4 mb-6">
                 {% if profile.image_file %}
-                    <img class="w-20 h-20 rounded-full" src="{{ url_for('static', filename='img/teacherImg/' + profile.image_file) }}" alt="Teacher's profile picture">
+                    <img class="w-20 h-20 rounded-full border-2 border-gray-200 dark:border-gray-700 shadow-md" src="{{ url_for('static', filename='img/teacherImg/' + profile.image_file) }}" alt="Teacher's profile picture">
                 {% else %}
-                    <img class="w-20 h-20 rounded-full" src="{{ url_for('static', filename='img/teacherImg/default.jpg') }}" alt="Default profile picture">
+                    <img class="w-20 h-20 rounded-full border-2 border-gray-200 dark:border-gray-700 shadow-md" src="{{ url_for('static', filename='img/teacherImg/default.jpg') }}" alt="Default profile picture">
                 {% endif %}
                 <div>
                     <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ teacher.username }}</h2>

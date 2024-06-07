@@ -9,19 +9,19 @@
     <div class="max-w-screen-lg mx-auto px-4">
         <h1 class="text-3xl md:text-5xl font-extrabold text-center text-gray-900 dark:text-gray-100 mb-8">Student Profile for {{ student.username }}</h1>
         {% if profile_updated %}
-            <div id="success-message" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-8" role="alert">
+            <div id="success-message" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-8 shadow-md" role="alert">
                 <span class="block sm:inline">Student profile has been updated!</span>
             </div>
         {% endif %}
 
         <form method="POST" enctype="multipart/form-data" class="space-y-6">
             {{ form.hidden_tag() }}
-            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 max-w-2xl mx-auto">
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 max-w-2xl mx-auto hover:shadow-lg transition-shadow duration-300">
                 <div class="flex items-center space-x-4 mb-6">
                     {% if student.profile and student.profile.image_file %}
-                        <img class="w-20 h-20 rounded-full" src="{{ url_for('static', filename='img/studentImg/' + student.profile.image_file) }}" alt="Student's profile picture">
+                        <img class="w-20 h-20 rounded-full border-2 border-gray-200 dark:border-gray-700 shadow-md" src="{{ url_for('static', filename='img/studentImg/' + student.profile.image_file) }}" alt="Student's profile picture">
                     {% else %}
-                        <img class="w-20 h-20 rounded-full" src="{{ url_for('static', filename='img/studentImg/default1.png') }}" alt="Default profile picture">
+                        <img class="w-20 h-20 rounded-full border-2 border-gray-200 dark:border-gray-700 shadow-md" src="{{ url_for('static', filename='img/studentImg/default1.png') }}" alt="Default profile picture">
                     {% endif %}
                     <div>
                         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ student.username }}</h2>
@@ -32,7 +32,7 @@
                         {{ form.hometown.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                         <div class="w-2/3">
                             <div id="hometown-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.hometown or '' }}</div>
-                            {{ form.hometown(class="form-input hidden w-full custom-input dark:bg-gray-700 dark:text-gray-100") }}
+                            {{ form.hometown(class="form-input hidden w-full custom-input bg-gray-50 border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white") }}
                             {% if form.hometown.errors %}
                                 <span class="text-red-500 text-sm">{{ form.hometown.errors[0] }}</span>
                             {% endif %}
@@ -42,7 +42,7 @@
                         {{ form.goal.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                         <div class="w-2/3">
                             <div id="goal-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.goal or '' }}</div>
-                            {{ form.goal(class="form-input hidden w-full custom-input dark:bg-gray-700 dark:text-gray-100") }}
+                            {{ form.goal(class="form-input hidden w-full custom-input bg-gray-50 border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white") }}
                             {% if form.goal.errors %}
                                 <span class="text-red-500 text-sm">{{ form.goal.errors[0] }}</span>
                             {% endif %}
@@ -52,7 +52,7 @@
                         {{ form.hobbies.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                         <div class="w-2/3">
                             <div id="hobbies-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.hobbies or '' }}</div>
-                            {{ form.hobbies(class="form-input hidden w-full custom-input dark:bg-gray-700 dark:text-gray-100") }}
+                            {{ form.hobbies(class="form-input hidden w-full custom-input bg-gray-50 border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white") }}
                             {% if form.hobbies.errors %}
                                 <span class="text-red-500 text-sm">{{ form.hobbies.errors[0] }}</span>
                             {% endif %}
@@ -62,7 +62,7 @@
                         {{ form.correction_style.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                         <div class="w-2/3">
                             <div id="correction_style-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.correction_style or '' }}</div>
-                            {{ form.correction_style(class="form-input hidden w-full custom-input dark:bg-gray-700 dark:text-gray-100") }}
+                            {{ form.correction_style(class="form-input hidden w-full custom-input bg-gray-50 border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white") }}
                             {% if form.correction_style.errors %}
                                 <span class="text-red-500 text-sm">{{ form.correction_style.errors[0] }}</span>
                             {% endif %}
@@ -72,7 +72,7 @@
                         {{ form.english_weakness.label(class="w-1/4 text-gray-900 dark:text-gray-100") }}
                         <div class="w-2/3">
                             <div id="english_weakness-text" class="form-text text-gray-900 dark:text-gray-100">{{ student.profile.english_weakness or '' }}</div>
-                            {{ form.english_weakness(class="form-input hidden w-full custom-input dark:bg-gray-700 dark:text-gray-100") }}
+                            {{ form.english_weakness(class="form-input hidden w-full custom-input bg-gray-50 border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white") }}
                             {% if form.english_weakness.errors %}
                                 <span class="text-red-500 text-sm">{{ form.english_weakness.errors[0] }}</span>
                             {% endif %}
@@ -80,9 +80,9 @@
                     </div>
                 </div>
                 <div class="mt-6 text-center">
-                    <button type="button" id="edit-button" class="btn btn-primary py-2 px-4 bg-blue-500 text-white rounded-lg mr-2" onclick="editAllFields()">Edit</button>
-                    <button type="button" id="cancel-button" class="btn btn-outline bg-red-500 text-white hidden py-2 px-4 rounded-lg mr-2" onclick="cancelEditAllFields()">Cancel</button>
-                    {{ form.submit(class="btn btn-primary py-2 px-4 bg-blue-500 text-white hidden rounded-lg", id="update-profile-button") }}
+                    <button type="button" id="edit-button" class="btn btn-primary py-2 px-4 bg-blue-500 text-white rounded-lg mr-2 hover:bg-blue-600">Edit</button>
+                    <button type="button" id="cancel-button" class="btn btn-outline bg-red-500 text-white hidden py-2 px-4 rounded-lg mr-2 hover:bg-red-600">Cancel</button>
+                    {{ form.submit(class="btn btn-primary py-2 px-4 bg-blue-500 text-white hidden rounded-lg hover:bg-blue-600", id="update-profile-button") }}
                 </div>
             </div>
         </form>
