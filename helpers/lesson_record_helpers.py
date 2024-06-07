@@ -13,16 +13,22 @@ def get_paginated_lesson_records(user_id, page, user_type):
             LessonRecord.lesson_slot.has(LessonSlot.start_time <= datetime.now(timezone.utc))
         ).options(
             joinedload(LessonRecord.teacher).joinedload(Teacher.profile),
-            joinedload(LessonRecord.lesson_slot)
+            joinedload(LessonRecord.lesson_slot),
+            joinedload(LessonRecord.new_words), 
+            joinedload(LessonRecord.new_phrases)
         )
     elif user_type == 'teacher':
         query = LessonRecord.query.join(LessonSlot).filter(
             LessonRecord.teacher_id == user_id,
             LessonSlot.start_time <= datetime.now(timezone.utc)
         ).options(
-            joinedload(LessonRecord.student).joinedload(Student.profile)
+            joinedload(LessonRecord.student).joinedload(Student.profile),
+            joinedload(LessonRecord.lesson_slot),
+            joinedload(LessonRecord.new_words),
+            joinedload(LessonRecord.new_phrases) 
         )
     return query.order_by(LessonRecord.lastEditTime.desc()).paginate(page=page, per_page=5)
+
 
 def make_times_timezone_aware(lesson_records, timezone_str):
     """Make the lastEditTime and lesson slot start_time timezone-aware."""

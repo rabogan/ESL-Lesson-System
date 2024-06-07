@@ -11,7 +11,9 @@ def get_most_recent_lesson_record(user_id, user_type, timezone_str):
             LessonRecord.lesson_slot.has(LessonSlot.start_time <= datetime.now(timezone.utc))
         ).options(
             joinedload(LessonRecord.teacher).joinedload(Teacher.profile),
-            joinedload(LessonRecord.lesson_slot)
+            joinedload(LessonRecord.lesson_slot),
+            joinedload(LessonRecord.new_words),
+            joinedload(LessonRecord.new_phrases) 
         ).order_by(LessonRecord.lastEditTime.desc()).first()
     elif user_type == 'teacher':
         most_recent_record = LessonRecord.query.filter(
@@ -19,7 +21,9 @@ def get_most_recent_lesson_record(user_id, user_type, timezone_str):
             LessonRecord.lesson_slot.has(LessonSlot.start_time <= datetime.now(timezone.utc))
         ).options(
             joinedload(LessonRecord.student).joinedload(Student.profile),
-            joinedload(LessonRecord.lesson_slot)
+            joinedload(LessonRecord.lesson_slot),
+            joinedload(LessonRecord.new_words),
+            joinedload(LessonRecord.new_phrases) 
         ).order_by(LessonRecord.lastEditTime.desc()).first()
     
     if most_recent_record:

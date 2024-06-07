@@ -1,8 +1,7 @@
-from models import LessonRecord, Teacher
+from models import LessonRecord, Teacher, Word, Phrase
+from forms import WordForm, PhraseForm
 from database import db
 from helpers.time_helpers import convert_to_utc
-from helpers.form_helpers import process_form_data
-import json
 from datetime import datetime, timezone
 
 def get_lesson_by_id(lesson_id):
@@ -15,8 +14,20 @@ def initialize_lesson_form(form, lesson):
     """
     Initialize the lesson form with the lesson data.
     """
-    form.new_words.data = json.dumps(lesson.new_words)
-    form.new_phrases.data = json.dumps(lesson.new_phrases)
+    form.lesson_summary.data = lesson.lesson_summary
+    form.strengths.data = lesson.strengths
+    form.areas_to_improve.data = lesson.areas_to_improve
+
+    for word in lesson.new_words:
+        word_form = WordForm()
+        word_form.content.data = word.content
+        form.new_words.append_entry(word_form)
+
+    for phrase in lesson.new_phrases:
+        phrase_form = PhraseForm()
+        phrase_form.content.data = phrase.content
+        form.new_phrases.append_entry(phrase_form)
+
 
 def update_lesson_from_form(lesson, form):
     """
@@ -25,8 +36,21 @@ def update_lesson_from_form(lesson, form):
     lesson.lesson_summary = form.lesson_summary.data
     lesson.strengths = form.strengths.data
     lesson.areas_to_improve = form.areas_to_improve.data
-    lesson.new_words = process_form_data(form.new_words.data)
-    lesson.new_phrases = process_form_data(form.new_phrases.data)
+
+    # Clear the existing words and phrases
+    lesson.new_words.clear()
+    lesson.new_phrases.clear()
+
+    # Add new words and phrases from the form
+    for word_form in form.new_words:
+        if word_form.content.data:
+            word = Word(content=word_form.content.data, lesson_record_id=lesson.id)
+            lesson.new_words.append(word)
+
+    for phrase_form in form.new_phrases:
+        if phrase_form.content.data:
+            phrase = Phrase(content=phrase_form.content.data, lesson_record_id=lesson.id)
+            lesson.new_phrases.append(phrase)
 
 def update_last_edit_time(lesson, teacher_id):
     """

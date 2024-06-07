@@ -1,9 +1,8 @@
 
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed
-from wtforms import ValidationError, SelectField, DateTimeField, StringField, PasswordField, SubmitField, BooleanField, HiddenField, IntegerField, FileField, TextAreaField
+from wtforms import ValidationError, SelectField, DateTimeField, StringField, PasswordField, SubmitField, BooleanField, HiddenField, IntegerField, FileField, TextAreaField, FieldList, FormField, StringField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional, NumberRange, InputRequired
-import json
 from wtforms import ValidationError
 from models import Student, Teacher, LessonSlot
 from helpers.form_helpers import strip_whitespace
@@ -75,43 +74,21 @@ class TeacherEditsStudentForm(FlaskForm):
     english_weakness = StringField('English Weakness', validators=[Optional(), Length(max=1000), strip_whitespace])
     submit = SubmitField('Update Profile')
 
+class WordForm(FlaskForm):
+    content = StringField('Word', validators=[Optional()])
+
+class PhraseForm(FlaskForm):
+    content = StringField('Phrase', validators=[Optional()])
+
+
 class LessonRecordForm(FlaskForm):
-    csrf_token = HiddenField('CSRF Token', validators=[InputRequired()])
+    csrf_token = HiddenField('csrf_token')
     lesson_summary = TextAreaField('Lesson Summary', validators=[Optional()])
     strengths = TextAreaField('Strengths', validators=[Optional()])
     areas_to_improve = TextAreaField('Areas to Improve', validators=[Optional()])
-    new_words = HiddenField('New Words', default='[]', validators=[Optional()])
-    new_phrases = HiddenField('New Phrases', default='[]', validators=[Optional()])
+    new_words = FieldList(FormField(WordForm), min_entries=0)
+    new_phrases = FieldList(FormField(PhraseForm), min_entries=0)
     submit = SubmitField('Update Lesson')
-
-    def validate_new_words(form, field):
-        if field.data and field.data != '[]':
-            try:
-                words = json.loads(field.data)
-                for word in words:
-                    if not isinstance(word, str):
-                        raise ValidationError('Each word must be a string.')
-            except json.JSONDecodeError:
-                raise ValidationError('Invalid JSON data for new_words.')
-
-    def validate_new_phrases(form, field):
-        if field.data and field.data != '[]':
-            try:
-                phrases = json.loads(field.data)
-                for phrase in phrases:
-                    if not isinstance(phrase, str):
-                        raise ValidationError('Each phrase must be a string.')
-            except json.JSONDecodeError:
-                raise ValidationError('Invalid JSON data for new_phrases.')
-
-    def validate(self, extra_validators=None):
-        rv = FlaskForm.validate(self)
-        if not rv:
-            return False
-        if self.new_words.data == '[]' and self.new_phrases.data == '[]':
-            self.new_words.errors.append('At least one of New Words or New Phrases must be filled.')
-            return False
-        return True
 
 class LessonSlotsForm(FlaskForm):
     start_time = DateTimeField('Start Time', validators=[DataRequired()])

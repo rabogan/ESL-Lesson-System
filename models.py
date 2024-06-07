@@ -1,24 +1,7 @@
-import json
 from datetime import datetime
 from flask_login import UserMixin
-from sqlalchemy import types
 from database import db
-
-
-class JsonEncodedDict(types.TypeDecorator):
-    impl = types.Text
-
-    def process_bind_param(self, value, dialect):
-        if value is None:
-            return '{}'
-        else:
-            return json.dumps(value)
-
-    def process_result_value(self, value, dialect):
-        if value is None:
-            return {}
-        else:
-            return json.loads(value)
+from sqlalchemy.orm import backref
 
 
 class User(UserMixin):
@@ -97,8 +80,8 @@ class LessonRecord(db.Model):
     lesson_slot_id = db.Column(db.Integer, db.ForeignKey('lesson_slot.id'), nullable=False)
     strengths = db.Column(db.String(1000))
     areas_to_improve = db.Column(db.String(1000))
-    new_words = db.Column(JsonEncodedDict)
-    new_phrases = db.Column(JsonEncodedDict)
+    new_words = db.relationship('Word', backref='lesson_record', cascade="all, delete-orphan")
+    new_phrases = db.relationship('Phrase', backref='lesson_record', cascade="all, delete-orphan")
     lesson_summary = db.Column(db.String(1000))
     lastEditTime = db.Column(db.DateTime, default=datetime.utcnow)
     student = db.relationship('Student', back_populates='lesson_records')
@@ -110,6 +93,21 @@ class LessonRecord(db.Model):
         return f"LessonRecord('{self.strengths}', '{self.areas_to_improve}', '{self.lesson_summary}', '{self.lastEditTime}')"
 
 
+class Word(db.Model):
+    __tablename__ = 'word'
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.String(100), nullable=False)
+    lesson_record_id = db.Column(db.Integer, db.ForeignKey('lesson_record.id'))
+
+
+class Phrase(db.Model):
+    __tablename__ = 'phrase'
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.String(100), nullable=False)
+    lesson_record_id = db.Column(db.Integer, db.ForeignKey('lesson_record.id'))
+
+    
+    
 class LessonSlot(db.Model):
     __tablename__ = 'lesson_slot'
     id = db.Column(db.Integer, primary_key=True)

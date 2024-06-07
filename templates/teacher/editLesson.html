@@ -10,7 +10,7 @@
         <h1 class="text-3xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white mb-8">
             Edit Lesson for {{ lesson.student.username }}
         </h1>
-        <form method="POST" action="{{ url_for('edit_lesson', lesson_id=lesson.id) }}" id="edit-lesson-form">
+        <form method="POST" action="{{ url_for('edit_lesson', lesson_id=lesson.id) }}" id="edit-lesson-form" enctype="multipart/form-data">
             {{ form.hidden_tag() }}
             <div class="mb-4">
                 {{ form.lesson_summary.label(class="block text-sm font-medium text-gray-700 dark:text-gray-300") }}
@@ -26,10 +26,24 @@
             <div class="mb-4">
                 {{ form.strengths.label(class="block text-sm font-medium text-gray-700 dark:text-gray-300") }}
                 {{ form.strengths(class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-100") }}
+                {% if form.strengths.errors %}
+                    <ul class="mt-2 text-sm text-red-600 list-disc list-inside">
+                        {% for error in form.strengths.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
             </div>
             <div class="mb-4">
                 {{ form.areas_to_improve.label(class="block text-sm font-medium text-gray-700 dark:text-gray-300") }}
                 {{ form.areas_to_improve(class="mt-1 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-100") }}
+                {% if form.areas_to_improve.errors %}
+                    <ul class="mt-2 text-sm text-red-600 list-disc list-inside">
+                        {% for error in form.areas_to_improve.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
             </div>
             <div class="mb-4">
                 <label for="new_word" class="block text-sm font-medium text-gray-700 dark:text-gray-300">New Words</label>
@@ -37,10 +51,11 @@
                 <div id="new_words_list" class="mt-2">
                     {% for word in lesson.new_words %}
                     <span class="inline-block bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium mr-2 mb-2 px-3 py-1 rounded">
-                        {{ word }}<span class="remove-tag cursor-pointer"> x</span>
+                        {{ word.content }}<span class="remove-tag cursor-pointer"> x</span>
                     </span>
                     {% endfor %}
                 </div>
+                <input type="hidden" id="new_words_field" name="new_words" value="{{ form.new_words.data }}">
             </div>
             <div class="mb-4">
                 <label for="new_phrase" class="block text-sm font-medium text-gray-700 dark:text-gray-300">New Phrases</label>
@@ -55,13 +70,12 @@
                 <div id="new_phrases_list" class="mt-2">
                     {% for phrase in lesson.new_phrases %}
                     <span class="inline-block bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium mr-2 mb-2 px-3 py-1 rounded">
-                        {{ phrase }}<span class="remove-tag cursor-pointer"> x</span>
+                        {{ phrase.content }}<span class="remove-tag cursor-pointer"> x</span>
                     </span>
                     {% endfor %}
                 </div>
+                <input type="hidden" id="new_phrases_field" name="new_phrases" value="{{ form.new_phrases.data }}">
             </div>
-            {{ form.new_words(class="hidden") }}
-            {{ form.new_phrases(class="hidden") }}
             <div>
                 {{ form.submit(class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500") }}
             </div>
@@ -69,71 +83,101 @@
     </div>
 </section>
 {% endblock %}
-
+{% block styles %}
+<style>
+    input[name="new_words"],
+    input[name="new_phrases"] {
+        display: none;
+    }
+</style>
+{% endblock %}
 {% block scripts %}
 <script>
+    console.log("CSRF token in HTML template: {{ form.csrf_token._value() }}");
+</script>
+<script>
     document.addEventListener('DOMContentLoaded', (event) => {
+        console.log("DOM fully loaded and parsed");
         const newWordInput = document.getElementById('new_word');
         const newPhraseInput = document.getElementById('new_phrase');
         const newWordsList = document.getElementById('new_words_list');
         const newPhrasesList = document.getElementById('new_phrases_list');
-    
+        const newWordsField = document.querySelector('#new_words_field');
+        const newPhrasesField = document.querySelector('#new_phrases_field');
+
+        console.log("New Word Input:", newWordInput);
+        console.log("New Phrase Input:", newPhraseInput);
+        console.log("New Words List:", newWordsList);
+        console.log("New Phrases List:", newPhrasesList);
+        console.log("New Words Field:", newWordsField);
+        console.log("New Phrases Field:", newPhrasesField);
+
         function addTag(value, list) {
+            console.log("Adding tag:", value);
             const span = document.createElement('span');
-            span.textContent = value;
+            span.textContent = value.trim();
             span.className = 'inline-block bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium mr-2 mb-2 px-3 py-1 rounded';
             const closeBtn = document.createElement('span');
             closeBtn.textContent = ' x';
             closeBtn.className = 'remove-tag cursor-pointer';
             closeBtn.addEventListener('click', () => {
                 list.removeChild(span);
-                updateHiddenField(list, document.querySelector(`input[name="${list.id.replace('_list', '')}"]`));
+                updateHiddenField(list, list.id === 'new_words_list' ? newWordsField : newPhrasesField);
             });
             span.appendChild(closeBtn);
             list.appendChild(span);
         }
-    
+
         function updateHiddenField(list, hiddenField) {
-            const values = Array.from(list.children).map(child => child.textContent.replace(' x', ''));
-            hiddenField.value = JSON.stringify(values);
+            console.log("Updating hidden field:", hiddenField ? hiddenField.name : 'null');
+            const values = Array.from(list.children).map(child => child.textContent.replace(' x', '').trim());
+            if (hiddenField) {
+                hiddenField.value = JSON.stringify(values);
+                console.log(`Updated ${hiddenField.name} to ${hiddenField.value}`);
+            } else {
+                console.log("Hidden field not found");
+            }
         }
-    
+
         newWordInput.addEventListener('keydown', (event) => {
+            console.log("Keydown event on new word input");
             if (event.key === 'Enter') {
                 event.preventDefault();
                 if (newWordInput.value.trim() !== '') {
                     addTag(newWordInput.value.trim(), newWordsList);
                     newWordInput.value = '';
-                    updateHiddenField(newWordsList, document.querySelector('input[name="new_words"]'));
+                    updateHiddenField(newWordsList, newWordsField);
                 }
             }
         });
-    
+
         newPhraseInput.addEventListener('keydown', (event) => {
+            console.log("Keydown event on new phrase input");
             if (event.key === 'Enter') {
                 event.preventDefault();
                 if (newPhraseInput.value.trim() !== '') {
                     addTag(newPhraseInput.value.trim(), newPhrasesList);
                     newPhraseInput.value = '';
-                    updateHiddenField(newPhrasesList, document.querySelector('input[name="new_phrases"]'));
+                    updateHiddenField(newPhrasesList, newPhrasesField);
                 }
             }
         });
-    
+
         document.querySelectorAll('.remove-tag').forEach(tag => {
+            console.log("Initializing remove tag button");
             tag.addEventListener('click', function(event) {
                 event.preventDefault();
                 const wordOrPhrase = tag.parentNode;
                 wordOrPhrase.parentNode.removeChild(wordOrPhrase);
-                updateHiddenField(wordOrPhrase.parentNode, document.querySelector(`input[name="${wordOrPhrase.parentNode.id.replace('_list', '')}"]`));
+                updateHiddenField(wordOrPhrase.parentNode, wordOrPhrase.parentNode.id === 'new_words_list' ? newWordsField : newPhrasesField);
             });
         });
-    
+
         document.getElementById('edit-lesson-form').addEventListener('submit', function(event) {
-            updateHiddenField(newWordsList, document.querySelector('input[name="new_words"]'));
-            updateHiddenField(newPhrasesList, document.querySelector('input[name="new_phrases"]'));
+            console.log("Form submit event");
+            updateHiddenField(newWordsList, newWordsField);
+            updateHiddenField(newPhrasesList, newPhrasesField);
         });
     });
-    
 </script>
 {% endblock %}

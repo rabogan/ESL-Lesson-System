@@ -1,5 +1,6 @@
 import logging
 import pytz
+import json
 from datetime import datetime
 from flask import Flask, session, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, logout_user, login_required, current_user
@@ -7,7 +8,7 @@ from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
 from helpers.auth_helpers import register_user, login_user_helper
 from helpers.dashboard_helpers import get_most_recent_lesson_record, get_upcoming_lessons
-from helpers.edit_lesson_record_helpers import get_lesson_by_id, initialize_lesson_form, update_lesson_from_form, update_last_edit_time
+from helpers.edit_lesson_record_helpers import get_lesson_by_id, initialize_lesson_form, update_last_edit_time
 from helpers.file_helpers import save_image_file
 from helpers.lesson_record_helpers import get_paginated_lesson_records, make_times_timezone_aware
 from helpers.student_helpers import update_student_profile, get_student_by_id, cancel_student_lesson
@@ -15,7 +16,7 @@ from helpers.student_booking_helpers import fetch_available_slots, convert_slots
 from helpers.teacher_helpers import get_outstanding_lessons, get_teacher_by_id, get_teacher_profile_by_id, update_teacher_profile, update_student_profile_from_form
 from helpers.teacher_lesson_slot_mgmt_helpers import open_slot, close_slot, get_lesson_slots_for_week
 from helpers.time_helpers import ensure_timezone_aware, get_week_boundaries, get_user_timezone
-from models import Student, StudentProfile, Teacher, LessonSlot
+from models import Student, StudentProfile, Teacher, LessonSlot, Word, Phrase
 from forms import RegistrationForm, LoginForm, EditTeacherProfileForm, StudentProfileForm, TeacherEditsStudentForm, LessonRecordForm, LessonSlotsForm, StudentLessonSlotForm, CancelLessonForm
 from database import db, migrate
 
@@ -25,6 +26,7 @@ app = Flask(__name__)
 app.secret_key = 'coolie_killer_huimin_himitsunakotogawaruidesune'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['DEBUG'] = True
+app.config['WTF_CSRF_ENABLED'] = True
 app.logger.setLevel(logging.INFO)
 
 
@@ -403,7 +405,7 @@ def student_profile(student_id):
 @login_required
 def edit_lesson(lesson_id):
     app.logger.info(f"Editing lesson with ID {lesson_id}")
-    
+
     if session['user_type'] != 'teacher':
         app.logger.info("User is not a teacher")
         return redirect(url_for('index'))
@@ -413,32 +415,66 @@ def edit_lesson(lesson_id):
         app.logger.error(f"Lesson with ID {lesson_id} not found.")
         return render_template('404.html'), 404
 
-    form = LessonRecordForm(obj=lesson)
+    form = LessonRecordForm()
+
     if request.method == 'GET':
         initialize_lesson_form(form, lesson)
         app.logger.info(f"Pre-populated form data: new_words={form.new_words.data}, new_phrases={form.new_phrases.data}")
+        app.logger.info(f"CSRF token after form creation: {form.csrf_token.data}")
 
-    app.logger.info(f"CSRF token when rendering form: {form.csrf_token.data}")
-    if form.validate_on_submit():
-        app.logger.info("Form validated successfully")
-        update_lesson_from_form(lesson, form)
-        
-        try:
-            update_last_edit_time(lesson, session['user_id'])
-        except ValueError as e:
-            app.logger.error(e)
-            return render_template('404.html'), 404
+    if request.method == 'POST':
+        app.logger.info(f"Received form data: {request.form}")
+        app.logger.info(f"CSRF token in form: {form.csrf_token.data}")
+        app.logger.info(f"Session CSRF token: {session.get('_csrf_token')}")
+        app.logger.info(f"Request CSRF token: {request.form.get('csrf_token')}")
+        if form.validate_on_submit():
+            app.logger.info("Form validated successfully")
 
-        db.session.commit()
-        app.logger.info("Lesson updated successfully")
-        flash('Lesson updated successfully!', 'success')
-        return redirect(url_for('teacher_dashboard'))
-    else:
-        app.logger.error(f"Form validation failed: {form.errors}")
-        app.logger.error(f"Form data: {form.data}")
-        app.logger.error(f"CSRF token: {form.csrf_token.data}")
-        flash('There was an error updating the lesson. Please check your input.', 'error')
-        
+            # update the lesson record fields
+            lesson.lesson_summary = form.lesson_summary.data.strip()
+            lesson.strengths = form.strengths.data.strip()
+            lesson.areas_to_improve = form.areas_to_improve.data.strip()
+
+            # clear existing words and phrases
+            lesson.new_words.clear()
+            lesson.new_phrases.clear()
+
+            # add the new words and phrases
+            new_words = request.form.get('new_words')
+            new_phrases = request.form.get('new_phrases')
+
+            if new_words:
+                words_list = json.loads(new_words)
+                for word in words_list:
+                    word = word.strip()
+                    if word:
+                        word_obj = Word(content=word, lesson_record_id=lesson.id)
+                        lesson.new_words.append(word_obj)
+
+            if new_phrases:
+                phrases_list = json.loads(new_phrases)
+                for phrase in phrases_list:
+                    phrase = phrase.strip()
+                    if phrase:
+                        phrase_obj = Phrase(content=phrase, lesson_record_id=lesson.id)
+                        lesson.new_phrases.append(phrase_obj)
+
+            try:
+                update_last_edit_time(lesson, session['user_id'])
+            except ValueError as e:
+                app.logger.error(e)
+                return render_template('404.html'), 404
+
+            db.session.commit()
+            app.logger.info("Lesson updated successfully")
+            flash('Lesson updated successfully!', 'success')
+            return redirect(url_for('teacher_dashboard'))
+        else:
+            app.logger.error(f"Form validation failed: {form.errors}")
+            app.logger.error(f"Form data: {form.data}")
+            app.logger.error(f"CSRF token: {form.csrf_token.data}")
+            flash('There was an error updating the lesson. Please check your input.', 'error')
+
     return render_template('teacher/editLesson.html', form=form, lesson=lesson)
 
 

@@ -1,7 +1,7 @@
 # ESL School Lesson Management System
 
 #### Video Demo: [URL HERE]
-
+https://stackoverflow.com/questions/55056253/what-is-the-best-way-to-save-a-string-array-in-sqlite-on-android
 ## Description
 
 B-Grade English is a web application designed to allow ESL teachers setting up independent English conversation schools (or eikaiwa, as they're known in Japan) a way to enhance the student experience beyond the typical coffee shop lesson, where the lessons are recorded on pen/paper, and lessons are typically agreed via text messages.  This offers a platform where teachers can manage their lesson slots (showing off their availability), and students can book lessons based on teacher availability. The system ensures that both teachers and students can view their upcoming and past lessons, manage their profiles, and browse through old lesson records - which are designed to summarize the lesson notes succinctly.
