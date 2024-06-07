@@ -8,12 +8,13 @@ from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
 from helpers.auth_helpers import register_user, login_user_helper
 from helpers.dashboard_helpers import get_most_recent_lesson_record, get_upcoming_lessons
-from helpers.edit_lesson_record import get_lesson_by_id, initialize_lesson_form, update_lesson_from_form, update_last_edit_time
+from helpers.edit_lesson_record_helpers import get_lesson_by_id, initialize_lesson_form, update_lesson_from_form, update_last_edit_time
 from helpers.file_helpers import save_image_file
 from helpers.lesson_record_helpers import get_paginated_lesson_records, make_times_timezone_aware
 from helpers.student_helpers import update_student_profile, get_student_by_id, cancel_student_lesson
-from helpers.student_booking import fetch_available_slots, convert_slots_to_dict, update_student_booking, fetch_and_format_slots
+from helpers.student_booking_helpers import fetch_available_slots, convert_slots_to_dict, update_student_booking, fetch_and_format_slots
 from helpers.teacher_helpers import get_outstanding_lessons, get_teacher_by_id, get_teacher_profile_by_id, update_teacher_profile, update_student_profile_from_form
+from helpers.teacher_lesson_slot_mgmt_helpers import open_slot, close_slot
 from helpers.time_helpers import ensure_timezone_aware, get_week_boundaries, get_user_timezone
 from models import Student, StudentProfile, Teacher, LessonSlot
 from forms import RegistrationForm, LoginForm, EditTeacherProfileForm, StudentProfileForm, TeacherEditsStudentForm, LessonRecordForm, LessonSlotsForm, StudentLessonSlotForm, CancelLessonForm
@@ -305,48 +306,6 @@ def manage_lesson_slots():
         # Handle standard GET request
         return render_template('teacher/lesson_slots.html', form=form)
 
-
-# Helper functions
-def manage_slot(start_time_str, end_time_str, teacher_id, timezone_str, action):
-    # Convert the provided start and end time strings to datetime objects
-    local_start_time = datetime.strptime(start_time_str, '%Y-%m-%dT%H:%M')
-    local_end_time = datetime.strptime(end_time_str, '%Y-%m-%dT%H:%M')
-
-    # Localize the times to the specified timezone and convert to UTC
-    timezone = pytz.timezone(timezone_str)
-    start_time = timezone.localize(local_start_time).astimezone(pytz.UTC)
-    end_time = timezone.localize(local_end_time).astimezone(pytz.UTC)
-
-    # Query for an existing slot with the same start and end times
-    existing_slot = LessonSlot.query.filter_by(teacher_id=teacher_id, start_time=start_time, end_time=end_time).first()
-
-    if existing_slot and action == 'close':
-        db.session.delete(existing_slot)
-        return {'status': 'success', 'message': 'Lesson slot closed!'}
-    elif not existing_slot and action == 'open':
-        new_slot = LessonSlot(teacher_id=teacher_id, start_time=start_time, end_time=end_time)
-        db.session.add(new_slot)
-        return {'status': 'success', 'message': 'New lesson slot created!'}
-    else:
-        return {'status': 'error', 'message': 'Invalid action or lesson slot does not exist.'}
-    
-    
-def open_slot(start_time, end_time, teacher_id, timezone):
-    start_time = ensure_timezone_aware(start_time, timezone).astimezone(pytz.UTC)
-    end_time = ensure_timezone_aware(end_time, timezone).astimezone(pytz.UTC)
-    new_slot = LessonSlot(teacher_id=teacher_id, start_time=start_time, end_time=end_time, is_booked=False)
-    db.session.add(new_slot)
-    db.session.commit()
-    return {'status': 'success', 'slot_id': new_slot.id}
-
-def close_slot(slot_id, teacher_id):
-    slot = LessonSlot.query.get(slot_id)
-    if slot and slot.teacher_id == teacher_id:
-        db.session.delete(slot)
-        db.session.commit()
-        return {'status': 'success'}
-    else:
-        return {'status': 'error'}
 
 @app.route('/teacher/update_slot', methods=['POST'])
 @login_required
