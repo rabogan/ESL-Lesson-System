@@ -29,8 +29,8 @@
                         </select>
                     </div>
                     <div class="mb-4">
-                        <label for="lesson_slot" class="block text-lg font-medium text-gray-700 dark:text-gray-300">Select Lesson Slot</label>
-                        <select id="lesson_slot" name="lesson_slot" class="block w-full mt-1 rounded-lg bg-gray-200 dark:bg-gray-700 dark:text-gray-300">
+                        <label for="lessonSlot" class="block text-lg font-medium text-gray-700 dark:text-gray-300">Select Lesson Slot</label>
+                        <select id="lessonSlot" name="lesson_slot" class="block w-full mt-1 rounded-lg bg-gray-200 dark:bg-gray-700 dark:text-gray-300">
                             <option value="" disabled selected>Fetching Lessons...</option>
                             {% for slot in available_slots %}
                                 <option data-teacher-id="{{ slot.teacher.id }}" value="{{ slot.id }}">{{ slot.start_time.strftime('%Y-%m-%d %I:%M %p') }} - {{ slot.end_time.strftime('%I:%M %p') }} with {{ slot.teacher.username }}</option>
@@ -38,18 +38,18 @@
                         </select>
                     </div>
                     <div class="flex justify-between items-center mb-4">
-                        <a href="{{ url_for('student_book_lesson', week_offset=week_offset - 1) }}" class="bg-gray-500 hover:bg-gray-700 text-white py-2 px-4 rounded">Previous Week</a>
-                        <a href="{{ url_for('student_book_lesson', week_offset=week_offset + 1) }}" class="bg-gray-500 hover:bg-gray-700 text-white py-2 px-4 rounded">Next Week</a>
+                        <a href="{{ url_for('student_book_lesson', week_offset=week_offset - 1) }}" class="bg-blue-600 hover:bg-blue-800 text-white py-2 px-4 rounded">Previous Week</a>
+                        <a href="{{ url_for('student_book_lesson', week_offset=week_offset + 1) }}" class="bg-blue-600 hover:bg-blue-800 text-white py-2 px-4 rounded">Next Week</a>
                     </div>
                     <div class="flex justify-center">
-                        <input id="book-lesson-button" type="submit" value="Book Lesson" class="bg-green-500 hover:bg-green-700 text-white py-4 px-8 rounded cursor-pointer text-xl font-bold">
+                        <input id="book-lesson-button" type="submit" value="Book Lesson" class="bg-green-600 hover:bg-green-800 text-white py-4 px-8 rounded cursor-pointer text-xl font-bold">
                     </div>
                 </form>
             {% else %}
                 <p class="text-red-500">No Lessons Available. Please try again next week!</p>
                 <div class="flex justify-between items-center mb-4">
-                    <a href="{{ url_for('student_book_lesson', week_offset=week_offset - 1) }}" class="bg-gray-500 hover:bg-gray-700 text-white py-2 px-4 rounded">Previous Week</a>
-                    <a href="{{ url_for('student_book_lesson', week_offset=week_offset + 1) }}" class="bg-gray-500 hover:bg-gray-700 text-white py-2 px-4 rounded">Next Week</a>
+                    <a href="{{ url_for('student_book_lesson', week_offset=week_offset - 1) }}" class="bg-blue-600 hover:bg-blue-800 text-white py-2 px-4 rounded">Previous Week</a>
+                    <a href="{{ url_for('student_book_lesson', week_offset=week_offset + 1) }}" class="bg-blue-600 hover:bg-blue-800 text-white py-2 px-4 rounded">Next Week</a>
                 </div>
             {% endif %}
         </div>
@@ -64,25 +64,25 @@
         var teacherId = $(this).val();
         console.log('Changed teacher ID:', teacherId);
         $.ajax({
-            url: '/get_slots/' + teacherId,
+            url: '/getSlots/' + teacherId,
             type: 'GET',
             success: function(data) {
                 console.log('Returned data:', data);
-                var slotSelect = $('#lesson_slot');
+                var slotSelect = $('#lessonSlot');
                 slotSelect.empty();
                 slotSelect.append('<option value="" disabled selected>Fetching Lessons...</option>');
                 $.each(data, function(key, value) {
                     slotSelect.append('<option data-teacher-id="' + teacherId + '" value="' + value.id + '">' + value.time + ' with ' + value.teacher + '</option>');
                 });
-                console.log('New options:', $('#lesson_slot').html());
+                console.log('New options:', $('#lessonSlot').html());
                 filterSlots();
             }
         });
     });
-    
+
     function filterSlots() {
         const teacherElement = document.getElementById('teacher');
-        const lessonSlotElement = document.getElementById('lesson_slot');
+        const lessonSlotElement = document.getElementById('lessonSlot');
     
         // If either element doesn't exist, exit the function
         if (!teacherElement || !lessonSlotElement) {
@@ -90,7 +90,7 @@
         }
     
         const teacherId = Number(document.getElementById('teacher').value);
-        const lessonSlotSelect = document.getElementById('lesson_slot');
+        const lessonSlotSelect = document.getElementById('lessonSlot');
         const options = Array.from(lessonSlotSelect.options);
     
         // Reset display property of all options
@@ -126,7 +126,7 @@
         if (form) {
             form.addEventListener('submit', function(event) {
                 const teacherId = document.getElementById('teacher').value;
-                const lessonSlotId = document.getElementById('lesson_slot').value;
+                const lessonSlotId = document.getElementById('lessonSlot').value;
                 console.log('Form Submitted');
                 console.log('Teacher ID:', teacherId);
                 console.log('Lesson Slot ID:', lessonSlotId);
@@ -145,7 +145,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         const button = document.getElementById('book-lesson-button');
         const teacherSelect = document.getElementById('teacher');
-        const slotSelect = document.getElementById('lesson_slot');
+        const slotSelect = document.getElementById('lessonSlot');
     
         if (button) {
             button.addEventListener('click', function(event) {

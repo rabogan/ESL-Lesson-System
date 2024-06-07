@@ -85,6 +85,8 @@ To set up the project locally, follow these steps:
 
 ### Application Structure
 
+## Snake Case Used For Python Functions And Helpers
+
 - `app.py`: The main application file that contains route definitions and the app initialization.
 - `helpers/`: Contains helper modules that encapsulate various functionalities.
   - `auth_helpers.py`: Handles user registration and login functionalities.
@@ -103,14 +105,22 @@ To set up the project locally, follow these steps:
 
 ## Static Pages
 
+## Camel case used for HTML
+
 - **layout.html**: This is the main layout file that includes the navigation bar, footer, and main content area. It supports both dark and light modes with consistent styling.
 - **display.html**: The home page that welcomes users based on their roles (teachers, students, or guests) and provides navigation options.
 - **404.html**: The "Page Not Found" error page that guides users back to the home page.
 - **500.html**: The "Server Error" page that informs users of unexpected errors and guides them back to the home page.
 - **apology.html**: A template for displaying error messages with a consistent style, including a return link to the home page.
-- **contactSchool.html**: A contact page that provides information on how to get in touch with the school.
-- **meetYourTeacher.html**: A page where users can view the profiles of all teachers, including their images, age, hobbies, motto, and blood type. The page is paginated and allows navigation between different pages of teacher profiles.
-- **ourLessons.html**: The "Our Lessons" page provides detailed information about the benefits of one-on-one lessons, instructor availability, and how students can review their lesson records.  Includes a section on future possibilities too!
+- **developerProfile.html**: A page showcasing my profile.
+- **meetYourTeachers.html**: A page where users can view the profiles of all teachers, including their images, age, hobbies, motto, and blood type. The page is paginated and allows navigation between different pages of teacher profiles.
+- **ourLessons.html**: The "Our Lessons" page provides detailed information about the benefits of one-on-one lessons, instructor availability, and how students can review their lesson records. Includes a section on future possibilities too!
+- **studentLogin.html**: The "Student Log In" page that allows students to log in to their accounts with enhanced light mode styling.
+- **studentRegister.html**: The "Student Register" page that allows new students to create accounts with improved light mode styling.
+- **teacherLogin.html**: The "Teacher Log In" page that allows teachers to log in to their accounts with enhanced light mode styling.
+- **teacherRegister.html**: The "Teacher Register" page that allows new teachers to create accounts with improved light mode styling.
+- **studentProfile.html**: The "Student Profile" page that displays and allows editing of student profile details with enhanced light mode styling.
+- **teacherProfile.html**: The "Teacher Profile" page that displays teacher profile details with enhanced light mode styling.
 
 
 ### Endpoints

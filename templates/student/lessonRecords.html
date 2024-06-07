@@ -33,7 +33,7 @@
                                     {% endif %}
                                 </div>
                             </div>
-                            <div class="p-6 bg-green-100 dark:bg-green-900 rounded-lg text-gray-900 dark:text-gray-100 mb-4">
+                            <div class="p-6 bg-green-200 dark:bg-green-900 rounded-lg text-gray-900 dark:text-gray-100 mb-4">
                                 {% if record.lesson_summary %}
                                     <p>{{ record.lesson_summary.replace('\n', '<br>')|safe }}</p>
                                 {% else %}
@@ -47,7 +47,7 @@
                                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">New Words</h3>
                                 <div class="flex flex-wrap gap-2">
                                     {% for word in record.new_words %}
-                                        <span class="inline-block bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded px-3 py-1 text-sm">{{ word }}</span>
+                                        <span class="inline-block bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded px-3 py-1 text-sm">{{ word }}</span>
                                     {% endfor %}
                                 </div>
                             </div>
@@ -55,18 +55,18 @@
                                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">New Phrases</h3>
                                 <div class="flex flex-wrap gap-2">
                                     {% for phrase in record.new_phrases %}
-                                        <span class="inline-block bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded px-3 py-1 text-sm">{{ phrase }}</span>
+                                        <span class="inline-block bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded px-3 py-1 text-sm">{{ phrase }}</span>
                                     {% endfor %}
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="grid lg:grid-cols-2 gap-8 mt-6">
-                        <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+                        <div class="bg-gray-200 dark:bg-gray-700 p-4 rounded-lg">
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Strengths</h3>
                             <p class="text-gray-900 dark:text-gray-100">{{ record.strengths }}</p>
                         </div>
-                        <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+                        <div class="bg-gray-200 dark:bg-gray-700 p-4 rounded-lg">
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Areas To Improve</h3>
                             <p class="text-gray-900 dark:text-gray-100">{{ record.areas_to_improve }}</p>
                         </div>

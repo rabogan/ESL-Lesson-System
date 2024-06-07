@@ -80,14 +80,14 @@ def index():
     return render_template("display.html")
 
 
-@app.route('/meetYourTeacher')
+@app.route('/meetYourTeachers')
 def meet_your_teacher():
     """
     Shows a rogue's gallery of all the teachers present in the system
     """
     page = request.args.get('page', 1, type=int)
     teachers = Teacher.query.paginate(page=page, per_page=6)
-    return render_template('meetYourTeacher.html', teachers=teachers)
+    return render_template('meetYourTeachers.html', teachers=teachers)
 
 
 @app.route('/ourLessons')
@@ -98,15 +98,15 @@ def our_lessons():
     return render_template('ourLessons.html')
 
 
-@app.route('/contactSchool')
-def contact_school():
+@app.route('/developerProfile')
+def developer_profile():
     """
     This page provides contact information for the school.
     """
-    return render_template('contactSchool.html')
+    return render_template('developerProfile.html')
 
 
-@app.route('/teacher_profile/<int:teacher_id>', methods=['GET'])
+@app.route('/teacherProfile/<int:teacher_id>', methods=['GET'])
 def teacher_profile(teacher_id):
     """
     This route (GET /teacher_profile/<int:teacher_id>) displays a teacher's profile.
@@ -127,15 +127,15 @@ def teacher_profile(teacher_id):
         return render_template('404.html'), 404
 
     # Pass the teacher's profile to the template
-    return render_template('view_teacher_profile.html', teacher=teacher, profile=profile)
+    return render_template('viewTeacherProfile.html', teacher=teacher, profile=profile)
 
 
-@app.route('/portal_choice')
+@app.route('/portalChoice')
 def portal_choice():
     """
     This is where the user chooses whether to log in/register as a student or teacher.
     """
-    return render_template('portal_choice.html')
+    return render_template('portalChoice.html')
 
 
 @app.route("/student/register", methods=["GET", "POST"])
@@ -147,10 +147,10 @@ def student_register():
         new_user, error_message = register_user(form, 'student')
         if error_message:
             form.username.errors.append(error_message)
-            return render_template("student_register.html", form=form), 400
+            return render_template("studentRegister.html", form=form), 400
         return redirect(url_for("student_dashboard"))
     
-    return render_template("student_register.html", form=form)
+    return render_template("studentRegister.html", form=form)
 
 @app.route("/student/login", methods=["GET", "POST"])
 @limiter.limit("5/minute")
@@ -161,7 +161,7 @@ def student_login():
         if error_message:
             return render_template("apology.html", top="Error", bottom=error_message), 400
         return redirect(url_for("student_dashboard"))
-    return render_template("student_login.html", form=form)
+    return render_template("studentLogin.html", form=form)
 
 
 @app.route("/teacher/register", methods=["GET", "POST"])
@@ -174,7 +174,7 @@ def teacher_register():
             return render_template("apology.html", top="Error", bottom=error_message), 400
         return redirect(url_for("teacher_dashboard"))
     
-    return render_template("teacher_register.html", form=form)
+    return render_template("teacherRegister.html", form=form)
 
 
 @app.route("/teacher/login", methods=["GET", "POST"])
@@ -186,7 +186,7 @@ def teacher_login():
         if error_message:
             return render_template("apology.html", top="Error", bottom=error_message), 400
         return redirect(url_for("teacher_dashboard"))
-    return render_template("teacher_login.html", form=form)
+    return render_template("teacherLogin.html", form=form)
 
 
 @app.route('/logout')
@@ -202,7 +202,7 @@ def logout():
 
 
 # Teacher Only Routes
-@app.route('/teacher/teacher_dashboard')
+@app.route('/teacher/dashboard')
 @login_required
 def teacher_dashboard():
     if session.get('user_type') != 'teacher':
@@ -219,10 +219,10 @@ def teacher_dashboard():
     upcoming_lessons = get_upcoming_lessons(teacher.id, 'teacher', user_timezone)
     outstanding_lessons = get_outstanding_lessons(teacher.id, user_timezone)
 
-    return render_template('teacher/teacher_dashboard.html', profile=current_user.profile, most_recent_record=most_recent_record, upcoming_lessons=upcoming_lessons, outstanding_lessons=outstanding_lessons, user_timezone=user_timezone)
+    return render_template('teacher/teacherDashboard.html', profile=current_user.profile, most_recent_record=most_recent_record, upcoming_lessons=upcoming_lessons, outstanding_lessons=outstanding_lessons, user_timezone=user_timezone)
 
 
-@app.route('/teacher/lesson_records')
+@app.route('/teacher/lessonRecords')
 @login_required
 def teacher_lesson_records():
     if session['user_type'] != 'teacher':
@@ -237,10 +237,10 @@ def teacher_lesson_records():
     lesson_records = get_paginated_lesson_records(teacher.id, page, 'teacher')
     lesson_records = make_times_timezone_aware(lesson_records, teacher.timezone)
 
-    return render_template('teacher/teacher_lesson_records.html', lesson_records=lesson_records)
+    return render_template('teacher/teacherLessonRecords.html', lesson_records=lesson_records)
 
 
-@app.route('/teacher/edit_teacher_profile', methods=['GET', 'POST'])
+@app.route('/teacher/editTeacherProfile', methods=['GET', 'POST'])
 @login_required
 @limiter.limit("5/minute") 
 def edit_teacher_profile():
@@ -258,10 +258,10 @@ def edit_teacher_profile():
         update_teacher_profile(current_user.profile, form)
         return redirect(url_for('edit_teacher_profile', updated=True))
 
-    return render_template('teacher/edit_teacher_profile.html', form=form, profile=current_user.profile, profile_updated=profile_updated)
+    return render_template('teacher/editTeacherProfile.html', form=form, profile=current_user.profile, profile_updated=profile_updated)
 
 
-@app.route('/teacher/lesson_slots', methods=['GET'])
+@app.route('/teacher/lessonSlots', methods=['GET'])
 @login_required
 def manage_lesson_slots():
     form = LessonSlotsForm()
@@ -286,10 +286,9 @@ def manage_lesson_slots():
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify(lesson_slots_json)
     else:
-        return render_template('teacher/lesson_slots.html', form=form)
+        return render_template('teacher/lessonSlots.html', form=form)
 
-
-@app.route('/teacher/update_slot', methods=['POST'])
+@app.route('/teacher/updateSlot', methods=['POST'])
 @login_required
 def update_lesson_slot():
     data = request.get_json()
@@ -310,8 +309,7 @@ def update_lesson_slot():
 
     return jsonify({'status': 'error'})
 
-
-@app.route('/update-slot-status', methods=['POST'])
+@app.route('/updateSlotStatus', methods=['POST'])
 @login_required
 def update_slot_status():
     data = request.get_json()
@@ -328,7 +326,7 @@ def update_slot_status():
 
     return jsonify({'status': 'error'})
 
-@app.route('/teacher/update_slots', methods=['POST'])
+@app.route('/teacher/updateSlots', methods=['POST'])
 @login_required
 def update_slots():
     data = request.get_json()
@@ -373,8 +371,10 @@ def update_slots():
 
     return jsonify({'status': 'success', 'updates': updates})
 
+@app.route('/studentProfile/<int:student_id>', methods=['GET', 'POST'])
 
-@app.route('/student_profile/<int:student_id>', methods=['GET', 'POST'])
+
+@app.route('/studentProfile/<int:student_id>', methods=['GET', 'POST'])
 @login_required 
 def student_profile(student_id):
     if session['user_type'] != 'teacher':
@@ -396,10 +396,10 @@ def student_profile(student_id):
             flash('Error updating profile', 'error')
         return redirect(url_for('student_profile', student_id=student.id, updated=True))
 
-    return render_template('view_student_profile.html', form=form, student=student, profile_updated=profile_updated)
+    return render_template('viewStudentProfile.html', form=form, student=student, profile_updated=profile_updated)
 
 
-@app.route('/teacher/edit_lesson/<int:lesson_id>', methods=['GET', 'POST'])
+@app.route('/teacher/editLesson/<int:lesson_id>', methods=['GET', 'POST'])
 @login_required
 def edit_lesson(lesson_id):
     app.logger.info(f"Editing lesson with ID {lesson_id}")
@@ -439,7 +439,7 @@ def edit_lesson(lesson_id):
         app.logger.error(f"CSRF token: {form.csrf_token.data}")
         flash('There was an error updating the lesson. Please check your input.', 'error')
         
-    return render_template('teacher/edit_lesson.html', form=form, lesson=lesson)
+    return render_template('teacher/editLesson.html', form=form, lesson=lesson)
 
 
 # Student Only Routes!
@@ -461,7 +461,7 @@ def student_dashboard():
     cancel_lesson_form = CancelLessonForm()  # Define the cancel lesson form
 
     return render_template(
-        'student/student_dashboard.html',
+        'student/studentDashboard.html',
         profile=current_user.profile,
         most_recent_record=most_recent_record,
         upcoming_lessons=upcoming_lessons,
@@ -470,7 +470,7 @@ def student_dashboard():
     )
 
 
-@app.route('/cancel_lesson/<int:lesson_id>', methods=['POST'])
+@app.route('/cancelLesson/<int:lesson_id>', methods=['POST'])
 @login_required
 def cancel_lesson(lesson_id):
     form = CancelLessonForm()
@@ -487,7 +487,7 @@ def cancel_lesson(lesson_id):
     return redirect(url_for('student_dashboard'))
 
 
-@app.route('/student/lesson_records')
+@app.route('/student/lessonRecords')
 @login_required
 def student_lesson_records():
     if session.get('user_type') != 'student':
@@ -507,10 +507,10 @@ def student_lesson_records():
     lesson_records = get_paginated_lesson_records(student.id, page, 'student')
     lesson_records = make_times_timezone_aware(lesson_records, student.timezone)
             
-    return render_template('student/lesson_records.html', lesson_records=lesson_records, user_timezone=user_timezone)
+    return render_template('student/lessonRecords.html', lesson_records=lesson_records, user_timezone=user_timezone)
 
 
-@app.route('/student/edit_student_profile', methods=['GET', 'POST'])
+@app.route('/student/editStudentProfile', methods=['GET', 'POST'])
 @login_required
 def edit_student_profile():
     if session.get('user_type') != 'student':
@@ -534,10 +534,10 @@ def edit_student_profile():
         return redirect(url_for('edit_student_profile', updated=True))
     
     profile_updated = request.args.get('updated', False)
-    return render_template('student/edit_student_profile.html', form=form, profile=current_user.profile, profile_updated=profile_updated)
+    return render_template('student/editStudentProfile.html', form=form, profile=current_user.profile, profile_updated=profile_updated)
 
 
-@app.route('/student/book_lesson', methods=['GET', 'POST'])
+@app.route('/student/bookLesson', methods=['GET', 'POST'])
 @login_required
 def student_book_lesson():
     form = StudentLessonSlotForm()
@@ -595,7 +595,7 @@ def student_book_lesson():
         if error_message:
             print(error_message)
             return render_template(
-                'student/book_lesson.html', 
+                'student/bookLesson.html', 
                 form=form, 
                 available_slots=available_slots, 
                 available_teachers=available_teachers,
@@ -608,7 +608,7 @@ def student_book_lesson():
         return redirect(url_for('student_book_lesson', week_offset=week_offset))
 
     return render_template(
-        'student/book_lesson.html', 
+        'student/bookLesson.html', 
         form=form, 
         available_slots=available_slots, 
         available_teachers=available_teachers, 
@@ -617,8 +617,7 @@ def student_book_lesson():
         start_of_week=start_of_week_utc, 
         end_of_week=end_of_week_utc)
 
-
-@app.route('/get_slots/<int:teacher_id>', methods=['GET'])
+@app.route('/getSlots/<int:teacher_id>', methods=['GET'])
 def get_slots(teacher_id):
     # Check if the student is logged in
     if 'user_id' not in session:
@@ -634,6 +633,7 @@ def get_slots(teacher_id):
     slots_dict = fetch_and_format_slots(student, teacher_id, start_of_week, end_of_week, user_timezone)
 
     return jsonify(slots_dict)
+
 
 
 @app.teardown_appcontext

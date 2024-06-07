@@ -170,7 +170,7 @@
             console.log('Data being sent:', dataToSend);
     
             $.ajax({
-                url: '/teacher/lesson_slots',
+                url: '/teacher/lessonSlots',
                 type: 'GET',
                 data: dataToSend,
                 headers: {
@@ -219,7 +219,7 @@
             }
     
             $.ajax({
-                url: '/teacher/update_slots',
+                url: '/teacher/updateSlots',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(changes),

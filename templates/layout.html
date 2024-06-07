@@ -19,20 +19,22 @@
 <body class="bg-gray-50 dark:bg-gray-900 flex flex-col min-h-screen">
     <nav class="bg-blue-700 dark:bg-gray-700 text-white dark:text-gray-400">
         <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
-            <button id="theme-toggle" class="hidden md:inline-flex text-white dark:text-gray-400 hover:bg-blue-600 dark:hover:bg-gray-700 rounded-lg text-sm p-2.5 order-1 md:order-none">
-                <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM10 0a10 10 0 110 20A10 10 0 0110 0z"></path>
-                </svg>
-                <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M10 4a6 6 0 110 12A6 6 0 0110 4z"></path>
-                </svg>
-                <span id="theme-toggle-text" class="ml-2">Dark Mode</span>
-            </button>
-            {% if current_user.is_authenticated %}
-            <div class="flex-1 text-center order-3 md:order-none">
-                <span class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">B-Grade English</span>
+            <div class="order-1 flex items-center">
+                <button id="theme-toggle" class="md:inline-flex text-white dark:text-gray-400 hover:bg-blue-600 dark:hover:bg-gray-700 rounded-lg text-sm p-2.5">
+                    <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM10 0a10 10 0 110 20A10 10 0 0110 0z"></path>
+                    </svg>
+                    <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 4a6 6 0 110 12A6 6 0 0110 4z"></path>
+                    </svg>
+                    <span id="theme-toggle-text" class="ml-2">Dark Mode</span>
+                </button>
             </div>
-            <div class="flex items-center md:order-4 space-x-3 md:space-x-0 rtl:space-x-reverse">
+            {% if current_user.is_authenticated %}
+            <div class="flex-1 order-3 md:order-2 flex items-center justify-center">
+                <a href="{{ url_for('index') }}" class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">B-Grade English</a>
+            </div>
+            <div class="flex items-center order-2 md:order-3 space-x-3 md:space-x-0 rtl:space-x-reverse">
                 <button type="button" class="flex text-sm bg-gray-800 rounded-full md:me-0 focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600" id="user-menu-button" aria-expanded="false" data-dropdown-toggle="user-dropdown" data-dropdown-placement="bottom">
                     <span class="sr-only">Open user menu</span>
                     {% if session['user_type'] == 'teacher' %}
@@ -78,25 +80,28 @@
             <div class="hidden md:flex items-center justify-between w-full md:w-auto md:order-2" id="navbar-links">
                 <ul class="flex flex-col font-medium p-4 md:p-0 mt-4 border border-gray-100 rounded-lg md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 dark:border-gray-700">
                     <li>
-                        <a href="/" class="nav-link block py-2 px-3 text-white bg-blue-700 rounded md:bg-transparent md:text-white md:p-0 md:dark:text-blue-500" aria-current="page">Home</a>
+                        <a href="{{ url_for('index') }}" class="nav-link block py-2 px-3 text-white bg-blue-700 rounded md:bg-transparent md:text-white md:p-0 md:dark:text-blue-500" aria-current="page">Home</a>
                     </li>
                     <li>
-                        <a href="/meetYourTeacher" class="nav-link block py-2 px-3 text-white bg-green-700 rounded md:bg-transparent hover:bg-transparent md:hover:text-green-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Teachers</a>
+                        <a href="{{ url_for('meet_your_teacher') }}" class="nav-link block py-2 px-3 text-white bg-green-700 rounded md:bg-transparent hover:bg-transparent md:hover:text-green-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Teachers</a>
                     </li>
                     <li>
-                        <a href="/ourLessons" class="nav-link block py-2 px-3 text-white bg-indigo-700 rounded md:bg-transparent hover:bg-transparent md:hover:text-indigo-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Lessons</a>
+                        <a href="{{ url_for('our_lessons') }}" class="nav-link block py-2 px-3 text-white bg-indigo-700 rounded md:bg-transparent hover:bg-transparent md:hover:text-indigo-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Lessons</a>
                     </li>
                     <li>
-                        <a href="/contactSchool" class="nav-link block py-2 px-3 text-white bg-red-700 rounded md:bg-transparent hover:bg-transparent md:hover:text-red-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Contact</a>
+                        <a href="{{ url_for('developer_profile') }}" class="nav-link block py-2 px-3 text-white bg-red-700 rounded md:bg-transparent hover:bg-transparent md:hover:text-red-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Contact</a>
                     </li>
                 </ul>
             </div>
             <div class="flex items-center justify-end md:order-3">
-                <a href="/portal_choice" class="block py-2 px-3 text-white bg-blue-700 rounded hover:bg-blue-800">Login/Register</a>
+                <a href="{{ url_for('portal_choice') }}" class="block py-2 px-3 text-white bg-blue-700 rounded hover:bg-blue-800">Login/Register</a>
             </div>
             {% endif %}
         </div>
     </nav>
+    
+    
+    
     
     {% if current_user.is_authenticated %}
     <nav class="bg-gray-100 dark:bg-gray-800">

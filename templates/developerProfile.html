@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Developer Profile
+{% endblock %}
+
+{% block main %}
+<section class="bg-gray-100 dark:bg-gray-900 flex-grow flex items-center justify-center min-h-screen">
+    <div class="max-w-screen-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+        <div class="flex flex-col items-center">
+            <img class="w-40 h-40 rounded-full object-cover mb-4" src="{{ url_for('static', filename='img/bobby.jpeg') }}" alt="Bobby Bogan">
+            <h1 class="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">Bobby Bogan</h1>
+            <p class="text-lg text-gray-700 dark:text-gray-400 mb-6">Software Engineer</p>
+            <p class="text-center text-gray-700 dark:text-gray-400 mb-6">I'm Robert Bogan, and I'm currently based in California, USA, where I live with my wife, having immigrated from the UK on a spouse (K-1) visa!</p>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Background</h2>
+            <p class="text-center text-gray-700 dark:text-gray-400 mb-6">I'm a self-studier who started with C++.  I placed a strong emphasis on learning data structures and algorithms.  
+                I built <a href="https://ambitious-hill-0174f7d0f.5.azurestaticapps.net/">this app</a> (React/MySQL, hosted on Azure), which should help others wishing to study DSA</p>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Ambition</h2>
+            <p class="text-center text-gray-700 dark:text-gray-400 mb-6">I intend to be employed in a capacity that will allow me to continue to keep learning, and give me the opportunity to prove myself in this field!</p>
+            <div class="flex space-x-4 mt-6">
+                <a href="https://www.linkedin.com/in/robert-bogan-07aa4a255/" target="_blank" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-600">
+                    <i class="fab fa-linkedin fa-2x"></i>
+                </a>
+                <a href="https://github.com/rabogan" target="_blank" class="text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-400">
+                    <i class="fab fa-github fa-2x"></i>
+                </a>
+                <a href="https://www.instagram.com/bobbybogan1986/" target="_blank" class="text-pink-500 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-600">
+                    <i class="fab fa-instagram fa-2x"></i>
+                </a>
+                <a href="https://www.facebook.com/robertajbogan/" target="_blank" class="text-blue-800 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-600">
+                    <i class="fab fa-facebook fa-2x"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
