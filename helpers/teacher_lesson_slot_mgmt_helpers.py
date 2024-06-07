@@ -29,6 +29,14 @@ def manage_slot(start_time_str, end_time_str, teacher_id, timezone_str, action):
         return {'status': 'error', 'message': 'Invalid action or lesson slot does not exist.'}
     
     
+def get_lesson_slots_for_week(teacher_id, start_of_week_utc, end_of_week_utc):
+    return LessonSlot.query.filter(
+        LessonSlot.teacher_id == teacher_id,
+        LessonSlot.start_time >= start_of_week_utc,
+        LessonSlot.start_time <= end_of_week_utc
+    ).all()
+    
+    
 def open_slot(start_time, end_time, teacher_id, timezone):
     start_time = ensure_timezone_aware(start_time, timezone).astimezone(pytz.UTC)
     end_time = ensure_timezone_aware(end_time, timezone).astimezone(pytz.UTC)

@@ -14,7 +14,7 @@ from helpers.lesson_record_helpers import get_paginated_lesson_records, make_tim
 from helpers.student_helpers import update_student_profile, get_student_by_id, cancel_student_lesson
 from helpers.student_booking_helpers import fetch_available_slots, convert_slots_to_dict, update_student_booking, fetch_and_format_slots
 from helpers.teacher_helpers import get_outstanding_lessons, get_teacher_by_id, get_teacher_profile_by_id, update_teacher_profile, update_student_profile_from_form
-from helpers.teacher_lesson_slot_mgmt_helpers import open_slot, close_slot
+from helpers.teacher_lesson_slot_mgmt_helpers import open_slot, close_slot, get_lesson_slots_for_week
 from helpers.time_helpers import ensure_timezone_aware, get_week_boundaries, get_user_timezone
 from models import Student, StudentProfile, Teacher, LessonSlot
 from forms import RegistrationForm, LoginForm, EditTeacherProfileForm, StudentProfileForm, TeacherEditsStudentForm, LessonRecordForm, LessonSlotsForm, StudentLessonSlotForm, CancelLessonForm
@@ -267,27 +267,13 @@ def edit_teacher_profile():
 def manage_lesson_slots():
     form = LessonSlotsForm()
     teacher = db.session.get(Teacher, current_user.id)
-    user_timezone = pytz.timezone(teacher.timezone)
-    print(f"User timezone: {user_timezone}")
-
+    user_timezone = get_user_timezone(teacher.timezone)
+    
     week_offset = int(request.args.get('week_offset', 0))
-    today = datetime.now(user_timezone)
-    print(f"Today's date: {today}")
+    start_of_week_utc, end_of_week_utc = get_week_boundaries(teacher.timezone, week_offset)
 
-    start_of_week = today - timedelta(days=today.weekday(), hours=today.hour, minutes=today.minute, seconds=today.second, microseconds=today.microsecond) + timedelta(weeks=week_offset)
-    end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59)
-    start_of_week_utc = start_of_week.astimezone(timezone.utc)
-    end_of_week_utc = end_of_week.astimezone(timezone.utc)
-    print(f"Start of week: {start_of_week}, End of week: {end_of_week}")
-    print(f"Start of week (UTC): {start_of_week_utc}, End of week (UTC): {end_of_week_utc}")
-
-    with db.session.no_autoflush:
-        lesson_slots = LessonSlot.query.filter(
-            LessonSlot.teacher_id == current_user.id,
-            LessonSlot.start_time >= start_of_week_utc,
-            LessonSlot.start_time <= end_of_week_utc
-        ).all()
-
+    lesson_slots = get_lesson_slots_for_week(current_user.id, start_of_week_utc, end_of_week_utc)
+    
     utc_now = datetime.now(pytz.UTC)
     lesson_slots_json = [{
         'slot_id': slot.id,
@@ -296,14 +282,11 @@ def manage_lesson_slots():
         'status': 'Booked' if slot.is_booked else 'Available' if slot.start_time.astimezone(pytz.UTC) > utc_now else 'Closed'
     } for slot in lesson_slots]
 
-    # Log the data being sent
     app.logger.info(f"Returning lesson slots: {lesson_slots_json}")
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        # Handle AJAX request
         return jsonify(lesson_slots_json)
     else:
-        # Handle standard GET request
         return render_template('teacher/lesson_slots.html', form=form)
 
 
