@@ -23,6 +23,7 @@ The project uses the following technologies:
 - Lesson Slot Management: Teachers can open and close lesson slots.
 - Lesson Booking: Students can book available lesson slots.
 - Lesson Cancellation: Students can cancel booked lessons.
+- Light and Dark Mode: Supports both light and dark themes for better user experience.
 
 ## Setup
 
@@ -102,14 +103,14 @@ To set up the project locally, follow these steps:
 
 ## Static Pages
 
-### 404 Error Page
-
-The `404.html` page is served when a user attempts to navigate to a non-existent page. It includes a friendly message indicating the page was not found and provides a link to return to the home page. The design incorporates a visually appealing image from Unsplash and is styled to support both light and dark modes.
-
-### 500 Error Page
-
-The `500.html` page is displayed when the server encounters an unexpected error. Similar to the 404 page, it provides a user-friendly message and a link to return to the home page. It also features an image from Unsplash, ensuring consistency in design across error pages.
-
+- **layout.html**: This is the main layout file that includes the navigation bar, footer, and main content area. It supports both dark and light modes with consistent styling.
+- **display.html**: The home page that welcomes users based on their roles (teachers, students, or guests) and provides navigation options.
+- **404.html**: The "Page Not Found" error page that guides users back to the home page.
+- **500.html**: The "Server Error" page that informs users of unexpected errors and guides them back to the home page.
+- **apology.html**: A template for displaying error messages with a consistent style, including a return link to the home page.
+- **contactSchool.html**: A contact page that provides information on how to get in touch with the school.
+- **meetYourTeacher.html**: A page where users can view the profiles of all teachers, including their images, age, hobbies, motto, and blood type. The page is paginated and allows navigation between different pages of teacher profiles.
+- **ourLessons.html**: The "Our Lessons" page provides detailed information about the benefits of one-on-one lessons, instructor availability, and how students can review their lesson records.  Includes a section on future possibilities too!
 
 
 ### Endpoints
@@ -196,6 +197,7 @@ There are several enhancements and features that could be added to this project 
 6. **Video Lesson Integration:** Integrate with video conferencing tools like Zoom or Google Meet to facilitate online lessons.
 7. **Teacher Cancellation System:** Allow teachers to cancel lessons and notify students automatically.
 8. **ChatBot** Much like the Duck Debugger in CS50, a chatbot could be used to help students outside of lesson times.
+9. **Pronunciation Helper:** Using a 3rd party API that compares student pronunciation of words (entered into a section in the lesson record), and helps them improve.
 
 ## Citing AI-Based Tools
 
