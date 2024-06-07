@@ -11,57 +11,86 @@
         <p class="text-lg text-gray-500 dark:text-gray-400 mb-12">Discover the benefits of our personalized one-on-one lessons designed to meet your individual goals and objectives.</p>
         
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-12 mb-16">
-            <div class="bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 p-8 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-300">
-                <img src="{{ url_for('static', filename='img/easy_booking.jpg') }}" alt="Strengths and Weaknesses Image" class="w-80 h-80 object-contain mx-auto mb-4">
-                <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Easy Booking System</h2>
-                <p class="text-gray-700 dark:text-gray-400">Just look for an teacher, find a slot, and you're ready to go!</p>
+            <div class="bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 flex flex-col justify-between p-8 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-300">
+                <div class="w-full h-60 mb-4 overflow-hidden rounded-lg">
+                    <img src="{{ url_for('static', filename='img/easy_booking.jpg') }}" alt="Strengths and Weaknesses Image" class="w-full h-full object-cover">
+                </div>
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Easy Booking System</h2>
+                    <p class="text-gray-700 dark:text-gray-400">Just look for a teacher, find a slot, and you're ready to go!</p>
+                </div>
             </div>
-            <div class="bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 p-8 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-300">
-                <img src="{{ url_for('static', filename='img/easy_review.jpg') }}" alt="Lesson Review Image" class="w-80 h-80 object-contain mx-auto mb-4">
-                <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Review Your Lessons</h2>
-                <p class="text-gray-700 dark:text-gray-400">Post-lesson you'll have a record giving you advice on how you can improve, and review the vocabulary and English expressions you learn in the lesson.</p>
+            <div class="bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 flex flex-col justify-between p-8 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-300">
+                <div class="w-full h-60 mb-4 overflow-hidden rounded-lg">
+                    <img src="{{ url_for('static', filename='img/easy_review.jpg') }}" alt="Lesson Review Image" class="w-full h-full object-cover">
+                </div>
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Review Your Lessons</h2>
+                    <p class="text-gray-700 dark:text-gray-400">Post-lesson you'll have a record giving you advice on how you can improve, and review the vocabulary and English expressions you learn in the lesson.</p>
+                </div>
             </div>
-            <div class="bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 p-8 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-300">
-                <img src="{{ url_for('static', filename='img/meet_goals.jpg') }}" alt="Customized Lessons Image" class="w-80 h-80 object-contain mx-auto mb-4">
-                <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Customized to Meet Individual Goals</h2>
-                <p class="text-gray-700 dark:text-gray-400">Teachers will customize lessons for your needs.  Whether you want to improve conversation skills, communication, or practice specific situations and scenarios, we'll do our best to meet your needs.</p>
+            <div class="bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 flex flex-col justify-between p-8 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-300">
+                <div class="w-full h-60 mb-4 overflow-hidden rounded-lg">
+                    <img src="{{ url_for('static', filename='img/meet_goals.jpg') }}" alt="Customized Lessons Image" class="w-full h-full object-cover">
+                </div>
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Customized to Meet Individual Goals</h2>
+                    <p class="text-gray-700 dark:text-gray-400">Teachers will customize lessons for your needs.  Whether you want to improve conversation skills, communication, or practice specific situations and scenarios, we'll do our best to meet your needs.</p>
+                </div>
             </div>
-            <div class="bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 p-8 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-300">
-                <img src="{{ url_for('static', filename='img/your_pace.jpg') }}" alt="Lesson Pace Image" class="w-80 h-80 object-contain mx-auto mb-4">
-                <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Lessons at a Pace That Suits Everyone</h2>
-                <p class="text-gray-700 dark:text-gray-400">Proceed at your own pace. You can focus on what you want to learn: our teachers are always happy to help!</p>
+            <div class="bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 flex flex-col justify-between p-8 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-300">
+                <div class="w-full h-60 mb-4 overflow-hidden rounded-lg">
+                    <img src="{{ url_for('static', filename='img/your_pace.jpg') }}" alt="Lesson Pace Image" class="w-full h-full object-cover">
+                </div>
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Lessons at a Pace That Suits Everyone</h2>
+                    <p class="text-gray-700 dark:text-gray-400">Proceed at your own pace. You can focus on what you want to learn: our teachers are always happy to help!</p>
+                </div>
             </div>
         </div>
+        
         
         <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-8">Future Possibilities</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
             <div class="bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 p-6 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-300">
-                <img src="{{ url_for('static', filename='img/chatbot.jpg') }}" alt="ChatBot Image" class="w-40 h-40 object-contain mx-auto mb-4">
+                <div class="w-full h-40 mb-4 overflow-hidden rounded-lg">
+                    <img src="{{ url_for('static', filename='img/chatbot.jpg') }}" alt="ChatBot Image" class="w-full h-full object-cover">
+                </div>
                 <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">ChatBot</h3>
                 <p class="text-gray-700 dark:text-gray-400">A chatbot will be set up specifically to help students outside of lesson times.</p>
             </div>
             <div class="bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 p-6 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-300">
-                <img src="{{ url_for('static', filename='img/anki_review.jpg') }}" alt="Flashcard System Image" class="w-40 h-40 object-contain mx-auto mb-4">
+                <div class="w-full h-40 mb-4 overflow-hidden rounded-lg">
+                    <img src="{{ url_for('static', filename='img/anki_review.jpg') }}" alt="Flashcard System Image" class="w-full h-full object-cover">
+                </div>
                 <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Flashcard System</h3>
                 <p class="text-gray-700 dark:text-gray-400">Lesson records will link with Anki to allow the 'new_words' and 'new_phrases' to be automatically added with a translation for practice at home.</p>
             </div>
             <div class="bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 p-6 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-300">
-                <img src="{{ url_for('static', filename='img/language_support.jpeg') }}" alt="Multi-Language Support Image" class="w-40 h-40 object-contain mx-auto mb-4">
+                <div class="w-full h-40 mb-4 overflow-hidden rounded-lg">
+                    <img src="{{ url_for('static', filename='img/language_support.jpeg') }}" alt="Multi-Language Support Image" class="w-full h-full object-cover">
+                </div>
                 <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Multi-Language Support</h3>
                 <p class="text-gray-700 dark:text-gray-400">Add support for other languages: French, Spanish, and Italian are regularly taught in Japan.</p>
             </div>
             <div class="bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 p-6 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-300">
-                <img src="{{ url_for('static', filename='img/mobile_app.jpeg') }}" alt="Mobile App Image" class="w-40 h-40 object-contain mx-auto mb-4">
+                <div class="w-full h-40 mb-4 overflow-hidden rounded-lg">
+                    <img src="{{ url_for('static', filename='img/mobile_app.jpeg') }}" alt="Mobile App Image" class="w-full h-full object-cover">
+                </div>
                 <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Mobile App</h3>
                 <p class="text-gray-700 dark:text-gray-400">Using Electron, develop a mobile app version of the platform for easier access on mobile devices.</p>
             </div>
             <div class="bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 p-6 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-300">
-                <img src="{{ url_for('static', filename='img/video_lesson.jpeg') }}" alt="Video Lesson Integration Image" class="w-40 h-40 object-contain mx-auto mb-4">
+                <div class="w-full h-40 mb-4 overflow-hidden rounded-lg">
+                    <img src="{{ url_for('static', filename='img/video_lesson.jpeg') }}" alt="Video Lesson Integration Image" class="w-full h-full object-cover">
+                </div>
                 <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Video Lesson Integration</h3>
                 <p class="text-gray-700 dark:text-gray-400">Integrate with video conferencing tools like Zoom or Google Meet to facilitate online lessons.</p>
             </div>
             <div class="bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700 p-6 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-300">
-                <img src="{{ url_for('static', filename='img/pronunciation.jpeg') }}" alt="Payment System Image" class="w-40 h-40 object-contain mx-auto mb-4">
+                <div class="w-full h-40 mb-4 overflow-hidden rounded-lg">
+                    <img src="{{ url_for('static', filename='img/pronunciation.jpeg') }}" alt="Payment System Image" class="w-full h-full object-cover">
+                </div>
                 <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Pronunciation Helper</h3>
                 <p class="text-gray-700 dark:text-gray-400">Practice words you find difficult to pronounce with an AI helper that will help you master speaking clearly!</p>
             </div>
