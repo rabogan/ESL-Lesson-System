@@ -227,7 +227,7 @@ There are several enhancements and features that could be added to this project 
 
 ## Citing AI-Based Tools
 
-Throughout the development of this project, AI-based tools like ChatGPT were used to assist with code generation and troubleshooting. These tools were used to enhance productivity and provide suggestions but all code was reviewed and integrated by the project developers.
+Throughout the development of this project, AI-based tools like ChatGPT were used to assist with code generation and troubleshooting. These tools were used to enhance productivity and provide suggestions but all code was reviewed and integrated by me!
 
 ## Additional Information
 
