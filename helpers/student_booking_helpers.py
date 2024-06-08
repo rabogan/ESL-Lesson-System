@@ -2,6 +2,7 @@ from models import LessonSlot, Booking, LessonRecord
 from database import db
 from datetime import datetime, timezone
 from helpers.time_helpers import ensure_timezone_aware
+from sqlalchemy.orm import joinedload
 
 
 def fetch_available_slots(student, start_of_week_utc, end_of_week_utc, teacher_id=None):
@@ -56,8 +57,19 @@ def update_student_booking(session, form, student, current_time):
         db.session.rollback()
         return None, f'Error booking lesson: {e}'
     
+
 def fetch_and_format_slots(student, teacher_id, start_of_week, end_of_week, user_timezone):
     current_time_utc = datetime.now(timezone.utc)
+
+    # Get the student's existing bookings
+    existing_bookings = Booking.query.options(joinedload(Booking.lesson_slot)).filter(
+        Booking.student_id == student.id,
+        LessonSlot.start_time >= start_of_week,
+        LessonSlot.end_time <= end_of_week
+    ).all()
+
+    # Get the start times of the LessonSlots associated with the existing bookings
+    existing_booking_start_times = [booking.lesson_slot.start_time for booking in existing_bookings]
 
     slots = LessonSlot.query.filter(
         LessonSlot.teacher_id == teacher_id,
@@ -67,9 +79,13 @@ def fetch_and_format_slots(student, teacher_id, start_of_week, end_of_week, user
         LessonSlot.start_time >= current_time_utc
     ).all()
 
+    # Filter out slots that start at the same time as existing bookings
+    slots = [slot for slot in slots if slot.start_time not in existing_booking_start_times]
+
     slots_dict = [{
         'id': slot.id,
-        'time': slot.start_time.replace(tzinfo=timezone.utc).astimezone(user_timezone).strftime('%Y-%m-%d %I:%M %p'),
+        'start_time': slot.start_time.replace(tzinfo=timezone.utc).astimezone(user_timezone).strftime('%Y-%m-%d %I:%M %p'),
+        'end_time': slot.end_time.replace(tzinfo=timezone.utc).astimezone(user_timezone).strftime('%I:%M %p'),
         'teacher': slot.teacher.username
     } for slot in slots]
 

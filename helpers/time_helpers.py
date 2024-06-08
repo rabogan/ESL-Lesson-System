@@ -52,7 +52,7 @@ def get_week_boundaries(user_timezone_str, week_offset=0):
     
     # Calculate the start and end of the current week in the user's timezone
     start_of_week = today - timedelta(days=today.weekday(), hours=today.hour, minutes=today.minute, seconds=today.second, microseconds=today.microsecond) + timedelta(weeks=week_offset)
-    end_of_week = start_of_week + timedelta(days=7)
+    end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
     start_of_week_utc = start_of_week.astimezone(timezone.utc)
     end_of_week_utc = end_of_week.astimezone(timezone.utc)
 

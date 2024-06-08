@@ -66,7 +66,6 @@ def login_user_helper(form, model, user_type):
     user = authenticate_user(model, username, password)
     if user is None:
         return None, "Invalid username or password"
-
     login_new_user(user, user_type)
     login_user(user, remember=remember)
 

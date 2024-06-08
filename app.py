@@ -586,7 +586,8 @@ def student_book_lesson():
     user_timezone = get_user_timezone(student.timezone)
     week_offset = int(request.args.get('week_offset', 0))
     start_of_week_utc, end_of_week_utc = get_week_boundaries(student.timezone, week_offset)
-
+    start_of_week_local = start_of_week_utc.astimezone(user_timezone)
+    end_of_week_local = end_of_week_utc.astimezone(user_timezone)
     if request.method == 'POST':
         available_slots_dict = session.get('available_slots', None)
         if available_slots_dict is None:
@@ -637,8 +638,8 @@ def student_book_lesson():
                 available_teachers=available_teachers,
                 week_offset=week_offset, 
                 remaining_lessons=student.remaining_lessons, 
-                start_of_week=start_of_week_utc, 
-                end_of_week=end_of_week_utc)
+                start_of_week=start_of_week_local, 
+                end_of_week=end_of_week_local)
 
         print('Lesson booked successfully')
         return redirect(url_for('student_book_lesson', week_offset=week_offset))
@@ -650,8 +651,8 @@ def student_book_lesson():
         available_teachers=available_teachers, 
         week_offset=week_offset, 
         remaining_lessons=student.remaining_lessons, 
-        start_of_week=start_of_week_utc, 
-        end_of_week=end_of_week_utc)
+        start_of_week=start_of_week_local, 
+        end_of_week=end_of_week_local)
 
 @app.route('/getSlots/<int:teacher_id>', methods=['GET'])
 def get_slots(teacher_id):
@@ -663,8 +664,9 @@ def get_slots(teacher_id):
     student = db.session.get(Student, session['user_id'])
     if student is None:
         return jsonify({'error': 'Student not found'}), 404
-
-    start_of_week, end_of_week = get_week_boundaries(student.timezone)
+    
+    week_offset = int(request.args.get('week_offset', 0))
+    start_of_week, end_of_week = get_week_boundaries(student.timezone, week_offset)
     user_timezone = get_user_timezone(student.timezone)
     slots_dict = fetch_and_format_slots(student, teacher_id, start_of_week, end_of_week, user_timezone)
 

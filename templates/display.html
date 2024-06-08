@@ -5,8 +5,8 @@
 {% endblock %}
 
 {% block main %}
-<section class="bg-gray-50 dark:bg-gray-900 flex-grow flex items-center justify-center min-h-screen">
-    <div class="grid max-w-screen-xl px-4 py-4 mx-auto lg:gap-8 xl:gap-0 lg:py-8 lg:grid-cols-12 items-center">
+<section class="bg-gray-50 dark:bg-gray-900 flex-grow flex items-center justify-center">
+    <div class="grid max-w-screen-xl px-4 py-4 mx-auto lg:gap-8 xl:gap-0 lg:py-8 lg:grid-cols-12 items-start">
         {% if not current_user.is_authenticated %}
         <div class="col-span-12 text-center mb-8 lg:mb-4">
             <h1 class="text-5xl lg:text-6xl font-extrabold leading-none tracking-tight text-blue-700 dark:text-white mt-4">B-Grade English</h1>

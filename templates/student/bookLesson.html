@@ -22,16 +22,18 @@
                     {{ form.hidden_tag() }}  <!-- CSRF Token and other hidden fields -->
                     <div class="mb-4">
                         <label for="teacher" class="block text-lg font-medium text-gray-700 dark:text-gray-300">Select Teacher</label>
-                        <select id="teacher" name="teacher" class="block w-full mt-1 rounded-lg bg-gray-200 dark:bg-gray-700 dark:text-gray-300">
+                        <select id="teacher" name="teacher" class="block w-full mt-1 rounded-lg bg-gray-200 dark:bg-gray-700 dark:text-gray-300" title="Select a teacher from the dropdown">
+                            <option value="" disabled selected>Select a Teacher</option>
                             {% for teacher in available_teachers %}
-                                <option value="{{ teacher.id }}" {% if loop.first %}selected{% endif %}>{{ teacher.username }}</option>
+                                <option value="{{ teacher.id }}">{{ teacher.username }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="mb-4">
                         <label for="lessonSlot" class="block text-lg font-medium text-gray-700 dark:text-gray-300">Select Lesson Slot</label>
-                        <select id="lessonSlot" name="lesson_slot" class="block w-full mt-1 rounded-lg bg-gray-200 dark:bg-gray-700 dark:text-gray-300">
-                            <option value="" disabled selected>Fetching Lessons...</option>
+                        <select id="lessonSlot" name="lesson_slot" class="block w-full mt-1 rounded-lg bg-gray-200 dark:bg-gray-700 dark:text-gray-300" disabled>
+                            <option value="" disabled selected>Select a Lesson Slot</option>
+                            <option value="" disabled>Fetching Lessons...</option>
                             {% for slot in available_slots %}
                                 <option data-teacher-id="{{ slot.teacher.id }}" value="{{ slot.id }}">{{ slot.start_time.strftime('%Y-%m-%d %I:%M %p') }} - {{ slot.end_time.strftime('%I:%M %p') }} with {{ slot.teacher.username }}</option>
                             {% endfor %}
@@ -61,10 +63,18 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script>
     $('#teacher').change(function() {
+        if ($(this).val() != '') {
+            $('#lessonSlot').prop('disabled', false);
+        } else {
+            $('#lessonSlot').prop('disabled', true);
+        }
+    });
+    $('#teacher').change(function() {
         var teacherId = $(this).val();
+        var weekOffset = {{ week_offset }};  // Get the week_offset from the server-side variable
         console.log('Changed teacher ID:', teacherId);
         $.ajax({
-            url: '/getSlots/' + teacherId,
+            url: '/getSlots/' + teacherId + '?week_offset=' + weekOffset,  // Add the week_offset to the URL
             type: 'GET',
             success: function(data) {
                 console.log('Returned data:', data);
@@ -72,13 +82,14 @@
                 slotSelect.empty();
                 slotSelect.append('<option value="" disabled selected>Fetching Lessons...</option>');
                 $.each(data, function(key, value) {
-                    slotSelect.append('<option data-teacher-id="' + teacherId + '" value="' + value.id + '">' + value.time + ' with ' + value.teacher + '</option>');
+                    slotSelect.append('<option data-teacher-id="' + teacherId + '" value="' + value.id + '">' + value.start_time + ' - ' + value.end_time + ' with ' + value.teacher + '</option>');
                 });
                 console.log('New options:', $('#lessonSlot').html());
                 filterSlots();
             }
         });
     });
+    
 
     function filterSlots() {
         const teacherElement = document.getElementById('teacher');

@@ -99,6 +99,8 @@
 </style>
 
 <script>
+    document.getElementById('edit-button').addEventListener('click', editAllFields);
+    document.getElementById('cancel-button').addEventListener('click', cancelEditAllFields);
     function editAllFields() {
         const fields = ['hometown', 'goal', 'hobbies', 'correction_style', 'english_weakness'];
         fields.forEach(field => {

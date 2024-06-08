@@ -5,10 +5,10 @@
 {% endblock %}
 
 {% block main %}
-<section class="bg-gray-100 dark:bg-gray-900 flex-grow flex items-center justify-center min-h-screen">
-    <div class="max-w-screen-md mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
-        <div class="flex flex-col items-center">
-            <img class="w-40 h-40 rounded-full object-cover mb-4" src="{{ url_for('static', filename='img/bobby.jpeg') }}" alt="Bobby Bogan">
+<section class="bg-gray-100 dark:bg-gray-900 flex-grow flex items-center justify-center mt-4"> 
+    <div class="max-w-screen-sm mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 transition duration-500 ease-in-out transform hover:bg-blue-200 dark:hover:bg-gray-700 hover:scale-105"> 
+        <div class="flex flex-col items-center"> 
+            <img class="w-32 h-32 rounded-full object-cover mt-4 mb-2" src="{{ url_for('static', filename='img/bobby.jpeg') }}" alt="Bobby Bogan"> 
             <h1 class="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">Bobby Bogan</h1>
             <p class="text-lg text-gray-700 dark:text-gray-400 mb-6">Software Engineer</p>
             <p class="text-center text-gray-700 dark:text-gray-400 mb-6">I'm Robert Bogan, and I'm currently based in California, USA, where I live with my wife, having immigrated from the UK on a spouse (K-1) visa!</p>
