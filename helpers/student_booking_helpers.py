@@ -5,7 +5,19 @@ from helpers.time_helpers import ensure_timezone_aware
 from sqlalchemy.orm import joinedload
 
 
-def fetch_available_slots(student, start_of_week_utc, end_of_week_utc, teacher_id=None):
+def fetch_available_slots(_, start_of_week_utc, end_of_week_utc, teacher_id=None):
+    """
+    Fetch available lesson slots for a student.
+
+    Args:
+        _ (Student): The student object.
+        start_of_week_utc (datetime): The start of the week in UTC.
+        end_of_week_utc (datetime): The end of the week in UTC.
+        teacher_id (int, optional): The ID of the teacher to filter by. Defaults to None.
+
+    Returns:
+        list: A list of available LessonSlot objects.
+    """
     available_slots = LessonSlot.query.filter(
         LessonSlot.start_time.between(start_of_week_utc, end_of_week_utc),
         LessonSlot.start_time > datetime.now(timezone.utc),
@@ -14,7 +26,17 @@ def fetch_available_slots(student, start_of_week_utc, end_of_week_utc, teacher_i
     ).order_by(LessonSlot.start_time.asc()).all()
     return available_slots
 
+
 def convert_slots_to_dict(lesson_slots):
+    """
+    Convert lesson slot objects to a dictionary format.
+
+    Args:
+        lesson_slots (list): A list of LessonSlot objects.
+
+    Returns:
+        list: A list of dictionaries representing the lesson slots.
+    """
     available_slots_dict = [
         {
             'id': slot.id,
@@ -27,7 +49,20 @@ def convert_slots_to_dict(lesson_slots):
     ]
     return available_slots_dict
 
+
 def update_student_booking(session, form, student, current_time):
+    """
+    Update a student's booking for a lesson.
+
+    Args:
+        session (dict): The session object.
+        form (Form): The form containing booking data.
+        student (Student): The student object.
+        current_time (datetime): The current time.
+
+    Returns:
+        tuple: The lesson record and an error message if any.
+    """
     lesson_slot_id = form.lesson_slot.data
     teacher_id = form.teacher.data
 
@@ -59,6 +94,19 @@ def update_student_booking(session, form, student, current_time):
     
 
 def fetch_and_format_slots(student, teacher_id, start_of_week, end_of_week, user_timezone):
+    """
+    Fetch and format lesson slots for a student and teacher.
+
+    Args:
+        student (Student): The student object.
+        teacher_id (int): The ID of the teacher.
+        start_of_week (datetime): The start of the week.
+        end_of_week (datetime): The end of the week.
+        user_timezone (timezone): The user's timezone.
+
+    Returns:
+        list: A list of dictionaries representing the lesson slots.
+    """
     current_time_utc = datetime.now(timezone.utc)
 
     # Get the student's existing bookings

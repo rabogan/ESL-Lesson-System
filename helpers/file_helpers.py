@@ -2,9 +2,22 @@ import os
 import secrets
 from flask import current_app, session
 from flask_login import current_user
-        
 
 def save_image_file(image_file):
+    """
+    Save an uploaded image file with a unique name.
+    The logic here was taken from ChatGPT, although I was able to implement and change aspects too!
+
+    Generates a random filename for the uploaded image to ensure uniqueness,
+    determines the appropriate directory based on the user type, and handles
+    the saving and potential deletion of the old image file.
+
+    Args:
+        image_file (FileStorage): The uploaded image file.
+
+    Returns:
+        str: The new filename of the saved image.
+    """
     # Generate a random hex for the filename to ensure it's unique
     random_hex = secrets.token_hex(8)
     _, file_extension = os.path.splitext(image_file.filename)

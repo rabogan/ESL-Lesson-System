@@ -5,11 +5,17 @@ from sqlalchemy.orm import backref
 
 
 class User(UserMixin):
+    """
+    User class that provides default implementations for user authentication.
+    """    
     def __init__(self, id):
         self.id = id
 
 
 class Student(db.Model, UserMixin):
+    """
+    Represents a student in the system.
+    """    
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
     password = db.Column(db.String(60), nullable=False)
@@ -23,6 +29,9 @@ class Student(db.Model, UserMixin):
 
     @property
     def remaining_lessons(self):
+        """
+        Calculate remaining lessons based on purchased and used lessons.
+        """        
         return self.lessons_purchased - self.number_of_lessons
 
     def __repr__(self):
@@ -30,6 +39,9 @@ class Student(db.Model, UserMixin):
 
 
 class StudentProfile(db.Model):
+    """
+    Represents a student's profile information.
+    """
     id = db.Column(db.Integer, primary_key=True)
     hometown = db.Column(db.String(500))
     goal = db.Column(db.String(500))
@@ -45,6 +57,9 @@ class StudentProfile(db.Model):
 
 
 class Teacher(db.Model, UserMixin):
+    """
+    Represents a teacher in the system.
+    """    
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
     password = db.Column(db.String(60), nullable=False)
@@ -59,6 +74,9 @@ class Teacher(db.Model, UserMixin):
 
 
 class TeacherProfile(db.Model):
+    """
+    Represents a teacher's profile information.
+    """    
     id = db.Column(db.Integer, primary_key=True)
     age = db.Column(db.Integer)
     hobbies = db.Column(db.String(500))
@@ -73,6 +91,9 @@ class TeacherProfile(db.Model):
 
 
 class LessonRecord(db.Model):
+    """
+    Represents a record of a lesson between a student and a teacher.
+    """    
     __tablename__ = 'lesson_record'
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'))
@@ -94,6 +115,9 @@ class LessonRecord(db.Model):
 
 
 class Word(db.Model):
+    """
+    Represents a new word introduced in a lesson.
+    """    
     __tablename__ = 'word'
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.String(100), nullable=False)
@@ -101,6 +125,9 @@ class Word(db.Model):
 
 
 class Phrase(db.Model):
+    """
+    Represents a new phrase introduced in a lesson.
+    """    
     __tablename__ = 'phrase'
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.String(100), nullable=False)
@@ -109,6 +136,9 @@ class Phrase(db.Model):
     
     
 class LessonSlot(db.Model):
+    """
+    Represents a time slot available for lessons.
+    """    
     __tablename__ = 'lesson_slot'
     id = db.Column(db.Integer, primary_key=True)
     teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
@@ -124,6 +154,9 @@ class LessonSlot(db.Model):
 
 
 class Booking(db.Model):
+    """
+    Represents a booking of a lesson slot by a student.
+    """    
     __tablename__ = 'booking'
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)

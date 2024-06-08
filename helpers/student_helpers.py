@@ -53,11 +53,26 @@ def cancel_student_lesson(lesson_id, student_id):
 
 
 def get_student_by_id(student_id):
-    """Fetch a student by their ID."""
+    """
+    Fetch a student by their ID.
+
+    Args:
+        student_id (int): The ID of the student to fetch.
+
+    Returns:
+        Student: The student if found, else None.
+    """
     return db.session.get(Student, student_id)
 
+
 def update_student_profile(form, profile):
-    """Update the student's profile with data from the form."""
+    """
+    Update the student's profile with data from the form.
+
+    Args:
+        form (Form): The form containing updated profile data.
+        profile (StudentProfile): The student's profile to update.
+    """
     profile.hometown = form.hometown.data.strip() if form.hometown.data else ''
     profile.goal = form.goal.data.strip() if form.goal.data else ''
     profile.hobbies = form.hobbies.data.strip() if form.hobbies.data else ''

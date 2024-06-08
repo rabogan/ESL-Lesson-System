@@ -20,10 +20,14 @@ from models import Student, StudentProfile, Teacher, LessonSlot, Word, Phrase
 from forms import RegistrationForm, LoginForm, EditTeacherProfileForm, StudentProfileForm, TeacherEditsStudentForm, LessonRecordForm, LessonSlotsForm, StudentLessonSlotForm, CancelLessonForm
 from database import db, migrate
 
+"""
+This module initializes the Flask application, sets up configurations, 
+and defines route handlers for various pages in the web app.
+"""
 
 # Initialize Flask app
 app = Flask(__name__)
-app.secret_key = 'coolie_killer_huimin_himitsunakotogawaruidesune'
+app.secret_key = 'coolie_killer_huimin_himitsunakotogawaruidesune' 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['DEBUG'] = True
 app.config['WTF_CSRF_ENABLED'] = True
@@ -47,12 +51,16 @@ logging.basicConfig(level=logging.DEBUG)
 # Ensure database tables are created
 with app.app_context():
     db.create_all()
-    print("Tables created")
+    app.logger.info("Database tables created.")
 
 
 # This handles whether a student or teacher is logging in
 @login_manager.user_loader
 def load_user(user_id):
+    """
+    Load user based on user_id stored in the session.
+    Determines if the user is a student or teacher.
+    """
     user_type = session.get('user_type')
     if user_type == 'student':
         return db.session.get(Student, int(user_id))
@@ -64,11 +72,19 @@ def load_user(user_id):
 
 @app.errorhandler(404)
 def page_not_found(e):
+    """
+    Handler for 404 errors - page not found.
+    Renders a custom 404 error page.
+    """
     return render_template('apology.html', top="404 Error", bottom="Page not found"), 404
 
 
 @app.errorhandler(500)
 def internal_error(error):
+    """
+    Handler for 500 errors - internal server error.
+    Logs the error and renders a custom 500 error page.
+    """
     app.logger.error(f"Server Error: {error}")
     return render_template('500.html'), 500
 
@@ -77,7 +93,7 @@ def internal_error(error):
 @app.route("/")
 def index():
     """
-    Displays the index page of our web app, 
+    Displays the index page of our web app.
     """
     return render_template("display.html")
 
@@ -85,7 +101,8 @@ def index():
 @app.route('/meetYourTeachers')
 def meet_your_teacher():
     """
-    Shows a rogue's gallery of all the teachers present in the system
+    Displays a gallery of all the teachers present in the system.
+    Supports pagination to show a limited number of teachers per page.
     """
     page = request.args.get('page', 1, type=int)
     teachers = Teacher.query.paginate(page=page, per_page=6)
@@ -95,7 +112,8 @@ def meet_your_teacher():
 @app.route('/ourLessons')
 def our_lessons():
     """
-    This page provides information about the lessons offered.
+    Despite the title, this just provides information about the app itself.
+    It outlines some of the future additions I'll work on post CS50!
     """
     return render_template('ourLessons.html')
 
@@ -103,7 +121,7 @@ def our_lessons():
 @app.route('/developerProfile')
 def developer_profile():
     """
-    This page provides contact information for the school.
+    This page is where interested users can get in touch!
     """
     return render_template('developerProfile.html')
 
@@ -141,12 +159,18 @@ def portal_choice():
 
 
 @app.route("/student/register", methods=["GET", "POST"])
-@limiter.limit("5/minute")
+@limiter.limit("10/minute")
 def student_register():
+    """
+    This route (GET, POST /student/register) handles student registration.
+    Limits registration attempts to 10 per minute to prevent abuse.
+    On successful form submission, registers the student and redirects to the student dashboard.
+    The _ is actually the new_user variable used in register_user (see auth_helpers) to log the user in.
+    Since it's not accessed here, we can ignore it, but we're using _ as a means of unpacking the tuple.
+    """
     form = RegistrationForm()
-    
     if form.validate_on_submit():
-        new_user, error_message = register_user(form, 'student')
+        _, error_message = register_user(form, 'student')
         if error_message:
             form.username.errors.append(error_message)
             return render_template("studentRegister.html", form=form), 400
@@ -154,12 +178,20 @@ def student_register():
     
     return render_template("studentRegister.html", form=form)
 
+
 @app.route("/student/login", methods=["GET", "POST"])
-@limiter.limit("5/minute")
+@limiter.limit("10/minute")
 def student_login():
+    """
+    This route (GET, POST /student/login) handles student login.
+    Limits login attempts to 10 per minute to prevent abuse.
+    The _ is the new_user variable used login_user_helper (see auth_helpers) to log the user in.
+    Since it's not accessed here, we can ignore it, but we're using _ as a means of unpacking the tuple.
+    On successful form submission, logs in the student and redirects to the student dashboard.
+    """
     form = LoginForm()
     if form.validate_on_submit():
-        user, error_message = login_user_helper(form, Student, 'student')
+        _, error_message = login_user_helper(form, Student, 'student')
         if error_message:
             return render_template("apology.html", top="Error", bottom=error_message), 400
         return redirect(url_for("student_dashboard"))
@@ -167,11 +199,16 @@ def student_login():
 
 
 @app.route("/teacher/register", methods=["GET", "POST"])
-@limiter.limit("5/minute")
+@limiter.limit("10/minute")
 def teacher_register():
+    """
+    This route (GET, POST /teacher/register) handles teacher registration.
+    Limits registration attempts to 10 per minute to prevent abuse.
+    On successful form submission, registers the teacher and redirects to the teacher dashboard.
+    """
     form = RegistrationForm()
     if form.validate_on_submit():
-        new_user, error_message = register_user(form, 'teacher')
+        _, error_message = register_user(form, 'teacher')
         if error_message:
             return render_template("apology.html", top="Error", bottom=error_message), 400
         return redirect(url_for("teacher_dashboard"))
@@ -180,11 +217,18 @@ def teacher_register():
 
 
 @app.route("/teacher/login", methods=["GET", "POST"])
-@limiter.limit("5/minute")
+@limiter.limit("10/minute")
 def teacher_login():
+    """
+    This route (GET, POST /teacher/login) handles teacher login.
+    Limits login attempts to 10 per minute to prevent abuse.
+    The _ is the new_user variable used login_user_helper (see auth_helpers) to log the user in.
+    Since it's not accessed here, we can ignore it, but we're using _ as a means of unpacking the tuple.
+    On successful form submission, logs in the teacher and redirects to the teacher dashboard.
+    """
     form = LoginForm()
     if form.validate_on_submit():
-        user, error_message = login_user_helper(form, Teacher, 'teacher')
+        _, error_message = login_user_helper(form, Teacher, 'teacher')
         if error_message:
             return render_template("apology.html", top="Error", bottom=error_message), 400
         return redirect(url_for("teacher_dashboard"))
@@ -195,11 +239,13 @@ def teacher_login():
 @login_required
 def logout():
     """
-    Log out the user and clear the session
+    Log out the user and clear the session.
+    Redirects to the index page after logging out.
     """
     logout_user()
     session.pop('user_id', None)
     session.pop('user_type', None)
+    app.logger.info("User logged out successfully.")
     return redirect(url_for('index'))
 
 
@@ -207,6 +253,16 @@ def logout():
 @app.route('/teacher/dashboard')
 @login_required
 def teacher_dashboard():
+    """
+    Display the teacher dashboard.
+
+    Only accessible by users with a 'teacher' user_type.
+    Displays the teacher's profile, most recent lesson record, upcoming lessons,
+    and outstanding lessons.
+
+    Returns:
+        Response: The rendered template for the teacher dashboard.
+    """
     if session.get('user_type') != 'teacher':
         return redirect(url_for('index'))
 
@@ -227,6 +283,16 @@ def teacher_dashboard():
 @app.route('/teacher/lessonRecords')
 @login_required
 def teacher_lesson_records():
+    """
+    Display paginated lesson records for the teacher.
+
+    Only accessible by users with a 'teacher' user_type.
+    Fetches and displays paginated lesson records for the teacher,
+    making times timezone-aware.
+
+    Returns:
+        Response: The rendered template for the teacher's lesson records.
+    """
     if session['user_type'] != 'teacher':
         return redirect(url_for('home'))
 
@@ -247,9 +313,15 @@ def teacher_lesson_records():
 @limiter.limit("5/minute") 
 def edit_teacher_profile():
     """
-    Where teachers can edit and update their own profiles
+    Route for teachers to edit and update their own profiles.
+
+    Only accessible by users with a 'teacher' user_type.
+    Displays a form for editing the teacher's profile and handles form submission.
+    Limits profile update attempts to 5 per minute to prevent abuse.
+
+    Returns:
+        Response: The rendered template for editing the teacher's profile.
     """
-    
     if 'user_type' not in session or session['user_type'] != 'teacher':
         return redirect(url_for('login'))
     
@@ -266,6 +338,15 @@ def edit_teacher_profile():
 @app.route('/teacher/lessonSlots', methods=['GET'])
 @login_required
 def manage_lesson_slots():
+    """
+    Display and manage lesson slots for the teacher.
+
+    Only accessible by users with a 'teacher' user_type.
+    Fetches lesson slots for the current week and renders the management interface.
+
+    Returns:
+        Response: The rendered template or JSON response with lesson slots.
+    """
     form = LessonSlotsForm()
     teacher = db.session.get(Teacher, current_user.id)
     user_timezone = get_user_timezone(teacher.timezone)
@@ -290,9 +371,19 @@ def manage_lesson_slots():
     else:
         return render_template('teacher/lessonSlots.html', form=form)
 
+
 @app.route('/teacher/updateSlot', methods=['POST'])
 @login_required
 def update_lesson_slot():
+    """
+    Update a lesson slot (open or close).
+
+    Processes requests to open or close a lesson slot based on provided data.
+    Only accessible by users with a 'teacher' user_type.
+
+    Returns:
+        Response: JSON response indicating success or error.
+    """
     data = request.get_json()
     slot_id = data['slot_id']
     action = data['action']  # 'open' or 'close'
@@ -311,9 +402,19 @@ def update_lesson_slot():
 
     return jsonify({'status': 'error'})
 
+
 @app.route('/updateSlotStatus', methods=['POST'])
 @login_required
 def update_slot_status():
+    """
+    Update the status of a lesson slot (open or close).
+
+    Processes requests to update the status of a lesson slot.
+    Only accessible by users with a 'teacher' user_type.
+
+    Returns:
+        Response: JSON response indicating success or error.
+    """
     data = request.get_json()
     slot_id = data['slot_id']
     is_open = data['is_open']
@@ -328,9 +429,19 @@ def update_slot_status():
 
     return jsonify({'status': 'error'})
 
+
 @app.route('/teacher/updateSlots', methods=['POST'])
 @login_required
 def update_slots():
+    """
+    Update multiple lesson slots (open or close).
+
+    Processes requests to update multiple lesson slots based on provided data.
+    Only accessible by users with a 'teacher' user_type.
+
+    Returns:
+        Response: JSON response indicating success or error.
+    """
     data = request.get_json()
     app.logger.info(f"Received data: {data}")
     updates = []
@@ -373,12 +484,22 @@ def update_slots():
 
     return jsonify({'status': 'success', 'updates': updates})
 
-@app.route('/studentProfile/<int:student_id>', methods=['GET', 'POST'])
-
 
 @app.route('/studentProfile/<int:student_id>', methods=['GET', 'POST'])
 @login_required 
 def student_profile(student_id):
+    """
+    Display and edit a student's profile.
+
+    Only accessible by users with a 'teacher' user_type.
+    Allows teachers to view and update the profiles of their students.
+
+    Args:
+        student_id (int): The ID of the student whose profile is to be viewed or edited.
+
+    Returns:
+        Response: The rendered template for viewing or editing the student's profile.
+    """
     if session['user_type'] != 'teacher':
         return redirect(url_for('index'))
 
@@ -404,6 +525,18 @@ def student_profile(student_id):
 @app.route('/teacher/editLesson/<int:lesson_id>', methods=['GET', 'POST'])
 @login_required
 def edit_lesson(lesson_id):
+    """
+    Edit a lesson record by its ID.
+
+    Only accessible by users with a 'teacher' user_type.
+    Allows teachers to view and update lesson records.
+
+    Args:
+        lesson_id (int): The ID of the lesson to edit.
+
+    Returns:
+        Response: The rendered template for editing the lesson or a redirect on success.
+    """
     app.logger.info(f"Editing lesson with ID {lesson_id}")
 
     if session['user_type'] != 'teacher':
@@ -482,6 +615,16 @@ def edit_lesson(lesson_id):
 @app.route('/student/dashboard')
 @login_required
 def student_dashboard():
+    """
+    Display the student dashboard.
+
+    Only accessible by users with a 'student' user_type.
+    Displays the student's profile, most recent lesson record, upcoming lessons,
+    and provides a form for canceling lessons.
+
+    Returns:
+        Response: The rendered template for the student dashboard.
+    """
     if session.get('user_type') != 'student':
         return redirect(url_for('index'))
 
@@ -494,21 +637,30 @@ def student_dashboard():
     most_recent_record = get_most_recent_lesson_record(student.id, 'student', student.timezone)
     upcoming_lessons = get_upcoming_lessons(student.id, 'student', student.timezone)
 
-    cancel_lesson_form = CancelLessonForm()  # Define the cancel lesson form
+    cancel_lesson_form = CancelLessonForm() 
 
     return render_template(
         'student/studentDashboard.html',
         profile=current_user.profile,
         most_recent_record=most_recent_record,
         upcoming_lessons=upcoming_lessons,
-        cancel_lesson_form=cancel_lesson_form,  # Pass the cancel lesson form
-        user_timezone=user_timezone  # Pass the timezone to the template
+        cancel_lesson_form=cancel_lesson_form, 
+        user_timezone=user_timezone
     )
 
 
 @app.route('/cancelLesson/<int:lesson_id>', methods=['POST'])
 @login_required
 def cancel_lesson(lesson_id):
+    """
+    Cancel a lesson for the current user (student).
+
+    Args:
+        lesson_id (int): The ID of the lesson to be canceled.
+
+    Returns:
+        Response: Redirects to the student dashboard with a success or error message.
+    """
     form = CancelLessonForm()
 
     # Set lesson_id in the form's data
@@ -526,10 +678,19 @@ def cancel_lesson(lesson_id):
 @app.route('/student/lessonRecords')
 @login_required
 def student_lesson_records():
+    """
+    Display paginated lesson records for the student.
+
+    Only accessible by users with a 'student' user_type.
+    Fetches and displays paginated lesson records for the student,
+    making times timezone-aware.
+
+    Returns:
+        Response: The rendered template for the student's lesson records.
+    """
     if session.get('user_type') != 'student':
         return redirect(url_for('index'))
     
-    # Fetch the student's timezone
     student = get_student_by_id(session['user_id'])
 
     if student is None:
@@ -538,7 +699,7 @@ def student_lesson_records():
     
     user_timezone = get_user_timezone(student.timezone)
 
-    # Fetch all past lesson records for the logged-in student
+    # Fetch all past lesson records for the logged-in student relative to their local timezone
     page = request.args.get('page', 1, type=int)
     lesson_records = get_paginated_lesson_records(student.id, page, 'student')
     lesson_records = make_times_timezone_aware(lesson_records, student.timezone)
@@ -549,9 +710,15 @@ def student_lesson_records():
 @app.route('/student/editStudentProfile', methods=['GET', 'POST'])
 @login_required
 def edit_student_profile():
+    
     if session.get('user_type') != 'student':
         return redirect(url_for('login'))
-    
+    """
+    Edit the profile of the current user (student).
+
+    Returns:
+        Response: The rendered template for editing the student's profile or a redirect on success.
+    """    
     # Ensure the student profile exists
     if current_user.profile is None:
         profile = StudentProfile(student_id=current_user.id, image_file='default1.png')
@@ -576,6 +743,15 @@ def edit_student_profile():
 @app.route('/student/bookLesson', methods=['GET', 'POST'])
 @login_required
 def student_book_lesson():
+    """
+    Book a lesson for the current user (student).
+
+    Allows students to view available lesson slots and book a lesson.
+    Supports filtering by teacher and week offset.
+
+    Returns:
+        Response: The rendered template for booking a lesson or a redirect on success.
+    """
     form = StudentLessonSlotForm()
     
     student = db.session.get(Student, current_user.id)
@@ -656,11 +832,18 @@ def student_book_lesson():
 
 @app.route('/getSlots/<int:teacher_id>', methods=['GET'])
 def get_slots(teacher_id):
-    # Check if the student is logged in
+    """
+    Retrieve available lesson slots for a specific teacher.
+
+    Args:
+        teacher_id (int): The ID of the teacher.
+
+    Returns:
+        Response: JSON response with available lesson slots.
+    """
     if 'user_id' not in session:
         return jsonify({'error': 'Not logged in'}), 401
 
-    # Get the student's timezone
     student = db.session.get(Student, session['user_id'])
     if student is None:
         return jsonify({'error': 'Student not found'}), 404

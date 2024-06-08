@@ -1,8 +1,17 @@
 import pytz
 from datetime import datetime, timedelta, timezone
 
+
 def get_user_timezone(timezone_str):
-    """Fetch a valid timezone for the user, defaulting to 'America/Los_Angeles' if invalid."""
+    """
+    Fetch a valid timezone for the user, defaulting to 'America/Los_Angeles' if invalid.
+
+    Args:
+        timezone_str (str): The timezone string to fetch.
+
+    Returns:
+        timezone: The valid timezone object.
+    """
     try:
         return pytz.timezone(timezone_str)
     except pytz.UnknownTimeZoneError:
@@ -12,8 +21,9 @@ def get_user_timezone(timezone_str):
 def ensure_timezone_aware(dt, timezone_str):
     """
     Ensure a datetime object is timezone-aware.
-    i.e. If the datetime object is not timezone-aware, 
-    it will be converted to the specified timezone of the teacher/student.
+
+    If the datetime object is not timezone-aware, it will be converted to the specified
+    timezone of the teacher/student.
 
     Args:
         dt (datetime): The datetime object to check.
@@ -31,21 +41,17 @@ def convert_to_utc(dt, timezone):
     dt = ensure_timezone_aware(dt, timezone)
     return dt.astimezone(pytz.utc)
 
-# This is a WORKING way getting getting the start and end of the week in the user's timezone!
-# Called using: start_of_week_utc, end_of_week_utc = get_start_end_of_week(student.timezone, week_offset)
-# Used in book_lesson - can avoid DRY using it!
-# This is a WORKING way getting getting the start and end of the week in the user's timezone!
-# Called using: start_of_week_utc, end_of_week_utc = get_start_end_of_week(student.timezone, week_offset)
-# Used in book_lesson - can avoid DRY using it!
+
 def get_week_boundaries(user_timezone_str, week_offset=0):
-    """_summary_
+    """
+    Get the start and end of the week in the user's timezone.
 
     Args:
-        user_timezone_str (_type_): _description_
-        week_offset (int, optional): _description_. Defaults to 0.
+        user_timezone_str (str): The user's timezone string.
+        week_offset (int, optional): The number of weeks to offset. Defaults to 0.
 
     Returns:
-        _type_: _description_
+        tuple: The start and end of the week as UTC datetime objects.
     """
     user_timezone = pytz.timezone(user_timezone_str)
     today = datetime.now(timezone.utc).astimezone(user_timezone)

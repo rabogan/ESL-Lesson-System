@@ -5,17 +5,42 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy import and_
 from helpers.file_helpers import save_image_file
 from helpers.time_helpers import ensure_timezone_aware
-from models import Teacher, TeacherProfile, LessonRecord, LessonSlot, Student, Booking, StudentProfile
+from models import Teacher, TeacherProfile, LessonRecord, LessonSlot, Student, Booking
+
 
 def get_teacher_by_id(teacher_id):
+    """
+    Retrieve a teacher by their ID.
+    Created with help from ChatGPT
+    Args:
+        teacher_id (int): The ID of the teacher to retrieve.
+
+    Returns:
+        Teacher: The Teacher object if found, else None.
+    """
     return db.session.query(Teacher).filter(Teacher.id == teacher_id).first()
 
+
 def get_teacher_profile_by_id(teacher_id):
+    """
+    Retrieve a teacher's profile by the teacher's ID.
+    Created with help from ChatGPT
+    Args:
+        teacher_id (int): The ID of the teacher whose profile to retrieve.
+
+    Returns:
+        TeacherProfile: The TeacherProfile object if found, else None.
+    """
     return db.session.query(TeacherProfile).filter(TeacherProfile.teacher_id == teacher_id).first()
+
 
 def update_teacher_profile(profile, form):
     """
     Update the teacher's profile with data from the form.
+    Created with help from ChatGPT
+    Args:
+        profile (Profile): The teacher's profile to update.
+        form (Form): The form containing updated profile data.
     """
     profile.age = form.age.data if form.age.data else None
     profile.hobbies = form.hobbies.data.strip() if form.hobbies.data else ''
@@ -28,7 +53,19 @@ def update_teacher_profile(profile, form):
 
     db.session.commit()
 
+
 def get_most_recent_lesson_record(teacher_id, timezone_str):
+    """
+    Retrieve the most recent lesson record for a teacher.
+    Query is based on the last edit time and the presence of a lesson summary.
+    Created with help from ChatGPT!
+    Args:
+        teacher_id (int): The ID of the teacher.
+        timezone_str (str): The timezone string to make times timezone aware.
+
+    Returns:
+        LessonRecord: The most recent lesson record if found, else None.
+    """
     most_recent_record = LessonRecord.query.filter(
         and_(
             LessonRecord.teacher_id == teacher_id,
@@ -45,7 +82,18 @@ def get_most_recent_lesson_record(teacher_id, timezone_str):
 
     return most_recent_record
 
+
 def get_upcoming_lessons(teacher_id, timezone_str):
+    """
+    Retrieve upcoming lessons for a teacher.
+    Created with help from ChatGPT
+    Args:
+        teacher_id (int): The ID of the teacher.
+        timezone_str (str): The timezone string to make times timezone aware.
+
+    Returns:
+        list: A list of upcoming LessonSlot objects.
+    """
     upcoming_lessons = LessonSlot.query.filter(
         and_(
             LessonSlot.teacher_id == teacher_id,
@@ -61,7 +109,18 @@ def get_upcoming_lessons(teacher_id, timezone_str):
 
     return upcoming_lessons
 
+
 def get_outstanding_lessons(teacher_id, timezone_str):
+    """
+    Retrieve outstanding lessons for a teacher that have not been summarized.
+    Created with help from ChatGPT
+    Args:
+        teacher_id (int): The ID of the teacher.
+        timezone_str (str): The timezone string to make times timezone aware.
+
+    Returns:
+        list: A list of outstanding LessonRecord objects.
+    """
     outstanding_lessons = LessonRecord.query.filter(
         and_(
             LessonRecord.teacher_id == teacher_id,
@@ -78,10 +137,11 @@ def get_outstanding_lessons(teacher_id, timezone_str):
 
     return outstanding_lessons
 
+
 def update_student_profile_from_form(student_profile, form):
     """
     Update the student's profile with data from the form.
-    
+    Created with help from ChatGPT
     Args:
         student_profile (StudentProfile): The student's profile object.
         form (TeacherEditsStudentForm): The form with updated data.
