@@ -10,6 +10,7 @@
         <h1 class="text-3xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white mb-8">
             Edit Lesson for {{ lesson.student.username }}
         </h1>
+        <!-- Form for editing lesson records (ChatGPT/Github CoPilot Assisted)-->
         <form method="POST" action="{{ url_for('edit_lesson', lesson_id=lesson.id) }}" id="edit-lesson-form" enctype="multipart/form-data">
             {{ form.hidden_tag() }}
             <div class="mb-4">
@@ -96,6 +97,7 @@
     console.log("CSRF token in HTML template: {{ form.csrf_token._value() }}");
 </script>
 <script>
+    //ChatGPT + Github CoPilot Assisted
     document.addEventListener('DOMContentLoaded', (event) => {
         console.log("DOM fully loaded and parsed");
         const newWordInput = document.getElementById('new_word');

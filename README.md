@@ -2,23 +2,28 @@
 
 #### Video Demo: [URL HERE]
 
+## Citing AI-Based Tools
+
+Throughout the development of this project, both ChatGPT and Github CoPilot were used to assist with code generation and troubleshooting, especially with regards to the use of Flask-WTF, and ensuring forms and CSRF tokens were handled correctly.  These tools were used to enhance productivity and provide suggestions but all code was reviewed and integrated by me.  Helper files and app.py route created with extensive AI assistance are clearly marked as being so.  The TailwindCSS and Flowbite libraries provided fairly standard means of choosing a design and color scheme, and some pages were run through ChatGPT to ensure consistency where color changes were made.
+
 ## Description
 
 B-Grade English is a web application designed to allow ESL teachers setting up independent English conversation schools (or eikaiwa, as they're known in Japan) a way to enhance the student experience beyond the typical coffee shop lesson, where the lessons are recorded on pen/paper, and lessons are typically agreed via text messages. This offers a platform where teachers can manage their lesson slots (showing off their availability), and students can book lessons based on teacher availability. The system ensures that both teachers and students can view their upcoming and past lessons, manage their profiles, and browse through old lesson records - which are designed to summarize the lesson notes succinctly.
 
 The project uses the following technologies:
 - **Flask**: As the web framework.
-- **SQLAlchemy**: For database management (easy scalability from the SQLite3 here to MySQL in the future)
-- **WTForms**: For form handling and validation (not 'fun' to learn, and really extended the time on the project).
+- **Tailwind CSS**: For styling the web application.  I wanted to use a CSS framework that was easy to use and understand, and Tailwind CSS was perfect for this.
+- **Flowbite**: A Tailwind CSS component library that was used to help with the styling of the web application.
 - **Flask-Login**: For user authentication.
 - **Flask-WTF**: For CSRF protection.
+- **WTForms**: For form handling and validation (not 'fun' to learn, and really extended the time on the project).
+- **Flask-Migrate**: For handling database migrations.
+- **Flask-Limiter**: For rate limiting the registration and login endpoints.  (A feature that was added after the project was completed, but was a good idea to add in the end).
+- **SQLite3**: As the database for the project.
+- **SQLAlchemy**: For database management (easy scalability from the SQLite3 to MySQL in the future).
 - **Pytz**: For timezone management (I wanted the web app to be possible to use anywhere in the world).
 - **Github CoPilot**: For code suggestions, generation, and to generate clear helper functions.  For generating ideas and suggestions for the project, especially in the form handling section.
 - **ChatGPT**: Again, this was heavily used for generating ideas and suggestions for the project.  Also assisting with improving the 'light mode' styling.
-- **Tailwind CSS**: For styling the web application.  I wanted to use a CSS framework that was easy to use and understand, and Tailwind CSS was perfect for this.
-- **Flowbite**: A Tailwind CSS component library that was used to help with the styling of the web application.
-- **Flask-Limiter**: For rate limiting the registration and login endpoints.  (A feature that was added after the project was completed, but was a good idea to add in the end).
-- **Flask-Migrate**: For handling database migrations.
 
 ## Features
 
@@ -48,8 +53,8 @@ To set up the project locally, follow these steps:
 
 1. **Clone the repository:**
     ```sh
-    git clone <repository-url>
-    cd <repository-directory>
+    git clone https://github.com/rabogan/project.git
+    cd project
     ```
 
 2. **Create a virtual environment and activate it:**
@@ -76,13 +81,13 @@ To set up the project locally, follow these steps:
 ## Usage
 
 ### Teacher Portal
-- **Register/Login:** Teachers can register for an account and log in.
+- **Register/Login:** Teachers can register for an account and/or log in.
 - **Dashboard:** Teachers can view their upcoming lessons, most recent lesson records, and outstanding lesson records.
 - **Manage Lesson Slots:** Teachers can open and close lesson slots for students to book.
 - **Edit Profile:** Teachers can update their profile information.
 
 ### Student Portal
-- **Register/Login:** Students can register for an account and log in.
+- **Register/Login:** Students can register for an account and/or log in.
 - **Dashboard:** Students can view their upcoming lessons and most recent lesson records.
 - **Book Lessons:** Students can book available lesson slots with teachers.
 - **Edit Profile:** Students can update their profile information.
@@ -95,6 +100,9 @@ To set up the project locally, follow these steps:
 #### Snake Case Used For Python Functions And Helpers
 
 - `app.py`: The main application file that contains route definitions and the app initialization.
+- `database.db`: Initializes the SQLAlchemy and Flask-Migrate extensions for use with the Flask application
+- `models.py`: Contains the models that define the database schema.
+- `forms.py`: Contains all WTForms form definitions used in the application.
 - `helpers/`: Contains helper modules that encapsulate various functionalities.
   - `auth_helpers.py`: Handles user registration and login functionalities.
   - `dashboard_helpers.py`: Contains functions for fetching recent lessons, upcoming lessons, etc.
@@ -106,50 +114,50 @@ To set up the project locally, follow these steps:
   - `teacher_helpers.py`: Contains functions for teacher-specific functionalities.
   - `teacher_lesson_slot_mgmt_helpers.py`: Manages opening and closing lesson slots for teachers.
   - `time_helpers.py`: Handles timezone-related functionalities.
-- `models/`: Contains the SQLAlchemy models that define the database schema.
-- `forms/`: Contains the WTForms form definitions used in the application.
 - `templates/`: Contains the HTML templates used for rendering the web pages.
 
-#### Camel Case Used for HTML
+#### Templates Used For HTML Files
 
-## Public Routes
+## Public Templates (/*.html)
 - **layout.html**: This is the main layout file that includes the navigation bar, footer, and main content area. It supports both dark and light modes with consistent styling.
 - **display.html**: The home page that welcomes users based on their roles (teachers, students, or guests) and provides navigation options.
 - **404.html**: The "Page Not Found" error page that guides users back to the home page.
 - **500.html**: The "Server Error" page that informs users of unexpected errors and guides them back to the home page.
 - **apology.html**: A template for displaying error messages with a consistent style, including a return link to the home page.
 - **developerProfile.html**: A page showcasing my profile.
-- **meetYourTeachers.html**: A page where users can view the profiles of all teachers, including their images, age, hobbies, motto, and blood type. The page is paginated and allows navigation between different pages of teacher profiles.
+- **meetYourTeachers.html**: A page where users can view the profiles of all teachers. The page is paginated and allows navigation between different pages of teacher profiles.
 - **ourLessons.html**: The "Our Lessons" page provides detailed information about the benefits of one-on-one lessons, instructor availability, and how students can review their lesson records. Includes a section on future possibilities too!
 - **portalChoice.html**: The "Portal Choice" page that allows users to choose between the student and teacher portals.
 - **studentLogin.html**: The "Student Log In" page that allows students to log in to their accounts.
 - **studentRegister.html**: The "Student Register" page that allows new students to create accounts.
 - **teacherLogin.html**: The "Teacher Log In" page that allows teachers to log in to their accounts.
 - **teacherRegister.html**: The "Teacher Register" page that allows new teachers to create accounts.
-- **viewStudentProfile.html**: The "Student Profile" page that displays and allows editing of student profile details.
-- **viewTeacherProfile.html**: The "Teacher Profile" page that displays teacher profile details.
 
-## Teacher-Only Routes (/teacher/_*.html)
+## Teacher-Only Templates (/teacher/_*.html)
 - **teacherDashboard.html**: The "Teacher Dashboard" page that displays upcoming lessons, recent lesson records, and outstanding lesson records.
 - **editTeacherProfile.html**: The "Edit Teacher Profile" page that allows teachers to update their profile information.
 - **lessonSlots.html**: The "Lesson Slots" page that allows teachers to manage their lesson slots.
 - **editLesson.html**: The "Edit Lesson" page that allows teachers to edit lesson records.
 - **teacherLessonRecords.html**: The "Lesson Records" page that displays all lesson records for a teacher.
 
-## Student-Only Routes (/student/_*.html)
+## Student-Only Template (/student/_*.html)
 - **studentDashboard.html**: The "Student Dashboard" page that displays upcoming lessons and recent lesson records.
 - **editStudentProfile.html**: The "Edit Student Profile" page that allows students to update their profile information.
 - **bookLesson.html**: The "Book Lesson" page that allows students to book available lesson slots.
 - **lessonRecords.html**: The "Lesson Records" page that displays all lesson records for a student.
 
+## Shared Non-Public Templates
+- **viewStudentProfile.html**: The "Student Profile" page that displays and allows editing of student profile details.
+- **viewTeacherProfile.html**: The "Teacher Profile" page that displays teacher profile details.
+
 ### Endpoints
 
 #### Public Routes
 - **GET /**: Displays the index page.
-- **GET /meetYourTeacher**: Shows a gallery of all teachers.
+- **GET /meetYourTeachers**: Shows a gallery of all teachers.
 - **GET /ourLessons**: Provides information about the lessons offered.
-- **GET /contactSchool**: Provides contact information for the school.
-- **GET /teacher_profile/<int:teacher_id>**: Displays a teacher's public profile.
+- **GET /developerProfile**: Provides contact information for the school.
+- **GET /teacherProfile/<int:teacher_id>**: Displays a teacher's public profile.
 
 #### Authentication Routes
 - **GET, POST /student/register**: Student registration.
@@ -160,22 +168,22 @@ To set up the project locally, follow these steps:
 
 #### Teacher Routes
 - **GET /teacher/dashboard**: Displays the teacher's dashboard.
-- **GET /teacher/lesson_records**: Displays the teacher's lesson records.
-- **GET, POST /teacher/edit_teacher_profile**: Allows the teacher to edit their profile.
-- **GET /teacher/lesson_slots**: Allows the teacher to manage their lesson slots.
-- **POST /teacher/update_slot**: Updates a lesson slot (open/close).
-- **POST /update-slot-status**: Updates the status of a lesson slot (open/close).
-- **POST /teacher/update_slots**: Batch updates lesson slots (open/close).
-- **GET, POST /student_profile/<int:student_id>**: Allows the teacher to view and edit a student's profile.
-- **GET, POST /teacher/edit_lesson/<int:lesson_id>**: Allows the teacher to edit a lesson record.
+- **GET /teacher/lessonRecords**: Displays the teacher's lesson records.
+- **GET, POST /teacher/editTeacherProfile**: Allows the teacher to edit their own profile.
+- **GET, POST /studentProfile/<int:student_id>**: Allows the teacher to view and edit a specific student's profile.
+- **GET /teacher/lessonSlots**: Allows the teacher to manage their lesson slots.
+- **POST /teacher/updateSlot**: Updates a lesson slot (open/close).
+- **POST /updateSlotStatus**: Updates the status of a lesson slot (open/close).
+- **POST /teacher/updateSlots**: Batch updates lesson slots (open/close).
+- **GET, POST /teacher/editLesson/<int:lesson_id>**: Allows the teacher to edit a specific lesson record.
 
 #### Student Routes
 - **GET /student/dashboard**: Displays the student's dashboard.
-- **POST /cancel_lesson/<int:lesson_id>**: Cancels a lesson.
-- **GET /student/lesson_records**: Displays the student's lesson records.
-- **GET, POST /student/edit_student_profile**: Allows the student to edit their profile.
-- **GET, POST /student/book_lesson**: Allows the student to book a lesson.
-- **GET /get_slots/<int:teacher_id>**: Fetches available slots for a teacher.
+- **POST /cancelLesson/<int:lesson_id>**: Cancels a specific lesson that has been booked.
+- **GET /student/lessonRecords**: Displays the student's lesson records.
+- **GET, POST /student/editStudentProfile**: Allows the student to edit their profile.
+- **GET, POST /student/bookLesson**: Allows the student to book a lesson.
+- **GET /getSlots/<int:teacher_id>**: Fetches available slots for a teacher of a given teacher ID.
 
 ## Design Choices
 
@@ -183,7 +191,7 @@ Throughout the development of this project, several design choices were made to 
 
 1. **Modular Code Structure:** The codebase is organized into multiple helper modules to encapsulate different functionalities and promote code reusability.
 2. **User Authentication and Authorization:** Separate login and registration routes for students and teachers ensure appropriate access control.
-3. **CSRF Protection:** All forms in the application are protected against CSRF attacks using Flask-WTF.
+3. **CSRF Protection and forms:** All forms in the application are protected against CSRF attacks using Flask-WTF.
 4. **Timezone Management:** Accurate timezone handling ensures that lesson times are displayed correctly for both teachers and students.
 5. **Rate Limiting:** Flask-Limiter is used to prevent abuse of the registration and login endpoints by limiting the number of requests per minute.
 
@@ -208,8 +216,9 @@ Throughout the development of this project, several design choices were made to 
 2. **Milestone 2:** Set up dual user authentication with Flask: for teachers and for students.
 3. **Milestone 3:** Add profile management features for students and teachers: allowing teachers to edit student profiles too.
 4. **Milestone 4:** Implement lesson booking and management features for students and teachers.
-5. **Milestone 5:** Finalize UI/UX and ensure the application is fully responsive.
-6. **Milestone 6:** Write comprehensive documentation and create a video demo.
+5. **Milestone 5:** Implement lesson record editing and viewing features for teachers and students.
+6. **Milestone 6:** Finalize UI/UX and ensure the application is fully responsive.
+7. **Milestone 7:** Write comprehensive documentation and create a video demo.
 
 ## Future Possibilities
 
@@ -225,17 +234,14 @@ There are several enhancements and features that could be added to this project 
 8. **ChatBot:** Much like the Duck Debugger in CS50, a chatbot could be used to help students outside of lesson times.
 9. **Pronunciation Helper:** Using a 3rd party API that compares student pronunciation of words (entered into a section in the lesson record), and helps them improve.
 
-## Citing AI-Based Tools
-
-Throughout the development of this project, AI-based tools like ChatGPT were used to assist with code generation and troubleshooting. These tools were used to enhance productivity and provide suggestions but all code was reviewed and integrated by the project developers.
-
 ## Additional Information
 
-- **GitHub CoPilot and ChatGPT**: Assisted in setting up Tailwind CSS and other parts of the project, especially form handling, which was the worst part..
 - **Helpful Resources**:
   - [Tailwind CSS Installation](https://tailwindcss.com/docs/installation)
   - [Flowbite Flask Integration](https://flowbite.com/docs/getting-started/flask/)
   - [TW Elements Social Buttons](https://tw-elements.com/docs/standard/components/social-buttons/)
+  - [How I Adjusted My Database To Store New Words And Phrases](https://stackoverflow.com/questions/55056253/what-is-the-best-way-to-save-a-string-array-in-sqlite-on-android/)
+  - [Use of jQuery and AJAX with teacher lesson slot management](https://learn.jquery.com/ajax/ajax-and-forms/)
 
 ## Security Notes
 

@@ -15,6 +15,7 @@ class User(UserMixin):
 class Student(db.Model, UserMixin):
     """
     Represents a student in the system.
+    Relationships with other models added with AI guidance
     """    
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
@@ -41,6 +42,7 @@ class Student(db.Model, UserMixin):
 class StudentProfile(db.Model):
     """
     Represents a student's profile information.
+    Relationship with the student model added with AI guidance
     """
     id = db.Column(db.Integer, primary_key=True)
     hometown = db.Column(db.String(500))
@@ -59,6 +61,7 @@ class StudentProfile(db.Model):
 class Teacher(db.Model, UserMixin):
     """
     Represents a teacher in the system.
+    Relationships with other models added with AI guidance
     """    
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
@@ -76,6 +79,7 @@ class Teacher(db.Model, UserMixin):
 class TeacherProfile(db.Model):
     """
     Represents a teacher's profile information.
+    Relationships with other models added with AI guidance
     """    
     id = db.Column(db.Integer, primary_key=True)
     age = db.Column(db.Integer)
@@ -93,6 +97,7 @@ class TeacherProfile(db.Model):
 class LessonRecord(db.Model):
     """
     Represents a record of a lesson between a student and a teacher.
+    Relationship between student, teacher, and lesson slot added with AI guidance
     """    
     __tablename__ = 'lesson_record'
     id = db.Column(db.Integer, primary_key=True)
@@ -138,6 +143,7 @@ class Phrase(db.Model):
 class LessonSlot(db.Model):
     """
     Represents a time slot available for lessons.
+    Relationships with other models added with AI guidance
     """    
     __tablename__ = 'lesson_slot'
     id = db.Column(db.Integer, primary_key=True)
@@ -156,6 +162,7 @@ class LessonSlot(db.Model):
 class Booking(db.Model):
     """
     Represents a booking of a lesson slot by a student.
+    Relationships with other models added with AI guidance
     """    
     __tablename__ = 'booking'
     id = db.Column(db.Integer, primary_key=True)

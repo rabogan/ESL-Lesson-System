@@ -116,6 +116,7 @@
         document.getElementById('update-profile-button').classList.add('hidden');
     }
 
+    // ChatGPT Assisted
     function validateImageFile(event) {
         const fileInput = document.querySelector('[name=image_file]');
         const filePath = fileInput.value;
@@ -123,13 +124,12 @@
         if (filePath && !allowedExtensions.exec(filePath)) {
             alert('Please upload a file with extensions .jpeg/.jpg/.png/.gif only.');
             fileInput.value = '';
-            event.preventDefault(); // prevent form from being submitted
+            event.preventDefault();
         }
     }
     
     document.querySelector('form').addEventListener('submit', validateImageFile);
 
-    // Function to hide the success message after a few seconds with fade out effect
     function hideSuccessMessage() {
         const message = document.getElementById('success-message');
         if (message) {

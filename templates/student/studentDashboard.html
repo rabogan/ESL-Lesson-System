@@ -44,6 +44,7 @@
                         <td class="py-3 px-4">{{ lesson.start_time.strftime('%B %d at %H:%M') }}</td>
                         <td class="py-3 px-4">{{ lesson.start_time.strftime('%I:%M %p') }}</td>
                         <td class="py-3 px-4">
+                            <!-- Cancel Lesson Form - ChatGPT Assisted-->
                             <form action="{{ url_for('cancel_lesson', lesson_id=lesson.id) }}" method="post">
                                 {{ cancel_lesson_form.hidden_tag() }}
                                 <input type="submit" value="Cancel" class="bg-red-500 hover:bg-red-700 text-white py-1 px-3 rounded" onclick="return confirm('Are you sure you want to cancel this lesson?');">

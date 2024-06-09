@@ -25,6 +25,7 @@
             <a href="{{ url_for('teacher_profile', teacher_id=teacher.id) }}">
                 <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white hover:underline">{{ teacher.username }}</h5>
             </a>
+            <!--AI assisted-->
             <p class="mb-3 font-normal text-gray-700 dark:text-gray-400">
                 Age: {{ teacher.profile.age if teacher.profile else 'N/A' }}<br>
                 Hobbies: {{ teacher.profile.hobbies if teacher.profile else 'N/A' }}<br>
