@@ -234,6 +234,10 @@ There are several enhancements and features that could be added to this project 
 8. **ChatBot:** Much like the Duck Debugger in CS50, a chatbot could be used to help students outside of lesson times.
 9. **Pronunciation Helper:** Using a 3rd party API that compares student pronunciation of words (entered into a section in the lesson record), and helps them improve.
 
+## Citing AI-Based Tools
+
+Throughout the development of this project, AI-based tools like ChatGPT were used to assist with code generation and troubleshooting. These tools were used to enhance productivity and provide suggestions but all code was reviewed and integrated by the project developers.
+
 ## Additional Information
 
 - **Helpful Resources**:
