@@ -133,14 +133,14 @@ To set up the project locally, follow these steps:
 - **teacherLogin.html**: The "Teacher Log In" page that allows teachers to log in to their accounts.
 - **teacherRegister.html**: The "Teacher Register" page that allows new teachers to create accounts.
 
-## Teacher-Only Templates (/teacher/_*.html)
+## Teacher-Only Templates (/teacher/*.html)
 - **teacherDashboard.html**: The "Teacher Dashboard" page that displays upcoming lessons, recent lesson records, and outstanding lesson records.
 - **editTeacherProfile.html**: The "Edit Teacher Profile" page that allows teachers to update their profile information.
 - **lessonSlots.html**: The "Lesson Slots" page that allows teachers to manage their lesson slots.
 - **editLesson.html**: The "Edit Lesson" page that allows teachers to edit lesson records.
 - **teacherLessonRecords.html**: The "Lesson Records" page that displays all lesson records for a teacher.
 
-## Student-Only Template (/student/_*.html)
+## Student-Only Template (/student/*.html)
 - **studentDashboard.html**: The "Student Dashboard" page that displays upcoming lessons and recent lesson records.
 - **editStudentProfile.html**: The "Edit Student Profile" page that allows students to update their profile information.
 - **bookLesson.html**: The "Book Lesson" page that allows students to book available lesson slots.
@@ -234,9 +234,6 @@ There are several enhancements and features that could be added to this project 
 8. **ChatBot:** Much like the Duck Debugger in CS50, a chatbot could be used to help students outside of lesson times.
 9. **Pronunciation Helper:** Using a 3rd party API that compares student pronunciation of words (entered into a section in the lesson record), and helps them improve.
 
-## Citing AI-Based Tools
-
-Throughout the development of this project, AI-based tools like ChatGPT were used to assist with code generation and troubleshooting. These tools were used to enhance productivity and provide suggestions but all code was reviewed and integrated by the project developers.
 
 ## Additional Information
 
