@@ -4,7 +4,7 @@
 
 ## Citing AI-Based Tools
 
-Throughout the development of this project, both ChatGPT and Github CoPilot were used to assist with code generation and troubleshooting, especially with regards to the use of Flask-WTF, and ensuring forms and CSRF tokens were handled correctly.  These tools were used to enhance productivity and provide suggestions but all code was reviewed and integrated by me.  Helper files and app.py route created with extensive AI assistance are clearly marked as being so.  The TailwindCSS and Flowbite libraries provided fairly standard means of choosing a design and color scheme, and some pages were run through ChatGPT to ensure consistency where color changes were made.
+Throughout the development of this project, both ChatGPT and Github CoPilot were used to assist with code generation and troubleshooting (as well as this README!), but especially with regards to the use of Flask-WTF, and ensuring forms and CSRF tokens were handled correctly.  These tools were used to enhance productivity and provide suggestions but all code was reviewed and integrated by me.  Helper files and app.py route created with extensive AI assistance are clearly marked as being so.  The TailwindCSS and Flowbite libraries provided fairly standard means of choosing a design and color scheme, and some pages were run through ChatGPT to ensure consistency where color changes were made.
 
 ## Description
 
