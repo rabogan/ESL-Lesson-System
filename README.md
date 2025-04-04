@@ -49,34 +49,48 @@ The project uses the following technologies:
 
 ## Setup
 
-To set up the project locally, follow these steps:
+To set up the project locally, follow these steps (Visual Studio Code works well):
 
 1. **Clone the repository:**
     ```sh
-    git clone https://github.com/rabogan/project.git
-    cd project
+    git clone https://github.com/rabogan/ESL-Lesson-System.git
+    cd ESL-Lesson-System
     ```
+2. **Make sure Python 3.11 is installed on your system. You can check by running:**
+   ```sh
+    py -3.11 --version
+   ```
 
-2. **Create a virtual environment and activate it:**
+3. **Create a virtual environment and activate it:**
     ```sh
-    python -m venv venv
-    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+    py -3.11 -m venv venv
+    .\venv\Scripts\Activate  #On macOS/Linux, use source venv/bin/activate
     ```
 
-3. **Install the dependencies:**
+3b. **You should now see the virtual environment activated, e.g.:**
+    ```sh
+    (venv) PS C:\Users\YourName\ESL-Lesson-System>
+    ```
+
+4. **Install the dependencies:**
     ```sh
     pip install -r requirements.txt
     ```
 
-4. **Set up the database:**
+5. **Set up the database:**
     ```sh
     flask db upgrade
     ```
 
-5. **Run the application:**
+6. **Run the application:**
     ```sh
     flask run
     ```
+
+7. **Then open your browser and go to:
+    ```sh
+    http://127.0.0.1:5000
+    ``` 
 
 ## Usage
 
